@@ -49,13 +49,11 @@ addInstances :: [Instance] -> String -> String
 addInstances instances projectName = concat [[i|    <addInstance abstract="#{smallify (iAbstract x)}" name="#{iName x}" of="Root::#{projectName}::#{iOf x}" package="Root::#{projectName}" parents=""/>\n|]
   | x <- instances]
 
-the function doParents is needed because the value of the attribute "new" could have multiple class names with each preceded by some text.
-
-The purpose of "init" is to remove the last "," from the list of parents that is produced on the right side of the definition of doParents.
--}
-changeParents :: [(String,[String], ())] -> String
-changeParents parentsChanges = concat [[i|    <changeParent class="Root::#{projectName}::#{child}" new="#{doParents parents}" old="" package="Root::#{projectName}"/>\n|]
-  | (child, parents, ()) <- parentsChanges]
+-- The function doParents is needed because the value of the attribute "new" could have multiple class from which it inherits.
+-- The purpose of "init" is to remove the last "," from the list of parents that is produced on the right side of the definition of .
+doChangeParents :: [ChangeParent] -> String -> String
+doChangeParents parentsChanges projectName = concat [[i|    <changeParent class="Root::#{projectName}::#{pClass x}" new="#{doParents (pNew x)}" old="" package="Root::#{projectName}"/>\n|]
+  | x <- parentsChanges]
     where
       doParents :: [String] -> String
       doParents parents = init (concat [[i|Root::#{projectName}::#{p},|] | p <- parents ])
