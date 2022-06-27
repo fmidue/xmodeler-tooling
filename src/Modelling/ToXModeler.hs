@@ -91,6 +91,8 @@ addOperations operations projectName = concat [[i|    <addOperation body="#{oBod
 
     --  the class names that these instances are instantiating:
     instancesClasses = map (filter (not . isDigit)) instances0 :: [String]
+doChangeSlotValues :: [ChangeSlotValue] -> String -> String
+doChangeSlotValues changeSlotValues projectName = concat [[i|    <changeSlotValue class="Root::#{projectName}::#{vClass x}" package="Root::#{projectName}" slotName="#{vName x}" valueToBeParsed="#{getValue (vValueToBeParsed x)}"/>\n|] | x <- changeSlotValues]
 
     -- the names of the instances (they have to be small letters for XModeler):
     instancesNames = map (map toLower) instances0 :: [String]
