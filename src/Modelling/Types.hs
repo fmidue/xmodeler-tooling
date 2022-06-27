@@ -22,6 +22,10 @@ data Type =
   Auxiliary_Complex (Maybe String) |
   Auxiliary_AuxiliaryClass (Maybe String)
   deriving Show
+
+getType :: Type -> String
+getType =  intercalate "::" . splitOn "_" . head . splitOn " " . show
+
 getValue :: Type -> String
 getValue t = case t of
   Auxiliary_MonetaryValue (Just (unit, value)) -> [i|Auxiliary::MonetaryValue(#{value}, Auxiliary::Currency(&quot;#{unit}&quot;, &quot;#{value}&quot;, 1.0))|]
