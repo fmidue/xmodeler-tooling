@@ -25,6 +25,8 @@ import Modelling.Types (
   getValue
   )
 
+smallify :: Bool -> String
+smallify = map toLower . show
 
 getObjectsCoordinates :: GraphvizCommand -> (Double -> Double) -> [String] -> [(String, String,())] -> IO [(String, (Int, Int))]
 getObjectsCoordinates layoutCommand spaceOut vertices edges =
