@@ -1,5 +1,15 @@
 {-# LANGUAGE QuasiQuotes #-}
 
+data XModelerCurrency = USD | EUR | GBP | AUD | NZD deriving Show
+
+
+relativeToEur :: XModelerCurrency -> Float
+relativeToEur USD = 0.9502091
+relativeToEur EUR = 1.0
+relativeToEur GBP = 1.165868
+relativeToEur AUD = 0.65582377
+relativeToEur NZD = 0.5976929
+
 data Type =
   XCore_Boolean (Maybe Bool) |
   XCore_Integer (Maybe Int) |
