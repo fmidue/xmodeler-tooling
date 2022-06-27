@@ -77,6 +77,8 @@ addOperations operations projectName = concat [[i|    <addOperation body="#{oBod
 doChangeSlotValues :: [ChangeSlotValue] -> String -> String
 doChangeSlotValues changeSlotValues projectName = concat [[i|    <changeSlotValue class="Root::#{projectName}::#{vClass x}" package="Root::#{projectName}" slotName="#{vName x}" valueToBeParsed="#{getValue (vValueToBeParsed x)}"/>\n|] | x <- changeSlotValues]
 
+getRange :: [Int] -> Double
+getRange x = fromIntegral $ maximum x - minimum x
 
 toXModeler :: GraphvizCommand -> (Double -> Double) -> Double -> Int -> MLM -> IO String
 toXModeler layoutCommand spaceOut scaleFactor extraOffset mlm =
