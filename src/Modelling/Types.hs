@@ -1,5 +1,17 @@
 {-# LANGUAGE QuasiQuotes #-}
 
+data Type =
+  XCore_Boolean (Maybe Bool) |
+  XCore_Integer (Maybe Int) |
+  XCore_Float (Maybe Float) |
+  XCore_String (Maybe String) |
+  XCore_Element (Maybe ()) |
+  Auxiliary_MonetaryValue (Maybe (String, String)) |
+  Auxiliary_Date (Maybe (Int, Int, Int)) |
+  Auxiliary_Currency (Maybe XModelerCurrency) |
+  Auxiliary_Complex (Maybe String) |
+  Auxiliary_AuxiliaryClass (Maybe String)
+  deriving Show
 getValue :: Type -> String
 getValue t = case t of
   Auxiliary_MonetaryValue (Just (unit, value)) -> [i|Auxiliary::MonetaryValue(#{value}, Auxiliary::Currency(&quot;#{unit}&quot;, &quot;#{value}&quot;, 1.0))|]
