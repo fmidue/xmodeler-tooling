@@ -68,6 +68,8 @@ addLinks :: [Link] -> String -> String
 addLinks links projectName = concat [[i|    <addLink classSource="Root::#{projectName}::#{lClassSource x}" classTarget="Root::#{projectName}::#{lClassTarget x}" name="#{lName x}" package="Root::#{projectName}"/>\n|]
   | x <- links]
 
+addAttributes :: [Attribute] -> String -> String
+addAttributes changeSlotValues projectName = concat [[i|    <addAttribute class="Root::#{projectName}::#{aClass x}" level="#{aLevel x}" multiplicity="Seq{#{aMultiplicityMin x},#{aMultiplicityMax x},#{smallify (aMultiplicityMax x /= -1)},false}" name="#{aName x}" package="Root::#{projectName}" type="Root::#{getType (aType x)}"/>\n|] | x <- changeSlotValues]
 
 {-
   in the let-in part the data is extracted and "pre-processed".
