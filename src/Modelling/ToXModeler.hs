@@ -71,10 +71,6 @@ addLinks links projectName = concat [[i|    <addLink classSource="Root::#{projec
 addAttributes :: [Attribute] -> String -> String
 addAttributes changeSlotValues projectName = concat [[i|    <addAttribute class="Root::#{projectName}::#{aClass x}" level="#{aLevel x}" multiplicity="Seq{#{aMultiplicityMin x},#{aMultiplicityMax x},#{smallify (aMultiplicityMax x /= -1)},false}" name="#{aName x}" package="Root::#{projectName}" type="Root::#{getType (aType x)}"/>\n|] | x <- changeSlotValues]
 
-{-
-  in the let-in part the data is extracted and "pre-processed".
-  Translation from Autotool encoding to a structure that has only the parts significant to XModeler and in somewhat helpful order:
--}
 toXModeler :: GraphvizCommand -> GraphvizCommand -> (Double -> Double) -> Double -> Int -> Syntax -> Od -> IO String
 toXModeler cdLayoutCommand odLayoutCommand spaceOut scaleFactor extraOffset cd od =
   let
@@ -91,13 +87,9 @@ toXModeler cdLayoutCommand odLayoutCommand spaceOut scaleFactor extraOffset cd o
 addOperations :: [Operation] -> String -> String
 addOperations operations projectName = concat [[i|    <addOperation body="#{oBody x}" class="Root::#{projectName}::#{oClass x}" level="#{oLevel x}" monitored="false" name="#{oName x}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{getType (oType x)}"/>\n|] | x <- operations]
 
-    --  the class names that these instances are instantiating:
-    instancesClasses = map (filter (not . isDigit)) instances0 :: [String]
 doChangeSlotValues :: [ChangeSlotValue] -> String -> String
 doChangeSlotValues changeSlotValues projectName = concat [[i|    <changeSlotValue class="Root::#{projectName}::#{vClass x}" package="Root::#{projectName}" slotName="#{vName x}" valueToBeParsed="#{getValue (vValueToBeParsed x)}"/>\n|] | x <- changeSlotValues]
 
-    -- the names of the instances (they have to be small letters for XModeler):
-    instancesNames = map (map toLower) instances0 :: [String]
 
     -- pairs of an instance name with the name of the class that it instantiates
     -- for example : [("c0","C"),("b0","B"),("b1","B"),("b2","B")] :
