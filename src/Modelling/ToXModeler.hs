@@ -60,34 +60,10 @@ doChangeParents parentsChanges projectName = concat [[i|    <changeParent class=
       doParents :: [String] -> String
       doParents parents = init (concat [[i|Root::#{projectName}::#{p},|] | p <- parents ])
 
-matchAssociation :: (AssociationType.AssociationType,
-  String, (Int, Maybe Int), String, String, (Int, Maybe Int)) ->
-  ((String, Int, Int, Int, Int), (String, String, ()))
-matchAssociation (AssociationType.Association,
-  name, (sourceMin, sourceMax), source, target, (targetMin, targetMax)) =
-    ((name, sourceMin, fromMaybe (-1) sourceMax, targetMin, fromMaybe (-1) targetMax),
-    (source, target, ()))
-matchAssociation (_,
-  name, (targetMin, targetMax), target, source, (sourceMin, sourceMax)) =
-    ((name, sourceMin, fromMaybe (-1) sourceMax, targetMin, fromMaybe (-1) targetMax),
-    (source, target, ()))
+--The representation of infinity (having no upper limit in a multiplicity) in XModeler is "-1".
+addAssociations :: [Association] -> String -> String
+addAssociations associations projectName = concat [[i|    <addAssociation accessSourceFromTargetName="#{sFwName x}_#{sSource x}" accessTargetFromSourceName="#{sFwName x}_#{sTarget x}" classSource="Root::#{projectName}::#{sSource x}" classTarget="Root::#{projectName}::#{sTarget x}" fwName="#{sFwName x}" instLevelSource="#{sInstLevelSource x}" instLevelTarget="#{sInstLevelTarget x}" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{#{sMultSourceToTargetMin x},#{sMultSourceToTargetMax x},#{smallify (sMultSourceToTargetMax x /= -1)},false}" multTargetToSource="Seq{#{sMultTargetToSourceMin x},#{sMultTargetToSourceMax x},#{smallify (sMultTargetToSourceMax x /= -1)},false}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="#{smallify (sSourceVisibleFromTarget x)}" targetVisibleFromSource="#{smallify (sTargetVisibleFromSource x)}"/>\n|] | x <- associations]
 
-{-
-This function takes a list of Associations (see src\Modelling\CdOd\Types.hs) and returns a list of the tag
-addAssociation concatenated to become a String.
-
-The representation of infinity (having no upper limit in a multiplicity) in XModeler is "-1" as opposed to it
-in Autotool which is "Nothing". This is why I used fromMaybe.
-
-The values for the attributes accessSourceFromTargetName and accessTargetFromSourceName are the same as the
-names of source class and target class, but in small letters.
--}
-addAssociations :: [((String, Int, Int, Int, Int), (String, String, ()))] -> String
-addAssociations = concatMap addAssociation
-  where
-    addAssociation :: ((String, Int, Int, Int, Int), (String, String, ())) -> String
-    addAssociation ((name, sourceMin, sourceMax, targetMin, targetMax), (source, target, ()))
-        = [i|    <addAssociation accessSourceFromTargetName="#{name}_#{map toLower source}" accessTargetFromSourceName="#{name}_#{map toLower target}" classSource="Root::#{projectName}::#{source}" classTarget="Root::#{projectName}::#{target}" fwName="#{name}" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{#{targetMin},#{targetMax},#{targetMax /= -1},false}" multTargetToSource="Seq{#{sourceMin},#{sourceMax},#{sourceMax /= -1},false}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>\n|]
 
 addLinks :: [(String, (String, String, ()))] -> String
 addLinks links = concat [[i|    <addLink classSource="Root::#{projectName}::#{source}" classTarget="Root::#{projectName}::#{target}" name="#{name}" package="Root::#{projectName}"/>\n|]
