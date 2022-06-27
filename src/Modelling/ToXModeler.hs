@@ -49,19 +49,13 @@ addObjects objectsCoordinates =
   concat [[i|        <Object hidden="false" ref="Root::#{projectName}::#{objectName}" x="#{x}" y="#{y}"/>\n|]
   | (objectName, (x, y)) <- objectsCoordinates]
 
-
--- it takes a list of tuples of which the first component is a name of an instance of a class (small letters and a number)
--- and the second component is the name of that class (capital letters), and returns a list of the tag addInstance concatenated to become a String.
-addInstances :: [(String,String)] -> String
-addInstances instances = concat [[i|    <addInstance abstract="false" name="#{instanceName}" of="Root::#{projectName}::#{className}" package="Root::#{projectName}" parents=""/>\n|]
-  | (instanceName, className) <- instances]
 addMetaClasses :: [MetaClass] -> String -> String
 addMetaClasses metaClasses projectName = concat [[i|    <addMetaClass abstract="#{smallify (mAbstract x)}" level="#{mLevel x}" name="#{mName x}" package="Root::#{projectName}" parents=""/>\n|]
   | x <- metaClasses]
 
-{-
-it takes a list of tuples of which the first component is a name of a class (capital letters) and the second component is a list of names of classes
-that are parents of that class (first component in the tuple), and returns a list of the tag changeParent concatenated to become a String.
+addInstances :: [Instance] -> String -> String
+addInstances instances projectName = concat [[i|    <addInstance abstract="#{smallify (iAbstract x)}" name="#{iName x}" of="Root::#{projectName}::#{iOf x}" package="Root::#{projectName}" parents=""/>\n|]
+  | x <- instances]
 
 the function doParents is needed because the value of the attribute "new" could have multiple class names with each preceded by some text.
 
