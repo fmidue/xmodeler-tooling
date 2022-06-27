@@ -19,6 +19,20 @@ projectName :: String
 projectName = "projectName"
 diagramName :: String
 diagramName = "diagramName"
+import Modelling.Types (
+  MetaClass (..),
+  Instance (..),
+  ChangeParent (..),
+  Attribute (..),
+  Operation (..),
+  ChangeSlotValue (..),
+  Association (..),
+  Link (..),
+  MLM (..),
+  getType,
+  getValue
+  )
+
 
 getObjectsCoordinates :: GraphvizCommand -> (Double -> Double) -> [String] -> [(String, String,())] -> IO [(String, (Int, Int))]
 getObjectsCoordinates layoutCommand spaceOut vertices edges =
