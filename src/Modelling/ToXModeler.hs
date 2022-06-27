@@ -38,8 +38,8 @@ getObjectsCoordinates layoutCommand spaceOut vertices edges =
 it takes a list of names of classes (capital letters) and a list of names of instances of these classes
 (small letters followed by a number) and returns a list of the tag Object concatenated to become a String.
 -}
-addObjects :: [(String, (Int, Int))] -> String
-addObjects objectsCoordinates =
+addObjects :: [(String, (Int, Int))] -> String -> String
+addObjects objectsCoordinates projectName =
   concat [[i|        <Object hidden="false" ref="Root::#{projectName}::#{objectName}" x="#{x}" y="#{y}"/>\n|]
   | (objectName, (x, y)) <- objectsCoordinates]
 
