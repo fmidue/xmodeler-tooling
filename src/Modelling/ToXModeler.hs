@@ -71,19 +71,6 @@ addLinks links projectName = concat [[i|    <addLink classSource="Root::#{projec
 addAttributes :: [Attribute] -> String -> String
 addAttributes changeSlotValues projectName = concat [[i|    <addAttribute class="Root::#{projectName}::#{aClass x}" level="#{aLevel x}" multiplicity="Seq{#{aMultiplicityMin x},#{aMultiplicityMax x},#{smallify (aMultiplicityMax x /= -1)},false}" name="#{aName x}" package="Root::#{projectName}" type="Root::#{getType (aType x)}"/>\n|] | x <- changeSlotValues]
 
-toXModeler :: GraphvizCommand -> GraphvizCommand -> (Double -> Double) -> Double -> Int -> Syntax -> Od -> IO String
-toXModeler cdLayoutCommand odLayoutCommand spaceOut scaleFactor extraOffset cd od =
-  let
-    -- classes we have in the class diagram (metaclasses):
-    classesNames = map fst (fst cd) :: [String]
-
-    -- classes names paired with parents, only if the list of parents is not empty:
-    parentsChanges = map (uncurry ( , , ())) $ filter (not . null . snd) (fst cd) :: [(String, [String], ())]
-
-    -- associations between these classes:
-    associations = map matchAssociation (snd cd) :: [((String, Int, Int, Int, Int), (String, String, ()))]
-    -- instances as they are given, just without the separator ($) :
-    instances0 = map (filter (/='$')) (fst od) :: [String]
 addOperations :: [Operation] -> String -> String
 addOperations operations projectName = concat [[i|    <addOperation body="#{oBody x}" class="Root::#{projectName}::#{oClass x}" level="#{oLevel x}" monitored="false" name="#{oName x}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{getType (oType x)}"/>\n|] | x <- operations]
 
@@ -91,31 +78,27 @@ doChangeSlotValues :: [ChangeSlotValue] -> String -> String
 doChangeSlotValues changeSlotValues projectName = concat [[i|    <changeSlotValue class="Root::#{projectName}::#{vClass x}" package="Root::#{projectName}" slotName="#{vName x}" valueToBeParsed="#{getValue (vValueToBeParsed x)}"/>\n|] | x <- changeSlotValues]
 
 
-    -- pairs of an instance name with the name of the class that it instantiates
-    -- for example : [("c0","C"),("b0","B"),("b1","B"),("b2","B")] :
-    instances = zip instancesNames instancesClasses :: [(String,String)]
-
-    -- links. The encoding uses the indices of the instances instead of their names
-    links = map (\(source, target, linkName) -> (linkName, (instancesNames !! source, instancesNames !! target, ()))) (snd od)
-      :: [(String, (String, String, ()))]
-
-    cdEdges = map snd associations ++
-      concatMap (\(child, parents, ()) -> map (child, ,()) parents) parentsChanges
-        :: [(String,String,())]
-    odEdges = map snd links :: [(String,String,())]
-
-    getRange :: [Int] -> Double
-    getRange x = fromIntegral $ maximum x - minimum x
+toXModeler :: GraphvizCommand -> (Double -> Double) -> Double -> Int -> MLM -> IO String
+toXModeler layoutCommand spaceOut scaleFactor extraOffset mlm =
+  let
+    projectName = mlmName mlm
+    metaClasses = mlmMetaClasses mlm :: [MetaClass]
+    instances = mlmInstances mlm :: [Instance]
+    changeParents = mlmChangeParents mlm :: [ChangeParent]
+    attributes = mlmAttributes mlm :: [Attribute]
+    operations = mlmOperations mlm :: [Operation]
+    changeSlotValues = mlmChangeSlotValues mlm :: [ChangeSlotValue]
+    associations = mlmAssociations mlm ::[Association]
+    links = mlmLinks mlm :: [Link]
+    vertices = map mName metaClasses ++ map iName instances :: [String]
+    edges = map (\x -> (sSource x, sTarget x, ())) associations :: [(String, String, ())]
   in
-   do cdCoordinates <- getObjectsCoordinates cdLayoutCommand spaceOut classesNames cdEdges
-      odCoordinates0 <- getObjectsCoordinates odLayoutCommand spaceOut instancesNames odEdges
-      let offset = extraOffset + maximum (map (fst . snd) cdCoordinates)
-      let odCoordinates = map (second (first (+ offset))) odCoordinates0
-      let allCoordinates = cdCoordinates ++ odCoordinates
-      let addObjects' = addObjects allCoordinates
+   do allCoordinates <- getObjectsCoordinates layoutCommand spaceOut vertices edges
+      let allCoordinates' = map (second (first (+ extraOffset))) allCoordinates
+      let addObjects' = addObjects allCoordinates' projectName
       let xs = map (fst . snd) allCoordinates
       let ys = map (snd . snd) allCoordinates
-      let xx = log $ (max (getRange xs) (getRange ys)) * scaleFactor / 1000 :: Double
+      let xx = log $ max (getRange xs) (getRange ys) * scaleFactor / 1000 :: Double
       let txTy = round $ 50 * xx :: Int
       return [i|<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <XModeler>
@@ -125,7 +108,7 @@ doChangeSlotValues changeSlotValues projectName = concat [[i|    <changeSlotValu
     <Project name="Root::#{projectName}"/>
   </Projects>
   <Diagrams>
-    <Diagram label="#{diagramName}" package_path="Root::#{projectName}" showDerivedAttributes="true" showDerivedOperations="true" showGettersAndSetters="false" showOperationValues="true" showOperations="true" showSlots="true">
+    <Diagram label="#{projectName}_diagram" package_path="Root::#{projectName}" showConstraintReports="true" showConstraints="true" showDerivedAttributes="true" showDerivedOperations="true" showGettersAndSetters="true" showMetaClassName="false" showOperationValues="true" showOperations="true" showSlots="true">
       <Categories/>
       <Owners/>
       <Objects>
@@ -138,10 +121,13 @@ doChangeSlotValues changeSlotValues projectName = concat [[i|    <changeSlotValu
     </Diagram>
   </Diagrams>
   <Logs>
-#{addMetaClasses classesNames}
-#{addInstances instances}
-#{changeParents parentsChanges}
-#{addAssociations associations}
-#{addLinks links}
+#{addMetaClasses metaClasses projectName}
+#{addInstances instances projectName}
+#{doChangeParents changeParents projectName}
+#{addAttributes attributes projectName}
+#{addOperations operations projectName}
+#{doChangeSlotValues changeSlotValues projectName}
+#{addAssociations associations projectName}
+#{addLinks links projectName}
   </Logs>
 </XModeler>|]
