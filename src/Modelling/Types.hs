@@ -1,5 +1,26 @@
 {-# LANGUAGE QuasiQuotes #-}
 
+module Modelling.Types (
+  MetaClass (..),
+  Instance (..),
+  ChangeParent (..),
+  Attribute (..),
+  Operation (..),
+  ChangeSlotValue (..),
+  Association (..),
+  Link (..),
+  MLM (..),
+  Type (..),
+  XModelerCurrency (..),
+  getType,
+  getValue
+  ) where
+
+import Data.Char (ord, toLower)
+import Data.String.Interpolate (i)
+import Data.List.Split (splitOn)
+import Data.List (intercalate)
+
 data XModelerCurrency = USD | EUR | GBP | AUD | NZD deriving Show
 
 
