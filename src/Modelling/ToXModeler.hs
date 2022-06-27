@@ -64,10 +64,10 @@ doChangeParents parentsChanges projectName = concat [[i|    <changeParent class=
 addAssociations :: [Association] -> String -> String
 addAssociations associations projectName = concat [[i|    <addAssociation accessSourceFromTargetName="#{sFwName x}_#{sSource x}" accessTargetFromSourceName="#{sFwName x}_#{sTarget x}" classSource="Root::#{projectName}::#{sSource x}" classTarget="Root::#{projectName}::#{sTarget x}" fwName="#{sFwName x}" instLevelSource="#{sInstLevelSource x}" instLevelTarget="#{sInstLevelTarget x}" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{#{sMultSourceToTargetMin x},#{sMultSourceToTargetMax x},#{smallify (sMultSourceToTargetMax x /= -1)},false}" multTargetToSource="Seq{#{sMultTargetToSourceMin x},#{sMultTargetToSourceMax x},#{smallify (sMultTargetToSourceMax x /= -1)},false}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="#{smallify (sSourceVisibleFromTarget x)}" targetVisibleFromSource="#{smallify (sTargetVisibleFromSource x)}"/>\n|] | x <- associations]
 
+addLinks :: [Link] -> String -> String
+addLinks links projectName = concat [[i|    <addLink classSource="Root::#{projectName}::#{lClassSource x}" classTarget="Root::#{projectName}::#{lClassTarget x}" name="#{lName x}" package="Root::#{projectName}"/>\n|]
+  | x <- links]
 
-addLinks :: [(String, (String, String, ()))] -> String
-addLinks links = concat [[i|    <addLink classSource="Root::#{projectName}::#{source}" classTarget="Root::#{projectName}::#{target}" name="#{name}" package="Root::#{projectName}"/>\n|]
-  | (name, (source, target, ())) <- links]
 
 {-
   in the let-in part the data is extracted and "pre-processed".
