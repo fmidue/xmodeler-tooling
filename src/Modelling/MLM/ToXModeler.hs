@@ -1,7 +1,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 
-module Modelling.ToXModeler (toXModeler) where
+module Modelling.MLM.ToXModeler (toXModeler) where
 
 import Data.String.Interpolate ( i )
 import Diagrams.Points (Point (P))
@@ -11,7 +11,7 @@ import Data.GraphViz (GraphvizCommand)
 import Data.Map.Strict (toList)
 import Data.Bifunctor (first, second)
 import Data.Char (toLower)
-import Modelling.Types (
+import Modelling.MLM.Types (
   MetaClass (..),
   Instance (..),
   ChangeParent (..),

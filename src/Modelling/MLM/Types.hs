@@ -1,6 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module Modelling.Types (
+module Modelling.MLM.Types (
   MetaClass (..),
   Instance (..),
   ChangeParent (..),
