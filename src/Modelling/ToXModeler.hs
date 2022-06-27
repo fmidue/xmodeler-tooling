@@ -1,24 +1,16 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 
-module Modelling.CdOd.ToXModeler (toXModeler) where
+module Modelling.ToXModeler (toXModeler) where
 
 import Data.String.Interpolate ( i )
-import Data.Char (toLower, isDigit)
-import Data.Maybe (fromMaybe)
-import Modelling.CdOd.Types (Od, Syntax)
-import qualified Modelling.CdOd.Types as AssociationType (AssociationType(..))
 import Diagrams.Points (Point (P))
 import Diagrams.TwoD.Types (V2 (V2))
 import Diagrams.TwoD.GraphViz (layoutGraph, mkGraph, getGraph)
 import Data.GraphViz (GraphvizCommand)
 import Data.Map.Strict (toList)
 import Data.Bifunctor (first, second)
-
-projectName :: String
-projectName = "projectName"
-diagramName :: String
-diagramName = "diagramName"
+import Data.Char (toLower)
 import Modelling.Types (
   MetaClass (..),
   Instance (..),
