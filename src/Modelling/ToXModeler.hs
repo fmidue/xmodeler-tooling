@@ -86,6 +86,8 @@ toXModeler cdLayoutCommand odLayoutCommand spaceOut scaleFactor extraOffset cd o
     associations = map matchAssociation (snd cd) :: [((String, Int, Int, Int, Int), (String, String, ()))]
     -- instances as they are given, just without the separator ($) :
     instances0 = map (filter (/='$')) (fst od) :: [String]
+addOperations :: [Operation] -> String -> String
+addOperations operations projectName = concat [[i|    <addOperation body="#{oBody x}" class="Root::#{projectName}::#{oClass x}" level="#{oLevel x}" monitored="false" name="#{oName x}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{getType (oType x)}"/>\n|] | x <- operations]
 
     --  the class names that these instances are instantiating:
     instancesClasses = map (filter (not . isDigit)) instances0 :: [String]
