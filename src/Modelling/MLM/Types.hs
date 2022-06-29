@@ -23,8 +23,8 @@ instance Valid () MLM where
     in
       and [
         all (valid ()) mlmClasses,
-        all (valid () . (mlmClasses, )) mlmAssociations,
-        all (valid () . (mlmAssociations, )) mlmLinks,
+        all (valid mlmClasses) mlmAssociations,
+        all (valid mlmAssociations) mlmLinks,
         all allUnique [mlmClassesNames, mlmAssociationsNames] -- I could not find a function to check for duplicates
       ]
 
