@@ -14,8 +14,8 @@ import Data.Map.Strict (toList)
 import Modelling.MLM.Types
 import Data.Bifunctor (first, second, bimap)
 
-class XModelerable a where
-  get :: a -> String
+class XModelerable c a where
+  get :: c -> a -> String
 
 instance XModelerable MLM where
   get _ = "TODO : THIS SHOULD BE A MULTI-LEVEL MODEL"
