@@ -34,4 +34,15 @@ instance XModelerable Type where
         _ -> aux
 
 toXModeler :: MLM -> String
-toXModeler = get
+toXModeler = gettoXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)
+              mlm@(MLM _ mlmClasses mlmAssociations mlmLinks) = let
+    vertices = map cName mlmClasses :: [String]
+    edges    = map (\x -> (cName (sSource x), cName (sTarget x), ())) mlmAssociations ++
+               map (\x -> (cName (lSource x), cName (lTarget x), ())) mlmLinks :: [(String, String, ())]
+    adjust :: Double -> Int
+    adjust = round . spaceOut
+  in do
+    g <- layoutGraph layoutCommand $ mkGraph vertices edges
+    let objects = map (\(vertex, P (V2 x y)) -> (vertex, (x, y))) $ toList $ fst $ getGraph g :: [(String, (Double, Double))]
+    let objects' = map (second (bimap adjust adjust)) objects :: [Object]
+    return $ get (objects', scaleFactor, extraOffset) mlm
