@@ -1,20 +1,83 @@
-{-# LANGUAGE QuasiQuotes #-}
+-- {-# LANGUAGE QuasiQuotes #-}
 
-module Modelling.MLM.Types (
-  MetaClass (..),
-  Instance (..),
-  ChangeParent (..),
-  Attribute (..),
-  Operation (..),
-  ChangeSlotValue (..),
-  Association (..),
-  Link (..),
-  MLM (..),
-  Type (..),
-  XModelerCurrency (..),
-  getType,
-  getValue
-  ) where
+-- remember to export these properly when done testing:
+module Modelling.MLM.Types where
+
+import Data.Maybe (isNothing, fromJust)
+
+data MLM = MLM {
+  classes :: [Class],
+  associations :: [Association],
+  links :: [Link]
+}
+
+class ValidClass a where
+  valid :: a -> Bool
+
+{-
+I am aware of
+"In probably more than 90% of occurrences, use of fromJust is a mistake (i.e., is bad coding)."
+The following just for learning purposes and could eventually probably be avoided by pattern-matching or something:
+-}
+instance ValidClass Class where
+  valid c =  all ((== cLevel c) . cLevel) (parents c)
+          && ( isNothing (isOf c) || cLevel (fromJust (isOf c)) == cLevel c + 1)
+
+data Class = Class {
+  isAbstract :: Bool,
+  cLevel :: Int,
+  cName :: String,
+  parents :: [Class],
+  isOf :: Maybe Class,
+  attributes :: [Attribute],
+  operations :: [Operation]
+}
+
+data Attribute = Attribute {
+  tLevel :: Int,
+  tName :: String,
+  tType :: Type,
+  multiplicity :: Multiplicity,
+  value :: Maybe Value
+  }
+
+data Operation = Operation {
+  oLevel :: Int,
+  oName :: String,
+  oType :: Type,
+  body :: String
+  }
+
+data Association = Association {
+  sName :: String,
+  sSource :: Class,
+  sTarget :: Class,
+  lvlSource :: Int,
+  lvlTarget :: Int,
+  multTargetToSource :: Multiplicity,
+  multSourceToTarget :: Multiplicity,
+  sourceVisibleFromTarget :: Bool,
+  targetVisibleFromSource :: Bool
+  }
+
+data Link = Link {
+  lName :: String,
+  lSource :: Class,
+  lTarget :: Class
+  }
+
+data Multiplicity = Multiplicity {
+  lower :: Int,
+  upper :: Int
+}
+
+type Value = String
+type Type = String
+
+
+-- I think these are going to be useful later:
+{-
+
 
 import Data.Char (ord, toLower)
 import Data.String.Interpolate (i)
@@ -60,75 +123,4 @@ getValue t = case t of
   XCore_String (Just x) -> [i|#{map ord x}.asString()|]
   XCore_Element (Just _) -> "null"
   _ -> error "Invalid Type and/or Value!"
-
-data MetaClass = MetaClass {
-  mAbstract :: Bool,
-  mLevel :: Int,
-  mName :: String
-  }
-
-data Instance = Instance {
-  iAbstract :: Bool,
-  iName :: String,
-  iOf :: String
-  }
-
-data ChangeParent = ChangeParent {
-  pClass :: String,
-  pNew :: [String]
-  }
-
-data Attribute = Attribute {
-  aClass :: String,
-  aLevel :: Int,
-  aName :: String,
-  aType :: Type,
-  aMultiplicityMin :: Int,
-  aMultiplicityMax :: Int
-  }
-
-data Operation = Operation {
-  oClass :: String,
-  oLevel :: Int,
-  oName :: String,
-  oType :: Type,
-  oBody :: String
-  }
-
-data ChangeSlotValue = ChangeSlotValue {
-  vClass :: String,
-  vName :: String,
-  vValueToBeParsed :: Type
-  }
-
-data Association = Association {
-  sFwName :: String,
-  sSource :: String,
-  sTarget :: String,
-  sInstLevelSource :: Int,
-  sInstLevelTarget :: Int,
-  sMultTargetToSourceMin :: Int,
-  sMultTargetToSourceMax :: Int,
-  sMultSourceToTargetMin :: Int,
-  sMultSourceToTargetMax :: Int,
-  sSourceVisibleFromTarget :: Bool,
-  sTargetVisibleFromSource :: Bool
-  }
-
-data Link = Link {
-  lName :: String,
-  lClassSource :: String,
-  lClassTarget :: String
-  }
-
-data MLM = MLM {
-  mlmName :: String,
-  mlmMetaClasses :: [MetaClass],
-  mlmInstances :: [Instance],
-  mlmChangeParents :: [ChangeParent],
-  mlmAttributes :: [Attribute],
-  mlmOperations :: [Operation],
-  mlmChangeSlotValues :: [ChangeSlotValue],
-  mlmAssociations :: [Association],
-  mlmLinks :: [Link]
-  }
+-}
