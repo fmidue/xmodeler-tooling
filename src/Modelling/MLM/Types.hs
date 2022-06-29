@@ -140,6 +140,12 @@ data Type = Boolean | Integer | Float | String | Element | MonetaryValue | Date 
 
 type Value = String
 
+type Object = (String, (Int, Int))
+
+instance Valid [String] [Object] where
+  valid mlmClassesNames objects =
+    fromList (map fst objects) == fromList mlmClassesNames
+
 -- I think these are going to be useful later:
 {-
 
