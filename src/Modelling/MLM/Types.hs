@@ -25,7 +25,7 @@ instance Valid () MLM where
         all (valid ()) mlmClasses,
         all (valid mlmClasses) mlmAssociations,
         all (valid mlmAssociations) mlmLinks,
-        all allUnique [mlmClassesNames, mlmAssociationsNames] -- I could not find a function to check for duplicates
+        all allUnique [mlmClassesNames, mlmAssociationsNames]
       ]
 
 data Class = Class {
@@ -35,28 +35,42 @@ data Class = Class {
   parents :: [Class],
   cIsOf :: Maybe Class,
   attributes :: [Attribute],
-  operations :: [Operation]
+  operations :: [Operation],
+  slots :: [Slot]
 } deriving Eq
 
 instance Valid () Class where
-  valid () (Class _ lvl _ prnts isOf attr ops) =
-    all (valid ()) attr &&
-    all ((== lvl) . cLevel) prnts &&
-    all (valid lvl) ops &&
+  valid () (Class _ lvl _ prnts isOf atts ops slts) = and [
+    all ((== lvl) . cLevel) prnts,
+    all (valid lvl) atts,
+    all (valid lvl) ops,
+    lvl > 0 || (null atts && null ops),
+    all (valid isOf) slts,
     case isOf of
-      Nothing -> True
-      Just x -> cLevel x == lvl + 1
+       Nothing -> True
+       Just x -> cLevel x == lvl + 1
+    ]
 
 data Attribute = Attribute {
   tLevel :: Level,
   tName :: String,
   tType :: Type,
-  multiplicity :: Multiplicity,
-  value :: Maybe Value
+  multiplicity :: Multiplicity
   } deriving Eq
 
-instance Valid () Attribute where
-  valid () = valid () . multiplicity
+instance Valid Level Attribute where
+  valid classLevel attribute =
+    valid () (multiplicity attribute) &&
+    tLevel attribute < classLevel
+
+data Slot = SlotAttribute Attribute Value | SlotOperation Operation Value deriving Eq -- this distinction will probably be needed later...
+
+instance Valid (Maybe Class) Slot where
+  valid Nothing _ = False
+  valid (Just class') slot@(SlotAttribute att _) =
+    att `elem` attributes class' || valid (cIsOf class') slot
+  valid (Just class') slot@(SlotOperation op  _) =
+    op  `elem` operations class' || valid (cIsOf class') slot
 
 data Operation = Operation {
   oLevel :: Int,
@@ -122,8 +136,25 @@ type Level = Int
 instance Valid () Level where
   valid () level = level >= 0
 
+class XModelerable a where
+  get :: a -> String
+
+data Type = Boolean | Integer | Float | String | Element | MonetaryValue | Date | Currency | Complex | AuxiliaryClass deriving (Show, Eq)
+
+instance XModelerable Type where
+  get x = let
+    cor = "XCore::" ++ show x
+    aux = "Auxiliary::" ++ show x
+    in
+      case x of
+        Boolean -> cor
+        Integer -> cor
+        Float -> cor
+        String -> cor
+        Element -> cor
+        _ -> aux
+
 type Value = String
-type Type = String
 
 -- I think these are going to be useful later:
 {-
