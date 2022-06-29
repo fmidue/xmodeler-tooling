@@ -7,12 +7,6 @@ import Data.List.Ordered (nubSort)
 class Valid a where
   valid :: a -> Bool
 
-class ValidAssociation a b where
-  validAssociation :: a -> b -> Bool
-
-class ValidLink a b where
-  validLink :: a -> b -> Bool
-
 data MLM = MLM {
   classes :: [Class],
   associations :: [Association],
@@ -29,8 +23,8 @@ instance Valid MLM where
     in
       and [
         all valid mlmClasses,
-        all (validAssociation mlmClasses) mlmAssociations,
-        all (validLink mlmAssociations) mlmLinks,
+        all (valid . (mlmClasses, )) mlmAssociations,
+        all (valid . (mlmAssociations, )) mlmLinks,
         all (\x -> nubSort x == x) [mlmClassesNames, mlmAssociationsNames] -- I could not find a function to check for duplicates
       ]
 
@@ -65,7 +59,7 @@ data Attribute = Attribute {
   } deriving Eq
 
 instance Valid Attribute where
-  valid a = valid (multiplicity a)
+  valid = valid . multiplicity
 
 data Operation = Operation {
   oLevel :: Int,
@@ -86,8 +80,8 @@ data Association = Association {
   targetVisibleFromSource :: Bool
   } deriving Eq
 
-instance ValidAssociation [Class] Association where
-  validAssociation mlmClasses (Association _ source target
+instance Valid ([Class], Association) where
+  valid (mlmClasses, Association _ source target
     lvlS lvlT multST multTS _ _) = and [
     source `elem` mlmClasses,
     target `elem` mlmClasses,
@@ -104,8 +98,8 @@ data Link = Link {
   lTarget :: Class
   } deriving Eq
 
-instance ValidLink [Association] Link where
-  validLink mlmAssociations (Link isOf source target) = and [
+instance Valid ([Association], Link) where
+  valid (mlmAssociations, Link isOf source target) = and [
     isOf `elem` mlmAssociations,
     source == sSource isOf,
     target == sTarget isOf,
