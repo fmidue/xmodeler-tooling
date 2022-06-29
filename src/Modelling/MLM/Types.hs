@@ -39,9 +39,10 @@ data Class = Class {
 } deriving Eq
 
 instance Valid () Class where
-  valid () (Class _ lvl _ prnts isOf attr _) =
+  valid () (Class _ lvl _ prnts isOf attr ops) =
     all (valid ()) attr &&
     all ((== lvl) . cLevel) prnts &&
+    all (valid lvl) ops &&
     case isOf of
       Nothing -> True
       Just x -> cLevel x == lvl + 1
@@ -63,6 +64,9 @@ data Operation = Operation {
   oType :: Type,
   body :: String
   } deriving Eq
+
+instance Valid Int Operation where
+  valid classLevel operation = oLevel operation < classLevel
 
 data Association = Association {
   sName :: String,
