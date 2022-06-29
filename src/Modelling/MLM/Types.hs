@@ -4,8 +4,8 @@ module Modelling.MLM.Types where
 
 import Data.List.UniqueStrict
 
-class Valid a where
-  valid :: a -> Bool
+class Valid c a where
+  valid :: c -> a -> Bool
 
 data MLM = MLM {
   classes :: [Class],
@@ -13,8 +13,8 @@ data MLM = MLM {
   links :: [Link]
 }
 
-instance Valid MLM where
-  valid mlm = let
+instance Valid () MLM where
+  valid () mlm = let
     mlmClasses = classes mlm
     mlmClassesNames = map cName mlmClasses
     mlmAssociations = associations mlm
@@ -22,9 +22,9 @@ instance Valid MLM where
     mlmLinks = links mlm
     in
       and [
-        all valid mlmClasses,
-        all (valid . (mlmClasses, )) mlmAssociations,
-        all (valid . (mlmAssociations, )) mlmLinks,
+        all (valid ()) mlmClasses,
+        all (valid () . (mlmClasses, )) mlmAssociations,
+        all (valid () . (mlmAssociations, )) mlmLinks,
         all allUnique [mlmClassesNames, mlmAssociationsNames] -- I could not find a function to check for duplicates
       ]
 
@@ -38,17 +38,11 @@ data Class = Class {
   operations :: [Operation]
 } deriving Eq
 
--- here, I had to use && instead of and [...] because hlint kept bugging me about it for some reason. Did it think that I have only two elements in this list? hmmmm
-{-
-I am aware of
-"In probably more than 90% of occurrences, use of fromJust is a mistake (i.e., is bad coding)."
-The following just for learning purposes and could eventually probably be avoided by pattern-matching or something:
--}
-instance Valid Class where
-  valid (Class _ lvl _ prnts Nothing attr _) =
-    all valid attr && all ((== lvl) . cLevel) prnts
-  valid (Class _ lvl _ _ (Just isOf) attr _) =
-    all valid attr && cLevel isOf == lvl + 1
+instance Valid () Class where
+  valid () (Class _ lvl _ prnts Nothing attr _) =
+    all (valid ()) attr && all ((== lvl) . cLevel) prnts
+  valid () (Class _ lvl _ _ (Just isOf) attr _) =
+    all (valid ()) attr && cLevel isOf == lvl + 1
 
 data Attribute = Attribute {
   tLevel :: Level,
@@ -58,8 +52,8 @@ data Attribute = Attribute {
   value :: Maybe Value
   } deriving Eq
 
-instance Valid Attribute where
-  valid = valid . multiplicity
+instance Valid () Attribute where
+  valid () = valid () . multiplicity
 
 data Operation = Operation {
   oLevel :: Int,
@@ -80,15 +74,15 @@ data Association = Association {
   targetVisibleFromSource :: Bool
   } deriving Eq
 
-instance Valid ([Class], Association) where
-  valid (mlmClasses, Association _ source target
+instance Valid () ([Class], Association) where
+  valid () (mlmClasses, Association _ source target
     lvlS lvlT multST multTS _ _) = and [
     source `elem` mlmClasses,
     target `elem` mlmClasses,
     lvlS < cLevel source,
     lvlT < cLevel target,
-    all valid [lvlS, lvlT],
-    all valid [multST, multTS]
+    all (valid ()) [lvlS, lvlT],
+    all (valid ()) [multST, multTS]
     -- might add restrictions to naming, later. For example, you cannot start the name with a digit.
     ]
 
@@ -98,8 +92,8 @@ data Link = Link {
   lTarget :: Class
   } deriving Eq
 
-instance Valid ([Association], Link) where
-  valid (mlmAssociations, Link isOf source target) = and [
+instance Valid () ([Association], Link) where
+  valid () (mlmAssociations, Link isOf source target) = and [
     isOf `elem` mlmAssociations,
     source == sSource isOf,
     target == sTarget isOf,
@@ -112,15 +106,15 @@ data Multiplicity = Multiplicity {
   upper :: Int
 } deriving Eq
 
-instance Valid Multiplicity where
-  valid (Multiplicity lowerBound upperBound) =
+instance Valid () Multiplicity where
+  valid () (Multiplicity lowerBound upperBound) =
     lowerBound >= 0 &&
     lowerBound <= upperBound || upperBound == -1
 
 type Level = Int
 
-instance Valid Level where
-  valid level = level >= 0
+instance Valid () Level where
+  valid () level = level >= 0
 
 type Value = String
 type Type = String
