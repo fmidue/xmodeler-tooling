@@ -136,23 +136,7 @@ type Level = Int
 instance Valid () Level where
   valid () level = level >= 0
 
-class XModelerable a where
-  get :: a -> String
-
 data Type = Boolean | Integer | Float | String | Element | MonetaryValue | Date | Currency | Complex | AuxiliaryClass deriving (Show, Eq)
-
-instance XModelerable Type where
-  get x = let
-    cor = "XCore::" ++ show x
-    aux = "Auxiliary::" ++ show x
-    in
-      case x of
-        Boolean -> cor
-        Integer -> cor
-        Float -> cor
-        String -> cor
-        Element -> cor
-        _ -> aux
 
 type Value = String
 
