@@ -3,11 +3,14 @@
 module Modelling.MLM.Types where
 
 import Data.List.UniqueStrict
+import Data.Char (isDigit)
+import Data.Set (fromList)
 
 class Valid c a where
   valid :: c -> a -> Bool
 
 data MLM = MLM {
+  name :: String,
   classes :: [Class],
   associations :: [Association],
   links :: [Link]
@@ -20,8 +23,14 @@ instance Valid () MLM where
     mlmAssociations = associations mlm
     mlmAssociationsNames = map sName mlmAssociations
     mlmLinks = links mlm
+    mlmName = name mlm
+    validChar1 = flip elem (['a'..'z'] ++ ['A'..'Z'])
+    validCharN char = validChar1 char || isDigit char
     in
       and [
+        not (null mlmName),
+        validChar1 (head mlmName),
+        all validCharN (tail mlmName),
         all (valid ()) mlmClasses,
         all (valid mlmClasses) mlmAssociations,
         all (valid mlmAssociations) mlmLinks,
