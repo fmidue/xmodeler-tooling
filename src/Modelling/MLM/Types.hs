@@ -1,9 +1,7 @@
 -- {-# LANGUAGE QuasiQuotes #-}
-
 -- remember to export these properly when done testing:
 module Modelling.MLM.Types where
 
-import Data.Maybe (isNothing, fromJust)
 import Data.List.Ordered (nubSort)
 
 class Valid a where
@@ -36,12 +34,6 @@ instance Valid MLM where
         all (\x -> nubSort x == x) [mlmClassesNames, mlmAssociationsNames] -- I could not find a function to check for duplicates
       ]
 
-{-
-I am aware of
-"In probably more than 90% of occurrences, use of fromJust is a mistake (i.e., is bad coding)."
-The following just for learning purposes and could eventually probably be avoided by pattern-matching or something:
--}
-
 data Class = Class {
   isAbstract :: Bool,
   cLevel :: Level,
@@ -52,13 +44,17 @@ data Class = Class {
   operations :: [Operation]
 } deriving Eq
 
--- here, I had to use && instead of and [...] because hlint kept buggine me about it for some reason. Did it think that I have only two elements in this list? hmmmm
+-- here, I had to use && instead of and [...] because hlint kept bugging me about it for some reason. Did it think that I have only two elements in this list? hmmmm
+{-
+I am aware of
+"In probably more than 90% of occurrences, use of fromJust is a mistake (i.e., is bad coding)."
+The following just for learning purposes and could eventually probably be avoided by pattern-matching or something:
+-}
 instance Valid Class where
-  valid c =
-    all ((== cLevel c) . cLevel) (parents c) &&
-    (isNothing (cIsOf c) || cLevel (fromJust (cIsOf c)) == cLevel c + 1) &&
-    all valid (attributes c)
-
+  valid (Class _ lvl _ prnts Nothing attr _) =
+    all valid attr && all ((== lvl) . cLevel) prnts
+  valid (Class _ lvl _ _ (Just isOf) attr _) =
+    all valid attr && cLevel isOf == lvl + 1
 
 data Attribute = Attribute {
   tLevel :: Level,
@@ -90,7 +86,6 @@ data Association = Association {
   targetVisibleFromSource :: Bool
   } deriving Eq
 
-
 instance ValidAssociation [Class] Association where
   validAssociation mlmClasses (Association _ source target
     lvlS lvlT multST multTS _ _) = and [
@@ -108,7 +103,6 @@ data Link = Link {
   lSource :: Class,
   lTarget :: Class
   } deriving Eq
-
 
 instance ValidLink [Association] Link where
   validLink mlmAssociations (Link isOf source target) = and [
@@ -136,7 +130,6 @@ instance Valid Level where
 
 type Value = String
 type Type = String
-
 
 -- I think these are going to be useful later:
 {-
