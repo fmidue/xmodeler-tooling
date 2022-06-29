@@ -74,8 +74,8 @@ data Association = Association {
   targetVisibleFromSource :: Bool
   } deriving Eq
 
-instance Valid () ([Class], Association) where
-  valid () (mlmClasses, Association _ source target
+instance Valid [Class] Association where
+  valid mlmClasses (Association _ source target
     lvlS lvlT multST multTS _ _) = and [
     source `elem` mlmClasses,
     target `elem` mlmClasses,
@@ -92,8 +92,8 @@ data Link = Link {
   lTarget :: Class
   } deriving Eq
 
-instance Valid () ([Association], Link) where
-  valid () (mlmAssociations, Link isOf source target) = and [
+instance Valid [Association] Link where
+  valid mlmAssociations (Link isOf source target) = and [
     isOf `elem` mlmAssociations,
     source == sSource isOf,
     target == sTarget isOf,
