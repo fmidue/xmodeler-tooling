@@ -39,10 +39,12 @@ data Class = Class {
 } deriving Eq
 
 instance Valid () Class where
-  valid () (Class _ lvl _ prnts Nothing attr _) =
-    all (valid ()) attr && all ((== lvl) . cLevel) prnts
-  valid () (Class _ lvl _ _ (Just isOf) attr _) =
-    all (valid ()) attr && cLevel isOf == lvl + 1
+  valid () (Class _ lvl _ prnts isOf attr _) =
+    all (valid ()) attr &&
+    all ((== lvl) . cLevel) prnts &&
+    case isOf of
+      Nothing -> True
+      Just x -> cLevel x == lvl + 1
 
 data Attribute = Attribute {
   tLevel :: Level,
