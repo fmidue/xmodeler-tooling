@@ -74,8 +74,6 @@ instance Valid (Maybe Class) Slot where
   valid Nothing _ = False
   valid (Just class') slot@(Slot att _) =
     att `elem` attributes class' || valid (cIsOf class') slot
-  valid (Just class') slot@(SlotOperation op  _) =
-    op  `elem` operations class' || valid (cIsOf class') slot
 
 data Operation = Operation {
   oLevel :: Int,
