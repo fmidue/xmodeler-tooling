@@ -55,7 +55,8 @@ instance XModelerable (String, String) Attribute where
 
 -- Operation
 instance XModelerable (String, String) Operation where
-  get _ _ = "TODO OPERATIONS\n"
+  get (projectName, className) op =
+    [i|    <addOperation body="#{body op}" class="Root::${projectName}::#{className}" level="#{oLevel op}" monitored="#{isMonitored op}" name="#{oName op}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () (oType op)}"/>\n|]
 
 -- Parent
 instance XModelerable (String, ()) Class where
@@ -68,8 +69,9 @@ instance XModelerable (String, String) [Class] where
     [i|    <changeParent class="Root::#{projectName}::#{className}" new="#{checkParentsExistFirst}" old="" package="Root::#{projectName}"/>\n|]
     where checkParentsExistFirst = if null ps then "" else init (concatMap (get (projectName, ())) ps)
 
-instance XModelerable () Slot where
-  get _ _ = "TODO SLOTS (ATTRIBUTES AND OPERATIONS)\n"
+-- Slot
+instance XModelerable (String, String) Slot where
+  get (projectName, c) (Slot att val) = [i|    <changeSlotValue class="Root::#{projectName}::#{c}" package="Root::#{projectName}" slotName="#{tName att}" valueToBeParsed="#{val}"/>\n|]
 
 -- Class (meta or instance) with its content
 instance XModelerable String Class where
@@ -84,10 +86,17 @@ instance XModelerable String Class where
 
 -- Association
 instance XModelerable String Association where
-  get _ _ = "TODO GET ASSOCIATION"
+  get projectName a =
+    [i|    <addAssociation accessSourceFromTargetName="#{associationName}_#{from}" accessTargetFromSourceName="#{associationName}_#{to}" classSource="Root::#{projectName}::#{from}" classTarget="Root::#{projectName}::#{to}" fwName="#{associationName}" instLevelSource="#{lvlSource a}" instLevelTarget="#{lvlTarget a}" isSymmetric="false" isTransitive="false" multSourceToTarget="#{get () (multSourceToTarget a)}" multTargetToSource="#{get ()(multTargetToSource a)}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="sourceVisibleFromTarget a" targetVisibleFromSource="targetVisibleFromSource a"/>\n|]
+   where
+     from = cName $ sSource a
+     to = cName $ sTarget a
+     associationName = sName a
 
+-- Link
 instance XModelerable String Link where
-  get _ _ = "TODO GET LINK"
+  get projectName link =
+    [i|    <addLink classSource="Root::#{projectName}::#{cName (lSource link)}" classTarget="Root::#{projectName}::#{cName (lTarget link)}" name="#{sName (lIsOf link)}" package="Root::mlm_demo2"/>\n|]
 
 -- MLM
 instance XModelerable ([Object], Double, Int)  MLM where
