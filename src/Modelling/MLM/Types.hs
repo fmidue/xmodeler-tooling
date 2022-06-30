@@ -145,13 +145,19 @@ instance Valid () Level where
 
 data Type = Boolean | Integer | Float | String | Element | MonetaryValue | Date | Currency | Complex | AuxiliaryClass deriving (Show, Eq)
 
-type Value = String
+data MonetaryValue = MonetaryValueString String String | MonetaryValueFloat String Float deriving Eq
 
-type Object = (String, (Int, Int))
+data Value = B Bool | I Int | F Float | S String | M MonetaryValue | D Int Int Int | C String | X String | A String deriving Eq
+
+data Object = Object {
+  objName :: String,
+  objX :: Int,
+  objY :: Int
+}
 
 instance Valid [String] [Object] where
   valid mlmClassesNames objects =
-    fromList (map fst objects) == fromList mlmClassesNames
+    fromList (map objName objects) == fromList mlmClassesNames
 
 -- I think these are going to be useful later:
 {-
