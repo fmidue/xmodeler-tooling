@@ -1,4 +1,4 @@
--- {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE NamedFieldPuns #-}
 -- remember to export these properly when done testing:
 module Modelling.MLM.Types where
 
@@ -10,20 +10,16 @@ class Valid c a where
   valid :: c -> a -> Bool
 
 data MLM = MLM {
-  name :: String,
+  mlmName :: String,
   classes :: [Class],
   associations :: [Association],
   links :: [Link]
 }
 
 instance Valid () MLM where
-  valid () mlm = let
-    mlmClasses = classes mlm
-    mlmClassesNames = map cName mlmClasses
-    mlmAssociations = associations mlm
-    mlmAssociationsNames = map sName mlmAssociations
-    mlmLinks = links mlm
-    mlmName = name mlm
+  valid () (MLM {mlmName, classes, associations, links}) = let
+    mlmClassesNames = map cName classes
+    mlmAssociationsNames = map sName associations
     validChar1 = flip elem (['a'..'z'] ++ ['A'..'Z'])
     validCharN char = validChar1 char || isDigit char
     in
@@ -31,9 +27,9 @@ instance Valid () MLM where
         not (null mlmName),
         validChar1 (head mlmName),
         all validCharN (tail mlmName),
-        all (valid ()) mlmClasses,
-        all (valid mlmClasses) mlmAssociations,
-        all (valid mlmAssociations) mlmLinks,
+        all (valid ()) classes,
+        all (valid classes) associations,
+        all (valid associations) links,
         all allUnique [mlmClassesNames, mlmAssociationsNames]
       ]
 
@@ -49,15 +45,15 @@ data Class = Class {
 } deriving Eq
 
 instance Valid () Class where
-  valid () (Class _ lvl _ prnts isOf atts ops slts) = and [
-    all ((== lvl) . cLevel) prnts,
-    all (valid lvl) atts,
-    all (valid lvl) ops,
-    lvl > 0 || (null atts && null ops),
-    all (valid isOf) slts,
-    case isOf of
+  valid () (Class {cLevel = level, parents, cIsOf, attributes, operations, slots}) = and [
+    all ((== level) . cLevel) parents,
+    all (valid level) attributes,
+    all (valid level) operations,
+    level > 0 || (null attributes && null operations),
+    all (valid cIsOf) slots,
+    case cIsOf of
        Nothing -> True
-       Just x -> cLevel x == lvl + 1
+       Just x -> cLevel x == level + 1
     ]
 
 data Attribute = Attribute {
@@ -68,9 +64,9 @@ data Attribute = Attribute {
   } deriving Eq
 
 instance Valid Level Attribute where
-  valid classLevel attribute =
-    valid () (multiplicity attribute) &&
-    tLevel attribute < classLevel
+  valid classLevel (Attribute {multiplicity, tLevel}) =
+    valid () multiplicity &&
+    tLevel < classLevel
 
 data Slot = SlotAttribute Attribute Value | SlotOperation Operation Value deriving Eq -- this distinction will probably be needed later...
 
@@ -89,7 +85,7 @@ data Operation = Operation {
   } deriving Eq
 
 instance Valid Int Operation where
-  valid classLevel operation = oLevel operation < classLevel
+  valid classLevel (Operation {oLevel}) = oLevel < classLevel
 
 data Association = Association {
   sName :: String,
@@ -104,14 +100,14 @@ data Association = Association {
   } deriving Eq
 
 instance Valid [Class] Association where
-  valid mlmClasses (Association _ source target
-    lvlS lvlT multST multTS _ _) = and [
-    source `elem` mlmClasses,
-    target `elem` mlmClasses,
-    lvlS < cLevel source,
-    lvlT < cLevel target,
-    all (valid ()) [lvlS, lvlT],
-    all (valid ()) [multST, multTS]
+  valid mlmClasses (Association {sSource, sTarget,
+    lvlSource, lvlTarget, multTargetToSource, multSourceToTarget}) = and [
+    sSource `elem` mlmClasses,
+    sTarget `elem` mlmClasses,
+    lvlSource < cLevel sSource,
+    lvlTarget < cLevel sTarget,
+    all (valid ()) [lvlSource, lvlTarget],
+    all (valid ()) [multTargetToSource, multSourceToTarget]
     -- might add restrictions to naming, later. For example, you cannot start the name with a digit.
     ]
 
@@ -122,12 +118,12 @@ data Link = Link {
   } deriving Eq
 
 instance Valid [Association] Link where
-  valid mlmAssociations (Link isOf source target) = and [
-    isOf `elem` mlmAssociations,
-    source == sSource isOf,
-    target == sTarget isOf,
-    cLevel source == lvlSource isOf,
-    cLevel target == lvlTarget isOf
+  valid mlmAssociations (Link {lIsOf, lSource, lTarget}) = and [
+    lIsOf `elem` mlmAssociations,
+    lSource == sSource lIsOf,
+    lTarget == sTarget lIsOf,
+    cLevel lSource == lvlSource lIsOf,
+    cLevel lTarget == lvlTarget lIsOf
     ]
 
 data Multiplicity = Multiplicity {
@@ -136,9 +132,9 @@ data Multiplicity = Multiplicity {
 } deriving Eq
 
 instance Valid () Multiplicity where
-  valid () (Multiplicity lowerBound upperBound) =
-    lowerBound >= 0 &&
-    lowerBound <= upperBound || upperBound == -1
+  valid () (Multiplicity {lower, upper}) =
+    lower >= 0 &&
+    upper <= upper || upper == -1
 
 type Level = Int
 
