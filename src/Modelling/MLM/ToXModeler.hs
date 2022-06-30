@@ -13,7 +13,6 @@ import Diagrams.TwoD.Types (V2 (V2))
 import Diagrams.TwoD.GraphViz (layoutGraph, mkGraph, getGraph)
 import Data.Map.Strict (toList)
 import Modelling.MLM.Types
-import Data.Bifunctor (first, second, bimap)
 
 class XModelerable c a where
   get :: c -> a -> String
@@ -31,6 +30,10 @@ instance XModelerable () Type where
         String -> cor
         Element -> cor
         _ -> aux
+
+-- Value
+instance XModelerable () Value where
+  get () _ = "TODO:VALUE"
 
 -- Object
 instance XModelerable String Object where
@@ -75,7 +78,7 @@ instance XModelerable (String, String) [Class] where
 -- Slot
 instance XModelerable (String, String) Slot where
   get (projectName, className) (Slot {attribute, value}) =
-    [i|    <changeSlotValue class="Root::#{projectName}::#{className}" package="Root::#{projectName}" slotName="#{tName attribute}" valueToBeParsed="#{value}"/>\n|]
+    [i|    <changeSlotValue class="Root::#{projectName}::#{className}" package="Root::#{projectName}" slotName="#{tName attribute}" valueToBeParsed="#{get () value}"/>\n|]
 
 -- Class (meta or instance) with its content
 instance XModelerable String Class where
