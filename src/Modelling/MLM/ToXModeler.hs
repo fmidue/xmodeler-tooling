@@ -34,8 +34,8 @@ instance XModelerable () Type where
 
 -- Object
 instance XModelerable String Object where
-  get projectName (objectName, (x, y)) =
-    [i|        <Object hidden="false" ref="Root::#{projectName}::#{objectName}" x="#{x}" y="#{y}"/>\n|]
+  get projectName (Object {objName, objX, objY}) =
+    [i|        <Object hidden="false" ref="Root::#{projectName}::#{objName}" x="#{objX}" y="#{objY}"/>\n|]
 
 -- Class (meta and instance) but without its content
 instance XModelerable (Maybe Class, String) Class where
@@ -144,10 +144,10 @@ instance XModelerable ([Object], Double, Int) MLM where
 
 toXModeler :: (GraphvizCommand, Double -> Double, Double, Int ) -> MLM -> IO String
 toXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)
-              mlm@(MLM _ mlmClasses mlmAssociations mlmLinks) = let
-    vertices = map cName mlmClasses :: [String]
-    edges    = map (\x -> (cName (sSource x), cName (sTarget x), ())) mlmAssociations ++
-               map (\x -> (cName (lSource x), cName (lTarget x), ())) mlmLinks :: [(String, String, ())]
+              mlm@(MLM {classes, associations, links}) = let
+    vertices = map cName classes :: [String]
+    edges    = map (\x -> (cName (sSource x), cName (sTarget x), ())) associations ++
+               map (\x -> (cName (lSource x), cName (lTarget x), ())) links :: [(String, String, ())]
     adjust :: Double -> Int
     adjust = round . spaceOut
   in do
