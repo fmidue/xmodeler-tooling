@@ -17,12 +17,13 @@ import Data.Bifunctor (first, second, bimap)
 class XModelerable c a where
   get :: c -> a -> String
 
+-- Type
 instance XModelerable () Type where
-  get () x = let
-    cor = "XCore::" ++ show x
-    aux = "Auxiliary::" ++ show x
+  get () t = let
+    cor = "XCore::" ++ show t
+    aux = "Auxiliary::" ++ show t
     in
-      case x of
+      case t of
         Boolean -> cor
         Integer -> cor
         Float -> cor
@@ -30,39 +31,46 @@ instance XModelerable () Type where
         Element -> cor
         _ -> aux
 
+-- Object
 instance XModelerable String Object where
   get projectName (objectName, (x, y)) =
     [i|        <Object hidden="false" ref="Root::#{projectName}::#{objectName}" x="#{x}" y="#{y}"/>\n|]
 
+-- Class (meta and instance) but without its content
 instance XModelerable (Maybe Class, String) Class where
   get (Nothing, projectName) c =
     [i|    <addMetaClass abstract="#{isAbstract c}" level="#{cLevel c}" name="#{cName c}" package="Root::#{projectName}" parents=""/>\n|]
   get (Just isOf, projectName) c =
     [i|    <addInstance abstract="#{isAbstract c}" name="#{cName c}" of="Root::#{projectName}::#{cName isOf}" package="Root::#{projectName}" parents=""/>\n|]
 
+-- Multiplicity
 instance XModelerable () Multiplicity where
   get () (Multiplicity lowerBound upperBound) =
     [i|Seq{#{lowerBound},#{upperBound},#{show (upperBound /= -1)},false}|]
 
+-- Attributes
 instance XModelerable (String, String) Attribute where
   get (className, projectName) t =
     [i|    <addAttribute class="Root::#{projectName}::#{className}" level="#{tLevel t}" multiplicity="#{get () (multiplicity t)}" name="#{tName t}" package="Root::#{projectName}" type="Root::#{get () (tType t)}"/>\n|]
 
+-- Operation
 instance XModelerable (String, String) Operation where
   get _ _ = "TODO OPERATIONS\n"
 
 instance XModelerable (String, ()) Class where
-  get (projectName, ()) parent =
-    [i|Root::#{projectName}::#{cName parent},|]
+  get (projectName, ()) p =
+    [i|Root::#{projectName}::#{cName p},|]
 
+-- Parents
 instance XModelerable (String, String) [Class] where
-  get (className, projectName) prnts =
+  get (className, projectName) ps =
     [i|    <changeParent class="Root::#{projectName}::#{className}" new="#{checkParentsExistFirst}" old="" package="Root::#{projectName}"/>\n|]
     where checkParentsExistFirst = if null prnts then "" else init (concatMap (get (projectName, ())) prnts)
 
 instance XModelerable () Slot where
   get _ _ = "TODO SLOTS (ATTRIBUTES AND OPERATIONS)\n"
 
+-- Class (meta or instance) with its content
 instance XModelerable String Class where
   get projectName c =
     get (cIsOf c, projectName) c ++
@@ -77,6 +85,7 @@ instance XModelerable String Association where
 instance XModelerable String Link where
   get _ _ = "TODO GET LINK"
 
+-- MLM
 instance XModelerable ([Object], Double, Int)  MLM where
   get (objects', scaleFactor, extraOffset)
       (MLM projectName mlmClasses mlmAssociations mlmLinks) =
