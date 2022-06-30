@@ -68,12 +68,15 @@ instance Valid Level Attribute where
     valid () multiplicity &&
     tLevel < classLevel
 
-data Slot = Slot Attribute Value deriving Eq
+data Slot = Slot {
+  attribute :: Attribute,
+  value :: Value
+  } deriving Eq
 
 instance Valid (Maybe Class) Slot where
   valid Nothing _ = False
-  valid (Just class') slot@(Slot att _) =
-    att `elem` attributes class' || valid (cIsOf class') slot
+  valid (Just class') slot@(Slot {attribute}) =
+    attribute `elem` attributes class' || valid (cIsOf class') slot
 
 data Operation = Operation {
   oLevel :: Int,
