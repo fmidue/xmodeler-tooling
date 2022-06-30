@@ -101,17 +101,10 @@ instance XModelerable String Link where
 
 -- MLM
 instance XModelerable ([Object], Double, Int) MLM where
-  get (objects', scaleFactor, extraOffset)
+  get (objects, xx, txTy)
       (MLM {projectName, classes, associations, links}) =
     let
-      xs = map (fst . snd) objects'
-      ys = map (snd . snd) objects'
-      getRange list = fromIntegral $ maximum list - minimum list
-      xx = log $ max (getRange xs) (getRange ys) * scaleFactor / 1000 :: Double
-      txTy = round $ 50 * xx :: Int
-
-      objects'' = map (second (first (+ extraOffset))) objects' :: [Object]
-      objectsXML = concatMap (get projectName) objects'' :: String
+      objectsXML = concatMap (get projectName) objects :: String
       classesXML = concatMap (get projectName) classes :: String
       associationsXML = concatMap (get projectName) associations :: String
       linksXML = concatMap (get projectName) links:: String
@@ -150,8 +143,13 @@ toXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)
                map (\x -> (cName (lSource x), cName (lTarget x), ())) links :: [(String, String, ())]
     adjust :: Double -> Int
     adjust = round . spaceOut
+    getRange list = fromIntegral $ maximum list - minimum list
+    extract (vertex, P (V2 x y)) = Object vertex (extraOffset + adjust x) (adjust y)
   in do
     g <- layoutGraph layoutCommand $ mkGraph vertices edges
-    let objects = map (\(vertex, P (V2 x y)) -> (vertex, (x, y))) $ toList $ fst $ getGraph g :: [(String, (Double, Double))]
-    let objects' = map (second (bimap adjust adjust)) objects :: [Object]
-    return $ get (objects', scaleFactor, extraOffset) mlm
+    let objects = map extract $ toList $ fst $ getGraph g :: [Object]
+    let xs = map objX objects
+    let ys = map objY objects
+    let xx = log $ max (getRange xs) (getRange ys) * scaleFactor / 1000 :: Double
+    let txTy = round $ 50 * xx :: Int
+    return $ get (objects, xx, txTy) mlm
