@@ -68,11 +68,11 @@ instance Valid Level Attribute where
     valid () multiplicity &&
     tLevel < classLevel
 
-data Slot = SlotAttribute Attribute Value | SlotOperation Operation Value deriving Eq -- this distinction will probably be needed later...
+data Slot = Slot Attribute Value deriving Eq
 
 instance Valid (Maybe Class) Slot where
   valid Nothing _ = False
-  valid (Just class') slot@(SlotAttribute att _) =
+  valid (Just class') slot@(Slot att _) =
     att `elem` attributes class' || valid (cIsOf class') slot
   valid (Just class') slot@(SlotOperation op  _) =
     op  `elem` operations class' || valid (cIsOf class') slot
@@ -81,6 +81,7 @@ data Operation = Operation {
   oLevel :: Int,
   oName :: String,
   oType :: Type,
+  isMonitored :: Bool,
   body :: String
   } deriving Eq
 
