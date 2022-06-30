@@ -10,23 +10,23 @@ class Valid c a where
   valid :: c -> a -> Bool
 
 data MLM = MLM {
-  mlmName :: String,
+  projectName :: String,
   classes :: [Class],
   associations :: [Association],
   links :: [Link]
 }
 
 instance Valid () MLM where
-  valid () (MLM {mlmName, classes, associations, links}) = let
+  valid () (MLM {projectName, classes, associations, links}) = let
     mlmClassesNames = map cName classes
     mlmAssociationsNames = map sName associations
     validChar1 = flip elem (['a'..'z'] ++ ['A'..'Z'])
     validCharN char = validChar1 char || isDigit char
     in
       and [
-        not (null mlmName),
-        validChar1 (head mlmName),
-        all validCharN (tail mlmName),
+        not (null projectName),
+        validChar1 (head projectName),
+        all validCharN (tail projectName),
         all (valid ()) classes,
         all (valid classes) associations,
         all (valid associations) links,

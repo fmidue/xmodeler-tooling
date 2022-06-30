@@ -1,4 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE NamedFieldPuns #-}
 --{-# LANGUAGE NoMonomorphismRestriction #-}
 
 -- remember to export these properly when done testing:
@@ -38,70 +39,70 @@ instance XModelerable String Object where
 
 -- Class (meta and instance) but without its content
 instance XModelerable (Maybe Class, String) Class where
-  get (Nothing, projectName) c =
-    [i|    <addMetaClass abstract="#{isAbstract c}" level="#{cLevel c}" name="#{cName c}" package="Root::#{projectName}" parents=""/>\n|]
-  get (Just isOf, projectName) c =
-    [i|    <addInstance abstract="#{isAbstract c}" name="#{cName c}" of="Root::#{projectName}::#{cName isOf}" package="Root::#{projectName}" parents=""/>\n|]
+  get (maybeIsOf, projectName) (Class {isAbstract, cLevel, cName = name}) =
+    case maybeIsOf of
+      Nothing ->
+        [i|    <addMetaClass abstract="#{isAbstract}" level="#{cLevel}" name="#{name}" package="Root::#{projectName}" parents=""/>\n|]
+      Just isOf ->
+        [i|    <addInstance abstract="#{isAbstract}" name="#{name}" of="Root::#{projectName}::#{cName isOf}" package="Root::#{projectName}" parents=""/>\n|]
 
 -- Multiplicity
 instance XModelerable () Multiplicity where
-  get () (Multiplicity lowerBound upperBound) =
-    [i|Seq{#{lowerBound},#{upperBound},#{show (upperBound /= -1)},false}|]
+  get () (Multiplicity {lower, upper}) =
+    [i|Seq{#{lower},#{upper},#{show (upper /= -1)},false}|]
 
 -- Attributes
 instance XModelerable (String, String) Attribute where
-  get (className, projectName) t =
-    [i|    <addAttribute class="Root::#{projectName}::#{className}" level="#{tLevel t}" multiplicity="#{get () (multiplicity t)}" name="#{tName t}" package="Root::#{projectName}" type="Root::#{get () (tType t)}"/>\n|]
+  get (className, projectName) (Attribute {multiplicity, tLevel, tName, tType}) =
+    [i|    <addAttribute class="Root::#{projectName}::#{className}" level="#{tLevel}" multiplicity="#{get () multiplicity}" name="#{tName}" package="Root::#{projectName}" type="Root::#{get () tType}"/>\n|]
 
 -- Operation
 instance XModelerable (String, String) Operation where
-  get (projectName, className) op =
-    [i|    <addOperation body="#{body op}" class="Root::${projectName}::#{className}" level="#{oLevel op}" monitored="#{isMonitored op}" name="#{oName op}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () (oType op)}"/>\n|]
+  get (projectName, className) (Operation {body, oLevel, isMonitored, oName, oType}) =
+    [i|    <addOperation body="#{body}" class="Root::${projectName}::#{className}" level="#{oLevel}" monitored="#{isMonitored}" name="#{oName}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () oType}"/>\n|]
 
 -- Parent
 instance XModelerable (String, ()) Class where
-  get (projectName, ()) p =
-    [i|Root::#{projectName}::#{cName p},|]
+  get (projectName, ()) (Class {cName}) =
+    [i|Root::#{projectName}::#{cName},|]
 
 -- Parents
 instance XModelerable (String, String) [Class] where
-  get (className, projectName) ps =
+  get (className, projectName) parents =
     [i|    <changeParent class="Root::#{projectName}::#{className}" new="#{checkParentsExistFirst}" old="" package="Root::#{projectName}"/>\n|]
-    where checkParentsExistFirst = if null ps then "" else init (concatMap (get (projectName, ())) ps)
+    where checkParentsExistFirst = if null parents then "" else init (concatMap (get (projectName, ())) parents)
 
 -- Slot
 instance XModelerable (String, String) Slot where
-  get (projectName, c) (Slot att val) = [i|    <changeSlotValue class="Root::#{projectName}::#{c}" package="Root::#{projectName}" slotName="#{tName att}" valueToBeParsed="#{val}"/>\n|]
+  get (projectName, className) (Slot {attribute, value}) =
+    [i|    <changeSlotValue class="Root::#{projectName}::#{className}" package="Root::#{projectName}" slotName="#{tName attribute}" valueToBeParsed="#{value}"/>\n|]
 
 -- Class (meta or instance) with its content
 instance XModelerable String Class where
-  get projectName c =
-    get (cIsOf c, projectName) c ++
-    concatMap (get (className, projectName)) (attributes c) ++
-    concatMap (get (className, projectName)) (operations c) ++
-    get (className, projectName) (parents c) ++
-    concatMap (get (projectName, className)) (slots c)
-    where
-      className = cName c
+  get projectName class'@(Class {cName, cIsOf, attributes, operations, parents, slots}) =
+    get (cIsOf, projectName) class' ++
+    concatMap (get (cName, projectName)) attributes ++
+    concatMap (get (cName, projectName)) operations ++
+    get (cName, projectName) parents ++
+    concatMap (get (projectName, cName)) slots
 
 -- Association
 instance XModelerable String Association where
-  get projectName a =
-    [i|    <addAssociation accessSourceFromTargetName="#{associationName}_#{from}" accessTargetFromSourceName="#{associationName}_#{to}" classSource="Root::#{projectName}::#{from}" classTarget="Root::#{projectName}::#{to}" fwName="#{associationName}" instLevelSource="#{lvlSource a}" instLevelTarget="#{lvlTarget a}" isSymmetric="false" isTransitive="false" multSourceToTarget="#{get () (multSourceToTarget a)}" multTargetToSource="#{get ()(multTargetToSource a)}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="sourceVisibleFromTarget a" targetVisibleFromSource="targetVisibleFromSource a"/>\n|]
+  get projectName (Association {sName, sSource, sTarget, lvlSource, lvlTarget, multSourceToTarget, multTargetToSource, sourceVisibleFromTarget, targetVisibleFromSource}) =
+    [i|    <addAssociation accessSourceFromTargetName="#{sName}_#{from}" accessTargetFromSourceName="#{sName}_#{to}" classSource="Root::#{projectName}::#{from}" classTarget="Root::#{projectName}::#{to}" fwName="#{sName}" instLevelSource="#{lvlSource}" instLevelTarget="#{lvlTarget}" isSymmetric="false" isTransitive="false" multSourceToTarget="#{get () multSourceToTarget}" multTargetToSource="#{get () multTargetToSource}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="#{sourceVisibleFromTarget}" targetVisibleFromSource="#{targetVisibleFromSource}"/>\n|]
    where
-     from = cName $ sSource a
-     to = cName $ sTarget a
-     associationName = sName a
+     from = cName sSource
+     to = cName sTarget
 
 -- Link
 instance XModelerable String Link where
-  get projectName link =
-    [i|    <addLink classSource="Root::#{projectName}::#{cName (lSource link)}" classTarget="Root::#{projectName}::#{cName (lTarget link)}" name="#{sName (lIsOf link)}" package="Root::mlm_demo2"/>\n|]
+  get projectName (Link {lSource, lTarget, lIsOf}) =
+    [i|    <addLink classSource="Root::#{projectName}::#{cName lSource}" classTarget="Root::#{projectName}::#{cName lTarget}" name="#{sName lIsOf}" package="Root::#{projectName}"/>\n|]
 
 -- MLM
-instance XModelerable ([Object], Double, Int)  MLM where
+instance XModelerable ([Object], Double, Int) MLM where
   get (objects', scaleFactor, extraOffset)
-      (MLM projectName mlmClasses mlmAssociations mlmLinks) =
+      (MLM {projectName, classes, associations, links}) =
     let
       xs = map (fst . snd) objects'
       ys = map (snd . snd) objects'
@@ -111,9 +112,9 @@ instance XModelerable ([Object], Double, Int)  MLM where
 
       objects'' = map (second (first (+ extraOffset))) objects' :: [Object]
       objectsXML = concatMap (get projectName) objects'' :: String
-      classesXML = concatMap (get projectName) mlmClasses :: String
-      associationsXML = concatMap (get projectName) mlmAssociations :: String
-      linksXML = concatMap (get projectName) mlmLinks :: String
+      classesXML = concatMap (get projectName) classes :: String
+      associationsXML = concatMap (get projectName) associations :: String
+      linksXML = concatMap (get projectName) links:: String
     in [i|<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <XModeler>
   <Version>2</Version>
