@@ -57,6 +57,7 @@ instance XModelerable (String, String) Attribute where
 instance XModelerable (String, String) Operation where
   get _ _ = "TODO OPERATIONS\n"
 
+-- Parent
 instance XModelerable (String, ()) Class where
   get (projectName, ()) p =
     [i|Root::#{projectName}::#{cName p},|]
@@ -65,7 +66,7 @@ instance XModelerable (String, ()) Class where
 instance XModelerable (String, String) [Class] where
   get (className, projectName) ps =
     [i|    <changeParent class="Root::#{projectName}::#{className}" new="#{checkParentsExistFirst}" old="" package="Root::#{projectName}"/>\n|]
-    where checkParentsExistFirst = if null prnts then "" else init (concatMap (get (projectName, ())) prnts)
+    where checkParentsExistFirst = if null ps then "" else init (concatMap (get (projectName, ())) ps)
 
 instance XModelerable () Slot where
   get _ _ = "TODO SLOTS (ATTRIBUTES AND OPERATIONS)\n"
@@ -74,11 +75,14 @@ instance XModelerable () Slot where
 instance XModelerable String Class where
   get projectName c =
     get (cIsOf c, projectName) c ++
-    concatMap (get (cName c, projectName)) (attributes c) ++
-    concatMap (get (cName c, projectName)) (operations c) ++
-    get (cName c, projectName) (parents c) ++
-    concatMap (get ()) (slots c) -- slots
+    concatMap (get (className, projectName)) (attributes c) ++
+    concatMap (get (className, projectName)) (operations c) ++
+    get (className, projectName) (parents c) ++
+    concatMap (get (projectName, className)) (slots c)
+    where
+      className = cName c
 
+-- Association
 instance XModelerable String Association where
   get _ _ = "TODO GET ASSOCIATION"
 
