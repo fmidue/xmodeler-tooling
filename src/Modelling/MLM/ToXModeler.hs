@@ -167,8 +167,11 @@ toXModeler :: (GraphvizCommand, Double -> Double, Double, Int ) -> MLM -> IO Str
 toXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)
               mlm@(MLM {classes, associations, links}) = let
     vertices = map cName classes :: [String]
-    edges    = map (\x -> (cName (sSource x), cName (sTarget x), ())) associations ++
-               map (\x -> (cName (lSource x), cName (lTarget x), ())) links :: [(String, String, ())]
+    extractEdge from to x = (cName (from x), cName (to x), ()) :: (String, String, ())
+    edges = map (extractEdge sSource sTarget) associations ++
+            map (extractEdge lSource lTarget) links ++
+            concatMap (\child -> map (\parent -> (cName child, cName parent, ())) (parents child)) classes
+             :: [(String, String, ())]
     adjust :: Double -> Int
     adjust = round . spaceOut
     getRange list = fromIntegral $ maximum list - minimum list
