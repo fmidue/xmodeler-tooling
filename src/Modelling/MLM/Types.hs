@@ -17,7 +17,6 @@ module Modelling.MLM.Types(
 
 import Data.List.UniqueStrict
 import Data.Char (isDigit)
-import Data.Set (fromList)
 
 class Valid c a where
   valid :: c -> a -> Bool
