@@ -13,7 +13,6 @@ import Diagrams.TwoD.Types (V2 (V2))
 import Diagrams.TwoD.GraphViz (layoutGraph, mkGraph, getGraph)
 import Modelling.MLM.Types (
   MLM (..),
-  Object (..),
   Link (..),
   Association (..),
   Slot (..),
@@ -26,6 +25,12 @@ import Modelling.MLM.Types (
   relativeToEur,
   currencySymbol
   )
+
+data Object = Object {
+  objName :: String,
+  objX :: Int,
+  objY :: Int
+}
 
 class XModelerable c a where
   get :: c -> a -> String

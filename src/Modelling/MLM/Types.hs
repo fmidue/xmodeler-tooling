@@ -1,7 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 module Modelling.MLM.Types(
-    MLM (..),
-  Object (..),
+  MLM (..),
   Link (..),
   Association (..),
   Slot (..),
@@ -158,12 +157,6 @@ instance Valid () Level where
 data Type = Boolean | Integer | Float | String | Element | MonetaryValue | Date | Currency | Complex | AuxiliaryClass deriving (Show, Eq)
 
 data Value = B Bool | I Int | F Float | S String | E () | M String String | D Int Int Int | C XModelerCurrency | X String | A String deriving Eq
-
-data Object = Object {
-  objName :: String,
-  objX :: Int,
-  objY :: Int
-}
 
 data XModelerCurrency = USD | EUR | GBP | AUD | NZD deriving (Eq, Show)
 
