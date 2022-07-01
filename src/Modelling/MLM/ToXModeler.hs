@@ -179,6 +179,7 @@ toXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)
              :: [(String, String, ())]
     adjust :: Double -> Int
     adjust = round . spaceOut
+    getRange [] = 0
     getRange list = fromIntegral $ maximum list - minimum list
     extractObject (vertex, P (V2 x y)) = Object vertex (extraOffset + adjust x) (adjust y)
   in do
