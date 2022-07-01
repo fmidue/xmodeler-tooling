@@ -2,10 +2,8 @@
 {-# LANGUAGE NamedFieldPuns #-}
 --{-# LANGUAGE NoMonomorphismRestriction #-}
 
--- remember to export these properly when done testing:
-module Modelling.MLM.ToXModeler where
+module Modelling.MLM.ToXModeler (toXModeler) where
 
--- remember to import these properly when done testing:
 import Data.Char (ord)
 import Data.Map.Strict (toList)
 import Data.String.Interpolate (i)
@@ -13,7 +11,21 @@ import Data.GraphViz (GraphvizCommand)
 import Diagrams.Points (Point (P))
 import Diagrams.TwoD.Types (V2 (V2))
 import Diagrams.TwoD.GraphViz (layoutGraph, mkGraph, getGraph)
-import Modelling.MLM.Types
+import Modelling.MLM.Types (
+  MLM (..),
+  Object (..),
+  Link (..),
+  Association (..),
+  Slot (..),
+  Class (..),
+  Operation (..),
+  Attribute (..),
+  Multiplicity (..),
+  Value (..),
+  Type (..),
+  relativeToEur,
+  currencySymbol
+  )
 
 class XModelerable c a where
   get :: c -> a -> String

@@ -1,6 +1,19 @@
 {-# LANGUAGE NamedFieldPuns #-}
--- remember to export these properly when done testing:
-module Modelling.MLM.Types where
+module Modelling.MLM.Types(
+    MLM (..),
+  Object (..),
+  Link (..),
+  Association (..),
+  Slot (..),
+  Class (..),
+  Operation (..),
+  Attribute (..),
+  Multiplicity (..),
+  Value (..),
+  Type (..),
+  relativeToEur,
+  currencySymbol
+) where
 
 import Data.List.UniqueStrict
 import Data.Char (isDigit)
