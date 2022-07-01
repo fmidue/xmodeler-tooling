@@ -6,12 +6,13 @@
 module Modelling.MLM.ToXModeler where
 
 -- remember to import these properly when done testing:
+import Data.Char (ord)
+import Data.Map.Strict (toList)
 import Data.String.Interpolate (i)
 import Data.GraphViz (GraphvizCommand)
 import Diagrams.Points (Point (P))
 import Diagrams.TwoD.Types (V2 (V2))
 import Diagrams.TwoD.GraphViz (layoutGraph, mkGraph, getGraph)
-import Data.Map.Strict (toList)
 import Modelling.MLM.Types
 
 class XModelerable c a where
@@ -33,7 +34,19 @@ instance XModelerable () Type where
 
 -- Value
 instance XModelerable () Value where
-  get () _ = "TODO:VALUE"
+  get () value =
+    case value of
+      B b -> show b
+      I i' -> show i'
+      F f -> show f
+      S s -> [i|#{map ord s}.asString()|]
+      M amount currency ->
+        [i|Auxiliary::MonetaryValue(#{amount}, Auxiliary::Currency(&quot;#{currency}&quot;, &quot;#{currency}&quot;, 1.0))|]
+      D year month day ->
+        [i|Auxiliary::Date::createDate(#{year}, #{month}, #{day})|]
+      C c ->
+        [i|Auxiliary::Currency(&quot;#{currencySymbol c}&quot;, &quot;#{c}&quot;, #{relativeToEur c})|]
+      _ -> "null"
 
 -- Object
 instance XModelerable String Object where
