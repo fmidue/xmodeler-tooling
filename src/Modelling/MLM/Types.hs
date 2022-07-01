@@ -166,10 +166,6 @@ data Object = Object {
   objY :: Int
 }
 
-instance Valid [String] [Object] where
-  valid mlmClassesNames objects =
-    fromList (map objName objects) == fromList mlmClassesNames
-
 data XModelerCurrency = USD | EUR | GBP | AUD | NZD deriving (Eq, Show)
 
 relativeToEur :: XModelerCurrency -> Float
