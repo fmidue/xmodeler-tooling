@@ -11,6 +11,7 @@ import Data.GraphViz (GraphvizCommand)
 import Diagrams.Points (Point (P))
 import Diagrams.TwoD.Types (V2 (V2))
 import Diagrams.TwoD.GraphViz (layoutGraph, mkGraph, getGraph)
+import Data.Maybe (isNothing, isJust)
 import Modelling.MLM.Types (
   MLM (..),
   Link (..),
@@ -70,12 +71,16 @@ instance XModelerable String Object where
   get projectName (Object {objName, objX, objY}) =
     [i|        <Object hidden="false" ref="Root::#{projectName}::#{objName}" x="#{objX}" y="#{objY}"/>\n|]
 
--- Class (meta and instance) but without its content
-instance XModelerable (Maybe Class, String) Class where
-  get (maybeIsOf, projectName) (Class {isAbstract, cLevel, cName = name}) =
-    case maybeIsOf of
-      Nothing ->
-        [i|    <addMetaClass abstract="#{isAbstract}" level="#{cLevel}" name="#{name}" package="Root::#{projectName}" parents=""/>\n|]
+-- Class (MetaClass) but without its content
+instance XModelerable (String, ()) Class where
+  get (projectName, ()) (Class {isAbstract, cLevel, cName = name}) =
+    [i|    <addMetaClass abstract="#{isAbstract}" level="#{cLevel}" name="#{name}" package="Root::#{projectName}" parents=""/>\n|]
+
+-- Class (Instance) but without its content
+instance XModelerable (String, (), ()) Class where
+  get projectName (Class {isAbstract, cName = name, cIsOf}) =
+    case cIsOf of
+      Nothing -> error "That should not happen! A class is an instance and a metaclass at the same time!"
       Just isOf ->
         [i|    <addInstance abstract="#{isAbstract}" name="#{name}" of="Root::#{projectName}::#{cName isOf}" package="Root::#{projectName}" parents=""/>\n|]
 
@@ -86,7 +91,7 @@ instance XModelerable () Multiplicity where
 
 -- Attributes
 instance XModelerable (String, String) Attribute where
-  get (className, projectName) (Attribute {multiplicity, tLevel, tName, tType}) =
+  get (projectName, className) (Attribute {multiplicity, tLevel, tName, tType}) =
     [i|    <addAttribute class="Root::#{projectName}::#{className}" level="#{tLevel}" multiplicity="#{get () multiplicity}" name="#{tName}" package="Root::#{projectName}" type="Root::#{get () tType}"/>\n|]
 
 -- Operation
@@ -95,29 +100,21 @@ instance XModelerable (String, String) Operation where
     [i|    <addOperation body="#{body}" class="Root::${projectName}::#{className}" level="#{oLevel}" monitored="#{isMonitored}" name="#{oName}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () oType}"/>\n|]
 
 -- Parent
-instance XModelerable (String, ()) Class where
-  get (projectName, ()) (Class {cName}) =
+instance XModelerable String Class where
+  get projectName (Class {cName}) =
     [i|Root::#{projectName}::#{cName},|]
 
 -- Parents
 instance XModelerable (String, String) [Class] where
-  get (className, projectName) parents =
-    [i|    <changeParent class="Root::#{projectName}::#{className}" new="#{checkParentsExistFirst}" old="" package="Root::#{projectName}"/>\n|]
-    where checkParentsExistFirst = if null parents then "" else init (concatMap (get (projectName, ())) parents)
+  get _ [] = ""
+  get (projectName, className) parents =
+    [i|    <changeParent class="Root::#{projectName}::#{className}" new="#{doParents}" old="" package="Root::#{projectName}"/>\n|]
+    where doParents = init (concatMap (get projectName) parents)
 
 -- Slot
 instance XModelerable (String, String) Slot where
   get (projectName, className) (Slot {attribute, value}) =
     [i|    <changeSlotValue class="Root::#{projectName}::#{className}" package="Root::#{projectName}" slotName="#{tName attribute}" valueToBeParsed="#{get () value}"/>\n|]
-
--- Class (meta or instance) with its content
-instance XModelerable String Class where
-  get projectName class'@(Class {cName, cIsOf, attributes, operations, parents, slots}) =
-    get (cIsOf, projectName) class' ++
-    concatMap (get (cName, projectName)) attributes ++
-    concatMap (get (cName, projectName)) operations ++
-    get (cName, projectName) parents ++
-    concatMap (get (projectName, cName)) slots
 
 -- Association
 instance XModelerable String Association where
@@ -137,11 +134,35 @@ instance XModelerable ([Object], Double, Int) MLM where
   get (objects, xx, txTy)
       (MLM {projectName, classes, associations, links}) =
     let
-      objectsXML = concatMap (get projectName) objects :: String
-      classesXML = concatMap (get projectName) classes :: String
-      associationsXML = concatMap (get projectName) associations :: String
-      linksXML = concatMap (get projectName) links:: String
-    in [i|<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+      -- I can avoid some of the following transformations if I am allowed to include the
+      -- containing class (the "Mother") of a component (operation, slot, attribute) as an
+      -- attribute (field) in the type of that component and simplify the instances XModelerable
+      -- by letting them just get the containing class from that field within the inputted
+      -- attribute, operation, or slot
+      pairWithMother f x  = map (cName x,) (f x)
+
+      allObjects            = objects
+      allMetaclasses        = filter (isNothing . cIsOf) classes :: [Class]
+      allInstances          = filter (isJust . cIsOf) classes :: [Class]
+      allInheritances0      = filter (not . null . parents) classes :: [Class]
+      allInheritances       = map (\x -> (cName x, parents x)) allInheritances0 :: [(String, [Class])]
+      allAttributes         = concatMap (pairWithMother attributes) classes :: [(String, Attribute)]
+      allOperations         = concatMap (pairWithMother operations) classes :: [(String, Operation)]
+      allChangeSlotValues   = concatMap (pairWithMother slots) classes      :: [(String, Slot)]
+      allAssociations       = associations
+      allLinks              = links
+
+      allObjectsXML          = concatMap (get projectName) allObjects :: String
+      allMetaclassesXML      = concatMap (get (projectName, ())) allMetaclasses :: String
+      allInstancesXML        = concatMap (get (projectName, (), ())) allInstances :: String
+      allInheritancesXML     = concatMap (\(className, x) -> get (projectName, className) x) allInheritances :: String
+      allAttributesXML       = concatMap (\(className, x) -> get (projectName, className) x) allAttributes :: String
+      allOperationsXML       = concatMap (\(className, x) -> get (projectName, className) x) allOperations :: String
+      allChangeSlotValuesXML = concatMap (\(className, x) -> get (projectName, className) x) allChangeSlotValues :: String
+      allAssociationsXML     = concatMap (get projectName) allAssociations :: String
+      allLinksXML            = concatMap (get projectName) allLinks :: String
+    in
+      [i|<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <XModeler>
   <Version>2</Version>
   <Categories/>
@@ -153,7 +174,7 @@ instance XModelerable ([Object], Double, Int) MLM where
       <Categories/>
       <Owners/>
       <Objects>
-#{objectsXML}
+#{allObjectsXML}
       </Objects>
       <Edges/>
       <Labels/>
@@ -162,9 +183,14 @@ instance XModelerable ([Object], Double, Int) MLM where
     </Diagram>
   </Diagrams>
   <Logs>
-#{classesXML}
-#{associationsXML}
-#{linksXML}
+#{allMetaclassesXML}
+#{allInstancesXML}
+#{allInheritancesXML}
+#{allAttributesXML}
+#{allOperationsXML}
+#{allChangeSlotValuesXML}
+#{allAssociationsXML}
+#{allLinksXML}
   </Logs>
 </XModeler>|]
 
@@ -186,7 +212,15 @@ toXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)
     g <- layoutGraph layoutCommand $ mkGraph vertices edges
     let objects = map extractObject $ toList $ fst $ getGraph g :: [Object]
     let xs = map objX objects
+    putStrLn "xs="
+    print xs
     let ys = map objY objects
+    putStrLn "ys="
+    print ys
     let xx = log $ max (getRange xs) (getRange ys) * scaleFactor / 1000 :: Double
+    putStrLn "xx="
+    print xx
     let txTy = round $ 50 * xx :: Int
+    putStrLn "txty="
+    print txTy
     return $ get (objects, xx, txTy) mlm
