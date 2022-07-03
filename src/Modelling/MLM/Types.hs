@@ -10,6 +10,9 @@ module Modelling.MLM.Types(
   Multiplicity (..),
   Value (..),
   Type (..),
+  Level,
+  Validatable,
+  valid,
   relativeToEur,
   currencySymbol
 ) where
@@ -17,30 +20,31 @@ module Modelling.MLM.Types(
 import Data.List.UniqueStrict
 import Data.Char (isDigit)
 
-class Valid c a where
-  valid :: c -> a -> Bool
+class Validatable a where
+  valid :: a -> Bool
+
 
 data MLM = MLM {
   projectName :: String,
   classes :: [Class],
   associations :: [Association],
   links :: [Link]
-}
+} deriving Show
 
-instance Valid () MLM where
-  valid () (MLM {projectName, classes, associations, links}) = let
+instance Validatable MLM where
+  valid (MLM {projectName, classes, associations, links}) = let
     mlmClassesNames = map cName classes
     mlmAssociationsNames = map sName associations
     validChar1 = flip elem (['a'..'z'] ++ ['A'..'Z'])
-    validCharN char = validChar1 char || isDigit char
+    validCharN char = validChar1 char || isDigit char || char == '_'
     in
       and [
         not (null projectName),
         validChar1 (head projectName),
         all validCharN (tail projectName),
-        all (valid ()) classes,
-        all (valid classes) associations,
-        all (valid associations) links,
+        all valid classes,
+        all valid associations,
+        all valid links,
         all allUnique [mlmClassesNames, mlmAssociationsNames]
       ]
 
@@ -53,15 +57,15 @@ data Class = Class {
   attributes :: [Attribute],
   operations :: [Operation],
   slots :: [Slot]
-} deriving Eq
+} deriving (Eq, Show)
 
-instance Valid () Class where
-  valid () (Class {cLevel = level, parents, cIsOf, attributes, operations, slots}) = and [
+instance Validatable Class where
+  valid (Class {cLevel = level, parents, cIsOf, attributes, operations, slots}) = and [
     all ((== level) . cLevel) parents,
-    all (valid level) attributes,
-    all (valid level) operations,
+    all valid attributes,
+    all valid operations,
     level > 0 || (null attributes && null operations),
-    all (valid cIsOf) slots,
+    all valid slots,
     case cIsOf of
        Nothing -> True
        Just x -> cLevel x == level + 1
@@ -71,34 +75,40 @@ data Attribute = Attribute {
   tLevel :: Level,
   tName :: String,
   tType :: Type,
+  tClass :: Class,
   multiplicity :: Multiplicity
-  } deriving Eq
+} deriving (Eq, Show)
 
-instance Valid Level Attribute where
-  valid classLevel (Attribute {multiplicity, tLevel}) =
-    valid () multiplicity &&
-    tLevel < classLevel
+instance Validatable Attribute where
+  valid (Attribute {multiplicity, tLevel, tClass}) =
+    valid multiplicity &&
+    tLevel < cLevel tClass
 
 data Slot = Slot {
   attribute :: Attribute,
-  value :: Value
-  } deriving Eq
+  value :: Value,
+  slClass :: Class
+} deriving (Eq, Show)
 
-instance Valid (Maybe Class) Slot where
-  valid Nothing _ = False
-  valid (Just class') slot@(Slot {attribute}) =
-    attribute `elem` attributes class' || valid (cIsOf class') slot
+instance Validatable Slot where
+  valid slot@(Slot {attribute, slClass}) =
+    attribute `elem` attributes slClass ||
+    case cIsOf slClass of
+      Nothing -> False
+      Just c ->  valid (slot {slClass = c})
 
 data Operation = Operation {
   oLevel :: Int,
   oName :: String,
   oType :: Type,
   isMonitored :: Bool,
+  oClass :: Class,
   body :: String
-  } deriving Eq
+} deriving (Eq, Show)
 
-instance Valid Int Operation where
-  valid classLevel (Operation {oLevel}) = oLevel < classLevel
+instance Validatable Operation where
+  valid (Operation {oLevel, oClass}) =
+    cLevel oClass > oLevel
 
 data Association = Association {
   sName :: String,
@@ -110,29 +120,26 @@ data Association = Association {
   multSourceToTarget :: Multiplicity,
   sourceVisibleFromTarget :: Bool,
   targetVisibleFromSource :: Bool
-  } deriving Eq
+} deriving (Eq, Show)
 
-instance Valid [Class] Association where
-  valid mlmClasses (Association {sSource, sTarget,
-    lvlSource, lvlTarget, multTargetToSource, multSourceToTarget}) = and [
-    sSource `elem` mlmClasses,
-    sTarget `elem` mlmClasses,
+instance Validatable Association where
+  valid (Association {sSource, sTarget, lvlSource, lvlTarget, multTargetToSource, multSourceToTarget}) = and [
     lvlSource < cLevel sSource,
     lvlTarget < cLevel sTarget,
-    all (valid ()) [lvlSource, lvlTarget],
-    all (valid ()) [multTargetToSource, multSourceToTarget]
+    all valid [lvlSource, lvlTarget],
+    all valid [multTargetToSource, multSourceToTarget]
     -- might add restrictions to naming, later. For example, you cannot start the name with a digit.
     ]
 
 data Link = Link {
   lIsOf :: Association,
   lSource :: Class,
-  lTarget :: Class
-  } deriving Eq
+  lTarget :: Class,
+  lClass :: Class
+} deriving (Eq, Show)
 
-instance Valid [Association] Link where
-  valid mlmAssociations (Link {lIsOf, lSource, lTarget}) = and [
-    lIsOf `elem` mlmAssociations,
+instance Validatable Link where
+  valid (Link {lIsOf, lSource, lTarget}) = and [
     lSource == sSource lIsOf,
     lTarget == sTarget lIsOf,
     cLevel lSource == lvlSource lIsOf,
@@ -142,21 +149,21 @@ instance Valid [Association] Link where
 data Multiplicity = Multiplicity {
   lower :: Int,
   upper :: Int
-} deriving Eq
+} deriving (Eq, Show)
 
-instance Valid () Multiplicity where
-  valid () (Multiplicity {lower, upper}) =
+instance Validatable Multiplicity where
+  valid (Multiplicity {lower, upper}) =
     lower >= 0 &&
     upper <= upper || upper == -1
 
 type Level = Int
 
-instance Valid () Level where
-  valid () level = level >= 0
+instance Validatable Level where
+  valid level = level >= 0
 
 data Type = Boolean | Integer | Float | String | Element | MonetaryValue | Date | Currency | Complex | AuxiliaryClass deriving (Show, Eq)
 
-data Value = B Bool | I Int | F Float | S String | E () | M String String | D Int Int Int | C XModelerCurrency | X String | A String deriving Eq
+data Value = B Bool | I Int | F Float | S String | E () | M String String | D Int Int Int | C XModelerCurrency | X String | A String deriving (Eq, Show)
 
 data XModelerCurrency = USD | EUR | GBP | AUD | NZD deriving (Eq, Show)
 
