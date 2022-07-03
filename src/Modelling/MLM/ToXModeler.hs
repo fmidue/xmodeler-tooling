@@ -161,6 +161,10 @@ instance XModelerable ([Object], Double, Int) MLM where
       allChangeSlotValuesXML = concatMap (\(className, x) -> get (projectName, className) x) allChangeSlotValues :: String
       allAssociationsXML     = concatMap (get projectName) allAssociations :: String
       allLinksXML            = concatMap (get projectName) allLinks :: String
+
+      rmLnBrk :: String -> String
+      rmLnBrk "" = ""
+      rmLnBrk x = init x
     in
       [i|<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <XModeler>
@@ -174,7 +178,7 @@ instance XModelerable ([Object], Double, Int) MLM where
       <Categories/>
       <Owners/>
       <Objects>
-#{allObjectsXML}
+#{rmLnBrk allObjectsXML}
       </Objects>
       <Edges/>
       <Labels/>
@@ -183,14 +187,14 @@ instance XModelerable ([Object], Double, Int) MLM where
     </Diagram>
   </Diagrams>
   <Logs>
-#{allMetaclassesXML}
-#{allInstancesXML}
-#{allInheritancesXML}
-#{allAttributesXML}
-#{allOperationsXML}
-#{allChangeSlotValuesXML}
-#{allAssociationsXML}
-#{allLinksXML}
+#{rmLnBrk allMetaclassesXML}
+#{rmLnBrk allInstancesXML}
+#{rmLnBrk allInheritancesXML}
+#{rmLnBrk allAttributesXML}
+#{rmLnBrk allOperationsXML}
+#{rmLnBrk allChangeSlotValuesXML}
+#{rmLnBrk allAssociationsXML}
+#{rmLnBrk allLinksXML}
   </Logs>
 </XModeler>|]
 
