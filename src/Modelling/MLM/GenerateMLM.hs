@@ -1,6 +1,7 @@
 module Modelling.MLM.GenerateMLM (generateMLM) where
 
 import Modelling.MLM.Types
+import System.Random
 
 class Modifiable a b where
     put :: a -> b -> a
@@ -15,8 +16,6 @@ instance Modifiable MLM Association where
 instance Modifiable MLM Link where
     put mlm x = mlm {links = x : links mlm}
 
-generateMLM :: String -> Int -> Int -> Int -> MLM
-generateMLM mlmName _ _ _ =
 -- Class
 instance Modifiable Class Bool where
     put c x = c {isAbstract = x}
@@ -111,12 +110,22 @@ putValid before stuff = do
         print after
         return before
 
+getRandomElement :: Int -> [a] -> a
+getRandomElement seed list = let
+    randomGenerator = mkStdGen seed
+    random_i = fst $ randomR (0, length list - 1) randomGenerator
+    in list !! random_i
+
+generateMLM :: String -> Int -> Int -> Int -> Int -> IO MLM
+generateMLM mlmName seed _ _ _ =
     let
         myMlm = MLM mlmName [] [] []
         myClass1 = Class False 2 "A" [] Nothing [] [] []
         myClass2 = Class False 2 "B" [myClass1] Nothing [] [] []
-    in
-        insert (insert myMlm myClass1) myClass2
-
-
+    in do
+        putStrLn "------"
+        print (getRandomElement seed [1..100] :: Int)
+        putStr . show =<< randomRIO (0, 100 :: Int)
+        mlm1 <- putValid myMlm myClass1
+        putValid mlm1 myClass2
 
