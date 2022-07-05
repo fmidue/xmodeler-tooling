@@ -96,10 +96,11 @@ instance Modifiable Multiplicity Int where
 instance Modifiable Multiplicity ((), Int) where
     put m ((), x) = m {upper = x}
 
-putValid :: (Validatable a, Modifiable a b, Show a) => a -> b -> IO a
+{-
+putValid :: (Validatable a a, Modifiable a b, Show a) => a -> b -> IO a
 putValid before stuff = do
     let after = put before stuff
-    if valid after then do
+    if valid () after then do
         putStrLn "♥ still a VALID MLM after modification ♥"
         return after
     else do
@@ -109,6 +110,17 @@ putValid before stuff = do
         putStrLn "-- after  modification :"
         print after
         return before
+-}
+putValid :: (Modifiable a b, Show a) => a -> b -> IO a
+putValid before stuff =
+    let after = put before stuff in
+    do
+        putStrLn "-- before modification :"
+        print before
+        putStrLn "-- after  modification :"
+        print after
+        --putStrLn $ "Is this MLM still valid after insertion?" ++ show (valid after)
+        return after
 
 getRandomElement :: Int -> [a] -> a
 getRandomElement seed list = let
@@ -125,7 +137,7 @@ generateMLM mlmName seed _ _ _ =
     in do
         putStrLn "------"
         print (getRandomElement seed [1..100] :: Int)
-        putStr . show =<< randomRIO (0, 100 :: Int)
+        print =<< randomRIO (0, 100 :: Int)
         mlm1 <- putValid myMlm myClass1
         putValid mlm1 myClass2
 

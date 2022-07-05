@@ -31,7 +31,7 @@ data Object = Object {
   objName :: String,
   objX :: Int,
   objY :: Int
-}
+} deriving Show
 
 class XModelerable c a where
   get :: c -> a -> String
