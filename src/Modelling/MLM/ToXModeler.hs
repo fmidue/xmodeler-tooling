@@ -10,6 +10,7 @@ import Data.String.Interpolate (i)
 import Data.GraphViz (GraphvizCommand)
 import Diagrams.Points (Point (P))
 import Diagrams.TwoD.Types (V2 (V2))
+import Data.Maybe (isJust, isNothing)
 import Diagrams.TwoD.GraphViz (layoutGraph, mkGraph, getGraph)
 import Modelling.MLM.Types (
   MLM (..),
@@ -132,8 +133,10 @@ instance XModelerable [Object] (Double, Int) MLM where
   get mlmObjects (xx, txTy) (MLM {mlmName, mlmClasses, mlmAssociations, mlmLinks}) =
     let
       allTagsObject = concatMap (get mlmName ()) mlmObjects
-      allTagsMetaClass = concatMap (get mlmName TagMetaClass) mlmClasses
-      allTagsInstance = concatMap (get mlmName TagInstance) mlmClasses
+      allMetaClasses = filter (isNothing . cOf) mlmClasses
+      allTagsMetaClass = concatMap (get mlmName TagMetaClass) allMetaClasses
+      allInstances = filter (isJust . cOf) mlmClasses
+      allTagsInstance = concatMap (get mlmName TagInstance) allInstances
       allTagsChangeParents =
         concatMap
           (\class' -> get mlmName class'(cParents class'))
