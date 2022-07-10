@@ -10,6 +10,7 @@ module Modelling.MLM.Types(
   Multiplicity (..),
   Value (..),
   Type (..),
+  OperationBody (..),
   Level,
   Validatable,
   valid,
@@ -97,11 +98,17 @@ data Operation = Operation {
   oName :: String,
   oType :: Type,
   isMonitored :: Bool,
-  body :: String
 } deriving (Eq, Show)
+  oBody :: OperationBody,
 
 instance Validatable Int Operation where
   valid classLevel (Operation {oLevel}) = oLevel < classLevel
+data OperationBody = OperationBody {
+  placeholder1 :: String,
+  placeholder2 :: String
+instance Validatable OperationBody where
+  valid _ = True --placeholder
+
 
 data Association = Association {
   sName :: String,
