@@ -127,8 +127,8 @@ instance Validatable Attribute where
     ]
 
 instance Show Attribute where
-  show (Attribute {tLevel, tName, tType, tMultiplicity}) =
-    [i|Attribute {tName = #{tName}, tLevel = #{tLevel}, tType = #{show tType}, tMultiplicity = #{show tMultiplicity}}|]
+  show (Attribute {tLevel, tName, tType, tMultiplicity, tClass}) =
+    [i|Attribute {tClass = #{cName tClass}, tName = #{tName}, tLevel = #{tLevel}, tType = #{getTypeName tType}, tMultiplicity = #{show tMultiplicity}}|]
 
 data Slot = Slot {
   sAttribute :: Attribute,
