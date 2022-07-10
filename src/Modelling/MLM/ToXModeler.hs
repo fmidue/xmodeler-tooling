@@ -20,8 +20,10 @@ import Modelling.MLM.Types (
   Operation (..),
   Attribute (..),
   Multiplicity (..),
-  Value (..),
   Type (..),
+  Name,
+  getTypeName,
+  isUnassigned,
   relativeToEur,
   currencySymbol
   )
@@ -38,34 +40,32 @@ class XModelerable c t a where
   get :: c -> t -> a -> String
 
 -- Type
-instance XModelerable () Type where
-  get () t = let
-    cor = "XCore::" ++ show t
-    aux = "Auxiliary::" ++ show t
+instance XModelerable () () Type where
+  get () () t = let
+    cor = "XCore::" ++ getTypeName t
+    aux = "Auxiliary::" ++ getTypeName t
     in
+    if isUnassigned t then
       case t of
-        Boolean -> cor
-        Integer -> cor
-        Float -> cor
-        String -> cor
-        Element -> cor
+        Boolean _ -> cor
+        Integer _ -> cor
+        Float _ -> cor
+        String _ -> cor
+        Element _ -> cor
         _ -> aux
-
--- Value
-instance XModelerable () Value where
-  get () value =
-    case value of
-      B b -> show b
-      I i' -> show i'
-      F f -> show f
-      S s -> [i|#{map ord s}.asString()|]
-      M amount currency ->
-        [i|Auxiliary::MonetaryValue(#{amount}, Auxiliary::Currency(&quot;#{currency}&quot;, &quot;#{currency}&quot;, 1.0))|]
-      D year month day ->
-        [i|Auxiliary::Date::createDate(#{year}, #{month}, #{day})|]
-      C c ->
-        [i|Auxiliary::Currency(&quot;#{currencySymbol c}&quot;, &quot;#{c}&quot;, #{relativeToEur c})|]
-      _ -> "null"
+    else
+      case t of
+        Boolean (Just b) -> show b
+        Integer (Just i') -> show i'
+        Float (Just f) -> show f
+        String (Just s)-> [i|#{map ord s}.asString()|]
+        MonetaryValue (Just (amount, currency)) ->
+          [i|Auxiliary::MonetaryValue(#{amount}, Auxiliary::Currency(&quot;#{currency}&quot;, &quot;#{currency}&quot;, 1.0))|]
+        Date (Just (year, month, day)) ->
+          [i|Auxiliary::Date::createDate(#{year}, #{month}, #{day})|]
+        Currency (Just c) ->
+          [i|Auxiliary::Currency(&quot;#{currencySymbol c}&quot;, &quot;#{c}&quot;, #{relativeToEur c})|]
+        _ -> "null"
 
 -- Object
 instance XModelerable Name () Object where
