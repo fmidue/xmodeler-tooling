@@ -69,6 +69,18 @@ instance Validatable () Class where
     case cIsOf of
        Nothing -> True
        Just x -> cLevel x == level + 1
+
+concretizes :: Class -> Class -> Bool
+concretizes (Class {cOf}) y =
+  case cOf of
+    Just x -> x == y || x `concretizes` y
+    _ -> False
+
+inheritsFrom :: Class -> Class -> Bool
+inheritsFrom (Class {cParents}) y =
+  case cParents of
+    [] -> False
+    cParents' -> y `elem` cParents' || any (`inheritsFrom` y) cParents'
     ]
 
 data Attribute = Attribute {
