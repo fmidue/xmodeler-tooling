@@ -1,4 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE QuasiQuotes #-}
+
 module Modelling.MLM.Types(
   MLM (..),
   Link (..),
@@ -8,18 +10,23 @@ module Modelling.MLM.Types(
   Operation (..),
   Attribute (..),
   Multiplicity (..),
-  Value (..),
-  Type (..),
+  Name,
   OperationBody (..),
   Level,
   Validatable,
+  Type (..),
   valid,
+  getTypeName,
+  sameTypeAs,
+  isUnassigned,
   relativeToEur,
   currencySymbol
 ) where
 
-import Data.List.UniqueStrict
+import Data.List.UniqueStrict (allUnique)
 import Data.Char (isDigit)
+import Data.String.Interpolate (i)
+import Data.List.Split (splitOn)
 
 class Validatable a where
   valid :: a -> Bool
@@ -53,6 +60,10 @@ instance Validatable MLM where
         all valid mlmAssociations,
         all valid mlmLinks
       ]
+
+instance Show MLM where
+  show (MLM {mlmName, mlmClasses, mlmAssociations, mlmLinks}) =
+    [i|MLM {mlmName = #{mlmName}, mlmClasses = #{map show mlmClasses}, mlmAssociations = #{map show mlmAssociations}, mlmLinks = #{map show mlmLinks}}|]
 
 data Class = Class {
   cIsAbstract :: Bool,
@@ -92,6 +103,12 @@ instance Validatable Class where
       Nothing -> True
     ]
 
+instance Show Class where
+  show (Class {cName = cName', cIsAbstract, cLevel , cParents, cOf, cAttributes, cOperations, cSlots}) = let
+    cOf' = maybe "" cName cOf
+    in
+    [i|Class {cIsAbstract = #{cIsAbstract}, cName = #{cName'}, cLevel = #{cLevel}, cOf = #{cOf'}, cParents = #{map cName cParents}, cAttributes = #{map show cAttributes}, cOperations = #{map show cOperations}, cSlots = #{map show cSlots}}|]
+
 data Attribute = Attribute {
   tLevel :: Level,
   tName :: Name,
@@ -109,6 +126,9 @@ instance Validatable Attribute where
       cLevel tClass > tLevel
     ]
 
+instance Show Attribute where
+  show (Attribute {tLevel, tName, tType, tMultiplicity}) =
+    [i|Attribute {tName = #{tName}, tLevel = #{tLevel}, tType = #{show tType}, tMultiplicity = #{show tMultiplicity}}|]
 
 data Slot = Slot {
   sAttribute :: Attribute,
@@ -122,6 +142,9 @@ instance Validatable Slot where
     tLevel sAttribute == cLevel sClass &&
     not (isUnassigned sValue)
 
+instance Show Slot where
+  show (Slot {sAttribute, sValue}) =
+    [i|Slot {sAttribute = #{tName sAttribute}, sValue = #{show sValue}}|]
 
 data Operation = Operation {
   oLevel :: Int,
@@ -137,9 +160,10 @@ instance Validatable Operation where
     oLevel < cLevel oClass &&
     isUnassigned oType
 
+instance Show Operation where
+  show (Operation {oLevel, oName, oType, oIsMonitored, oBody}) =
+    [i|Operation {oName = #{oName}, oLevel = #{oLevel}, oType = #{show oType}, oIsMonitored = #{oIsMonitored}, oBody = #{oBody}}|]
 
-instance Validatable Int Operation where
-  valid classLevel (Operation {oLevel}) = oLevel < classLevel
 data OperationBody = OperationBody {
   placeholder1 :: String,
   placeholder2 :: String
@@ -148,6 +172,11 @@ data OperationBody = OperationBody {
 instance Validatable OperationBody where
   valid _ = True --placeholder
 
+instance Show OperationBody where
+  show (OperationBody {placeholder1, placeholder2}) =
+    "placeholder : operation body" ++
+    placeholder1 ++
+    placeholder2
 
 data Association = Association {
   aName :: Name,
@@ -171,6 +200,10 @@ instance Validatable Association where
     valid aMultSourceToTarget
     ]
 
+instance Show Association where
+  show (Association {aName, aSource, aTarget, aLvlSource, aLvlTarget, aMultTargetToSource, aMultSourceToTarget, aSourceVisibleFromTarget, aTargetVisibleFromSource}) =
+    [i|Association {aName = #{aName}, aSource = #{cName aSource}, aTarget = #{cName aTarget}, aLvlSource = #{aLvlSource}, aLvlTarget = #{aLvlTarget}, aMultTargetToSource = #{show aMultTargetToSource}, aMultSourceToTarget = #{show aMultSourceToTarget}, aSourceVisibleFromTarget = #{aSourceVisibleFromTarget}, aTargetVisibleFromSource = #{aTargetVisibleFromSource}}|]
+
 data Link = Link {
   lAssociation :: Association,
   lSource :: Class,
@@ -185,6 +218,10 @@ instance Validatable Link where
     cLevel lTarget == aLvlTarget lAssociation
     ]
 
+instance Show Link where
+  show (Link {lAssociation, lSource, lTarget}) =
+    [i|Link {lAssociation = #{aName lAssociation}, lSource = #{cName lSource}, lTarget = #{cName lTarget}}|]
+
 data Multiplicity = Multiplicity {
   lower :: Int,
   upper :: Int
@@ -194,6 +231,11 @@ instance Validatable Multiplicity where
   valid (Multiplicity {lower, upper}) =
     lower >= 0 &&
     upper <= upper || upper == -1
+
+
+instance Show Multiplicity where
+  show (Multiplicity {lower, upper}) =
+    show (lower, upper)
 
 type Level = Int
 
