@@ -1,143 +1,148 @@
-module Modelling.MLM.GenerateMLM (generateMLM) where
+{-# LANGUAGE NamedFieldPuns #-}
+
+
+module Modelling.MLM.GenerateMLM (generateMLM, (<<)) where
 
 import Modelling.MLM.Types
-import System.Random
-
-class Modifiable a b where
-    put :: a -> b -> a
-
--- MLM
-instance Modifiable MLM String where --projectName
-    put mlm x = mlm {projectName = x}
-instance Modifiable MLM Class where --class
-    put mlm x = mlm {classes = x : classes mlm}
-instance Modifiable MLM Association where
-    put mlm x = mlm {associations = x : associations mlm}
-instance Modifiable MLM Link where
-    put mlm x = mlm {links = x : links mlm}
-
--- Class
-instance Modifiable Class Bool where
-    put c x = c {isAbstract = x}
-instance Modifiable Class Level where
-    put c x = c {cLevel = x}
-instance Modifiable Class String where
-    put c x = c {cName = x}
-instance Modifiable Class Class where
-    put c x = c {parents = x : parents c}
-instance Modifiable Class ((), Maybe Class) where
-    put c ((), x) = c {cIsOf = x}
-instance Modifiable Class Attribute where
-    put c x = c {attributes = x : attributes c}
-instance Modifiable Class Operation where
-    put c x = c {operations = x : operations c}
-instance Modifiable Class Slot where
-    put c x = c {slots = x : slots c}
-
--- Attribute
-instance Modifiable Attribute Level where
-    put t x = t {tLevel = x}
-instance Modifiable Attribute String where
-    put t x = t {tName = x}
-instance Modifiable Attribute Type where
-    put t x = t {tType = x}
-instance Modifiable Attribute Multiplicity where
-    put t x = t {multiplicity = x}
-
--- Slot
-instance Modifiable Slot Attribute where
-    put t x = t {attribute = x}
-instance Modifiable Slot Value where
-    put t x = t {value = x}
-
--- Operation
-instance Modifiable Operation Int where
-    put o x = o {oLevel = x}
-instance Modifiable Operation String where
-    put o x = o {oName = x}
-instance Modifiable Operation Type where
-    put o x = o {oType = x}
-instance Modifiable Operation Bool where
-    put o x = o {isMonitored = x}
-instance Modifiable Operation ((), String) where
-    put o ((), x) = o {body = x}
-
--- Association
-instance Modifiable Association String where
-    put s x = s {sName = x}
-instance Modifiable Association Class where
-    put s x = s {sSource = x}
-instance Modifiable Association ((), Class) where
-    put s ((), x) = s {sTarget = x}
-instance Modifiable Association Level where
-    put s x = s {lvlSource = x}
-instance Modifiable Association ((), Level) where
-    put s ((), x) = s {lvlTarget = x}
-instance Modifiable Association Multiplicity where
-    put s x = s {multTargetToSource = x}
-instance Modifiable Association ((), Multiplicity) where
-    put s ((), x) = s {multSourceToTarget = x}
-instance Modifiable Association Bool where
-    put s x = s {sourceVisibleFromTarget = x}
-instance Modifiable Association ((), Bool) where
-    put s ((), x) = s {targetVisibleFromSource = x}
-
--- Link
-instance Modifiable Link Association where
-    put l x = l {lIsOf = x}
-instance Modifiable Link Class where
-    put l x = l {lSource = x}
-instance Modifiable Link ((), Class) where
-    put l ((), x) = l {lTarget = x}
-
--- Multiplicity
-instance Modifiable Multiplicity Int where
-    put m x = m {lower = x}
-instance Modifiable Multiplicity ((), Int) where
-    put m ((), x) = m {upper = x}
-
 {-
-putValid :: (Validatable a a, Modifiable a b, Show a) => a -> b -> IO a
-putValid before stuff = do
-    let after = put before stuff
-    if valid () after then do
-        putStrLn "♥ still a VALID MLM after modification ♥"
-        return after
-    else do
-        putStrLn "INVALID MLM!!!!!!!!!!!!!!!"
-        putStrLn "-- before modification :"
-        print before
-        putStrLn "-- after  modification :"
-        print after
-        return before
--}
-putValid :: (Modifiable a b, Show a) => a -> b -> IO a
-putValid before stuff =
-    let after = put before stuff in
-    do
-        putStrLn "-- before modification :"
-        print before
-        putStrLn "-- after  modification :"
-        print after
-        --putStrLn $ "Is this MLM still valid after insertion?" ++ show (valid after)
-        return after
 
-getRandomElement :: Int -> [a] -> a
-getRandomElement seed list = let
-    randomGenerator = mkStdGen seed
-    random_i = fst $ randomR (0, length list - 1) randomGenerator
-    in list !! random_i
+putValid :: a -> b -> a
+putValid a b = let
+    c = put a b in
+        if valid () c then c else a
 
-generateMLM :: String -> Int -> Int -> Int -> Int -> IO MLM
-generateMLM mlmName seed _ _ _ =
+generateMLM :: String -> Int -> Int -> Int -> MLM
+generateMLM mlmName _ _ _ =
     let
         myMlm = MLM mlmName [] [] []
         myClass1 = Class False 2 "A" [] Nothing [] [] []
         myClass2 = Class False 2 "B" [myClass1] Nothing [] [] []
-    in do
-        putStrLn "------"
-        print (getRandomElement seed [1..100] :: Int)
-        print =<< randomRIO (0, 100 :: Int)
-        mlm1 <- putValid myMlm myClass1
-        putValid mlm1 myClass2
+    in
+        put (put myMlm myClass1) myClass2
 
+
+
+-}
+
+class Modifiable a b where
+    (<<) :: a -> b -> a
+
+data SourceOrTarget = Source | Target
+
+-------- MLM
+instance Modifiable MLM Name where
+    (<<) y x =
+         y {mlmName = x}
+instance Modifiable MLM Class where
+    (<<) y@(MLM {mlmClasses}) x =
+         y {mlmClasses = mlmClasses ++ [x]}
+instance Modifiable MLM Association where
+    (<<) y@(MLM {mlmAssociations}) x =
+         y {mlmAssociations = mlmAssociations ++ [x]}
+instance Modifiable MLM Link where
+    (<<) y@(MLM {mlmLinks}) x =
+         y {mlmLinks = mlmLinks ++ [x]}
+
+-------- Class
+instance Modifiable Class Bool where
+    (<<) y x =
+         y {cIsAbstract = x}
+instance Modifiable Class Level where
+    (<<) y x =
+         y {cLevel = x}
+instance Modifiable Class Class where
+    (<<) y@(Class {cParents}) x =
+         y {cParents = cParents ++ [x]}
+instance Modifiable Class (Maybe Class) where
+    (<<) y x =
+         y {cOf = x}
+instance Modifiable Class Attribute where
+    (<<) y@(Class {cAttributes}) x =
+         y {cAttributes = cAttributes ++ [x {tClass = y}]}
+instance Modifiable Class Operation where
+    (<<) y@(Class {cOperations}) x =
+         y {cOperations = cOperations ++ [x {oClass = y}]}
+instance Modifiable Class Slot where
+    (<<) y@(Class {cSlots}) x =
+         y {cSlots = cSlots ++ [x {sClass = y}]}
+
+-------- Attribute
+instance Modifiable Attribute Level where
+    (<<) y x =
+         y {tLevel = x}
+instance Modifiable Attribute Name where
+    (<<) y x =
+         y {tName = x}
+instance Modifiable Attribute Type where
+    (<<) y x =
+         y {tType = x}
+instance Modifiable Attribute Multiplicity where
+    (<<) y x =
+         y {tMultiplicity = x}
+
+-------- Slot
+instance Modifiable Slot Attribute where
+    (<<) y x =
+         y {sAttribute = x}
+instance Modifiable Slot Type where
+    (<<) y x =
+         y {sValue = x}
+
+-------- Operation
+instance Modifiable Operation Int where
+    (<<) y x =
+         y {oLevel = x}
+instance Modifiable Operation Name where
+    (<<) y x =
+         y {oName = x}
+instance Modifiable Operation Type where
+    (<<) y x =
+         y {oType = x}
+instance Modifiable Operation Bool where
+    (<<) y x =
+         y {oIsMonitored = x}
+instance Modifiable Operation OperationBody where
+    (<<) y x =
+         y {oBody = x}
+
+-------- Association
+instance Modifiable Association (SourceOrTarget, Class) where
+    (<<) y (direction, x) =
+         case direction of
+            Source -> y {aSource = x}
+            Target -> y {aTarget = x}
+instance Modifiable Association (SourceOrTarget, Level) where
+    (<<) y (direction, x) =
+         case direction of
+            Source -> y {aLvlSource = x}
+            Target -> y {aLvlTarget = x}
+instance Modifiable Association (SourceOrTarget, Multiplicity) where
+    (<<) y (direction, x) =
+        case direction of
+            Source -> y {aMultTargetToSource = x}
+            Target -> y {aMultSourceToTarget = x}
+instance Modifiable Association (SourceOrTarget, Bool) where
+    (<<) y (direction, x) =
+        case direction of
+            Source -> y {aSourceVisibleFromTarget = x}
+            Target -> y {aTargetVisibleFromSource = x}
+
+-------- Link
+instance Modifiable Link Association where
+    (<<) y x =
+         y {lAssociation = x}
+instance Modifiable Link (SourceOrTarget, Class) where
+    (<<) y (direction, x) =
+        case direction of
+            Source -> y {lSource = x}
+            Target -> y {lTarget = x}
+
+-------- Multiplicity
+instance Modifiable Multiplicity (Int, Int) where
+    (<<) y (x1, x2) =
+        y {lower = x1, upper = x2}
+
+
+
+generateMLM :: String
+generateMLM = ""
