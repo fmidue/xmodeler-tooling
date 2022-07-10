@@ -35,23 +35,26 @@ instance Validatable () MLM where
   valid () (MLM {projectName, classes, associations, links}) = let
     mlmClassesNames = map cName classes
     mlmAssociationsNames = map sName associations
+type Name = String
+
+instance Validatable Name where
+  valid name = let
     validChar1 = flip elem (['a'..'z'] ++ ['A'..'Z'])
     validCharN char = validChar1 char || isDigit char || char == '_'
     in
       and [
         not (null projectName),
-        validChar1 (head projectName),
-        all validCharN (tail projectName),
         all (valid ()) classes,
         all (valid classes) associations,
         all (valid associations) links,
         all allUnique [mlmClassesNames, mlmAssociationsNames]
+  mlmName :: Name,
+        valid mlmName,
       ]
 
 data Class = Class {
   isAbstract :: Bool,
   cLevel :: Level,
-  cName :: String,
   parents :: [Class],
   cIsOf :: Maybe Class,
   attributes :: [Attribute],
@@ -69,6 +72,7 @@ instance Validatable () Class where
     case cIsOf of
        Nothing -> True
        Just x -> cLevel x == level + 1
+  cName :: Name,
 
 concretizes :: Class -> Class -> Bool
 concretizes (Class {cOf}) y =
@@ -81,11 +85,12 @@ inheritsFrom (Class {cParents}) y =
   case cParents of
     [] -> False
     cParents' -> y `elem` cParents' || any (`inheritsFrom` y) cParents'
+    valid cName',
     ]
 
 data Attribute = Attribute {
   tLevel :: Level,
-  tName :: String,
+  tName :: Name,
   tType :: Type,
   multiplicity :: Multiplicity
 } deriving (Eq, Show)
@@ -94,6 +99,7 @@ instance Validatable Level Attribute where
   valid classLevel (Attribute {multiplicity, tLevel}) =
     valid () multiplicity &&
     tLevel < classLevel
+      valid tName,
 
 data Slot = Slot {
   attribute :: Attribute,
@@ -107,7 +113,7 @@ instance Validatable (Maybe Class) Slot where
 
 data Operation = Operation {
   oLevel :: Int,
-  oName :: String,
+  oName :: Name,
   oType :: Type,
   isMonitored :: Bool,
 } deriving (Eq, Show)
@@ -123,7 +129,6 @@ instance Validatable OperationBody where
 
 
 data Association = Association {
-  sName :: String,
   sSource :: Class,
   sTarget :: Class,
   lvlSource :: Level,
@@ -144,6 +149,8 @@ instance Validatable [Class] Association where
     all (valid ()) [lvlSource, lvlTarget],
     all (valid ()) [multTargetToSource, multSourceToTarget]
     -- might add restrictions to naming, later. For example, you cannot start the name with a digit.
+  aName :: Name,
+    valid aName,
     ]
 
 data Link = Link {
