@@ -163,10 +163,38 @@ type Level = Int
 
 instance Validatable () Level where
   valid () level = level >= 0
+data Type =
+  Boolean (Maybe Bool) |
+  Integer (Maybe Integer) |
+  Float (Maybe Float) |
+  String (Maybe String) |
+  Element (Maybe ()) |
+  MonetaryValue (Maybe (String, String)) |
+  Date (Maybe (Int, Int, Int)) |
+  Currency (Maybe XModelerCurrency) |
+  Complex (Maybe String) |
+  AuxiliaryClass (Maybe String)
+  deriving (Eq, Show)
 
-data Type = Boolean | Integer | Float | String | Element | MonetaryValue | Date | Currency | Complex | AuxiliaryClass deriving (Show, Eq)
+isUnassigned :: Type -> Bool
+isUnassigned = flip elem [
+    Boolean Nothing,
+    Integer Nothing,
+    Float Nothing,
+    String Nothing,
+    Element Nothing,
+    MonetaryValue Nothing,
+    Date Nothing,
+    Currency Nothing,
+    Complex Nothing,
+    AuxiliaryClass Nothing
+    ]
 
-data Value = B Bool | I Int | F Float | S String | E () | M String String | D Int Int Int | C XModelerCurrency | X String | A String deriving (Eq, Show)
+getTypeName :: Type -> String
+getTypeName = head . splitOn " " . show
+
+sameTypeAs :: Type -> Type -> Bool
+sameTypeAs x y = getTypeName x == getTypeName y
 
 data XModelerCurrency = USD | EUR | GBP | AUD | NZD deriving (Eq, Show)
 
