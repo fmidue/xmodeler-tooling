@@ -21,20 +21,9 @@ module Modelling.MLM.Types(
 import Data.List.UniqueStrict
 import Data.Char (isDigit)
 
-class Validatable c a where
-  valid :: c -> a -> Bool
+class Validatable a where
+  valid :: a -> Bool
 
-data MLM = MLM {
-  projectName :: String,
-  classes :: [Class],
-  associations :: [Association],
-  links :: [Link]
-} deriving Show
-
-instance Validatable () MLM where
-  valid () (MLM {projectName, classes, associations, links}) = let
-    mlmClassesNames = map cName classes
-    mlmAssociationsNames = map sName associations
 type Name = String
 
 instance Validatable Name where
@@ -42,37 +31,39 @@ instance Validatable Name where
     validChar1 = flip elem (['a'..'z'] ++ ['A'..'Z'])
     validCharN char = validChar1 char || isDigit char || char == '_'
     in
-      and [
-        not (null projectName),
-        all (valid ()) classes,
-        all (valid classes) associations,
-        all (valid associations) links,
-        all allUnique [mlmClassesNames, mlmAssociationsNames]
+      all ($ name)
+        [not . null, validChar1 . head, all validCharN . tail]
+
+data MLM = MLM {
   mlmName :: Name,
+  mlmClasses :: [Class],
+  mlmAssociations :: [Association],
+  mlmLinks :: [Link]
+}
+
+instance Validatable MLM where
+  valid (MLM {mlmName, mlmClasses, mlmAssociations, mlmLinks}) = let
+    allClassesNames = map cName mlmClasses
+    allAssociationsNames = map aName mlmAssociations
+    in and [
         valid mlmName,
+        allUnique allClassesNames,
+        allUnique allAssociationsNames,
+        all valid mlmClasses,
+        all valid mlmAssociations,
+        all valid mlmLinks
       ]
 
 data Class = Class {
-  isAbstract :: Bool,
+  cIsAbstract :: Bool,
   cLevel :: Level,
-  parents :: [Class],
-  cIsOf :: Maybe Class,
-  attributes :: [Attribute],
-  operations :: [Operation],
-  slots :: [Slot]
-} deriving (Eq, Show)
-
-instance Validatable () Class where
-  valid () (Class {cLevel = level, parents, cIsOf, attributes, operations, slots}) = and [
-    all ((== level) . cLevel) parents,
-    all (valid level) attributes,
-    all (valid level) operations,
-    level > 0 || (null attributes && null operations),
-    all (valid cIsOf) slots,
-    case cIsOf of
-       Nothing -> True
-       Just x -> cLevel x == level + 1
   cName :: Name,
+  cParents :: [Class],
+  cOf :: Maybe Class,
+  cAttributes :: [Attribute],
+  cOperations :: [Operation],
+  cSlots :: [Slot]
+} deriving (Eq)
 
 concretizes :: Class -> Class -> Bool
 concretizes (Class {cOf}) y =
@@ -85,103 +76,130 @@ inheritsFrom (Class {cParents}) y =
   case cParents of
     [] -> False
     cParents' -> y `elem` cParents' || any (`inheritsFrom` y) cParents'
+
+instance Validatable Class where
+  valid class'@(Class {cName = cName', cLevel = cLevel' , cParents, cOf, cAttributes, cOperations, cSlots}) = and [
     valid cName',
+    all ((== cLevel') . cLevel) cParents,
+    allUnique (map cName cParents),
+    not (class' `inheritsFrom` class'),
+    cLevel' > 0 || (null cAttributes && null cOperations),
+    all valid cAttributes,
+    all valid cOperations,
+    all valid cSlots,
+    case cOf of
+      Just cOf' -> cLevel cOf' == cLevel' + 1
+      Nothing -> True
     ]
 
 data Attribute = Attribute {
   tLevel :: Level,
   tName :: Name,
   tType :: Type,
-  multiplicity :: Multiplicity
-} deriving (Eq, Show)
+  tClass :: Class,
+  tMultiplicity :: Multiplicity
+} deriving (Eq)
 
-instance Validatable Level Attribute where
-  valid classLevel (Attribute {multiplicity, tLevel}) =
-    valid () multiplicity &&
-    tLevel < classLevel
+instance Validatable Attribute where
+  valid (Attribute {tMultiplicity, tLevel, tType, tClass, tName}) = and [
+      valid tLevel,
       valid tName,
+      valid tMultiplicity,
+      isUnassigned tType,
+      cLevel tClass > tLevel
+    ]
+
 
 data Slot = Slot {
-  attribute :: Attribute,
-  value :: Value
-} deriving (Eq, Show)
+  sAttribute :: Attribute,
+  sClass :: Class,
+  sValue :: Type
+} deriving (Eq)
 
-instance Validatable (Maybe Class) Slot where
-  valid Nothing _ = False
-  valid (Just class') slot@(Slot {attribute}) =
-    attribute `elem` attributes class' || valid (cIsOf class') slot
+instance Validatable Slot where
+  valid (Slot {sAttribute, sClass, sValue}) =
+    sClass `concretizes` tClass sAttribute &&
+    tLevel sAttribute == cLevel sClass &&
+    not (isUnassigned sValue)
+
 
 data Operation = Operation {
   oLevel :: Int,
   oName :: Name,
   oType :: Type,
-  isMonitored :: Bool,
-} deriving (Eq, Show)
+  oIsMonitored :: Bool,
   oBody :: OperationBody,
+  oClass :: Class
+} deriving (Eq)
+
+instance Validatable Operation where
+  valid (Operation {oLevel, oClass, oType}) =
+    oLevel < cLevel oClass &&
+    isUnassigned oType
+
 
 instance Validatable Int Operation where
   valid classLevel (Operation {oLevel}) = oLevel < classLevel
 data OperationBody = OperationBody {
   placeholder1 :: String,
   placeholder2 :: String
+} deriving (Eq)
+
 instance Validatable OperationBody where
   valid _ = True --placeholder
 
 
 data Association = Association {
-  sSource :: Class,
-  sTarget :: Class,
-  lvlSource :: Level,
-  lvlTarget :: Level,
-  multTargetToSource :: Multiplicity,
-  multSourceToTarget :: Multiplicity,
-  sourceVisibleFromTarget :: Bool,
-  targetVisibleFromSource :: Bool
-} deriving (Eq, Show)
-
-instance Validatable [Class] Association where
-  valid mlmClasses (Association {sSource, sTarget,
-    lvlSource, lvlTarget, multTargetToSource, multSourceToTarget}) = and [
-    sSource `elem` mlmClasses,
-    sTarget `elem` mlmClasses,
-    lvlSource < cLevel sSource,
-    lvlTarget < cLevel sTarget,
-    all (valid ()) [lvlSource, lvlTarget],
-    all (valid ()) [multTargetToSource, multSourceToTarget]
-    -- might add restrictions to naming, later. For example, you cannot start the name with a digit.
   aName :: Name,
+  aSource :: Class,
+  aTarget :: Class,
+  aLvlSource :: Level,
+  aLvlTarget :: Level,
+  aMultTargetToSource :: Multiplicity,
+  aMultSourceToTarget :: Multiplicity,
+  aSourceVisibleFromTarget :: Bool,
+  aTargetVisibleFromSource :: Bool
+} deriving (Eq)
+
+instance Validatable Association where
+  valid (Association {aSource, aTarget,
+    aLvlSource, aLvlTarget, aMultTargetToSource, aMultSourceToTarget, aName}) = and [
     valid aName,
+    aLvlSource < cLevel aSource,
+    aLvlTarget < cLevel aTarget,
+    valid aMultTargetToSource,
+    valid aMultSourceToTarget
     ]
 
 data Link = Link {
-  lIsOf :: Association,
+  lAssociation :: Association,
   lSource :: Class,
   lTarget :: Class
-} deriving (Eq, Show)
+} deriving (Eq)
 
-instance Validatable [Association] Link where
-  valid mlmAssociations (Link {lIsOf, lSource, lTarget}) = and [
-    lIsOf `elem` mlmAssociations,
-    lSource == sSource lIsOf,
-    lTarget == sTarget lIsOf,
-    cLevel lSource == lvlSource lIsOf,
-    cLevel lTarget == lvlTarget lIsOf
+instance Validatable Link where
+  valid (Link {lAssociation, lSource, lTarget}) = and [
+    lSource `concretizes` aSource lAssociation,
+    lTarget `concretizes` aTarget lAssociation,
+    cLevel lSource == aLvlSource lAssociation,
+    cLevel lTarget == aLvlTarget lAssociation
     ]
 
 data Multiplicity = Multiplicity {
   lower :: Int,
   upper :: Int
-} deriving (Eq, Show)
+} deriving (Eq)
 
-instance Validatable () Multiplicity where
-  valid () (Multiplicity {lower, upper}) =
+instance Validatable Multiplicity where
+  valid (Multiplicity {lower, upper}) =
     lower >= 0 &&
     upper <= upper || upper == -1
 
 type Level = Int
 
-instance Validatable () Level where
-  valid () level = level >= 0
+instance Validatable Level where
+  valid level = level >= 0
+
 data Type =
   Boolean (Maybe Bool) |
   Integer (Maybe Integer) |
