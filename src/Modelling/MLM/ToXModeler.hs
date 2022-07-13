@@ -32,9 +32,9 @@ import Modelling.MLM.Types (
 data Tag = TagMetaClass | TagInstance | TagsChangeParent
 
 data Object = Object {
-  objName :: Name,
-  objX :: Int,
-  objY :: Int
+  name :: Name,
+  x :: Int,
+  y :: Int
 } deriving Show
 
 class XModelerable c t a where
@@ -72,28 +72,28 @@ instance XModelerable () () Type where
 
 -- Object
 instance XModelerable Name () Object where
-  get (Name mlmName') () (Object {objName, objX, objY}) =
-    [i|        <Object hidden="false" ref="Root::#{mlmName'}::#{objName}" x="#{objX}" y="#{objY}"/>\n|]
+  get (Name projectName) () (Object {name, x, y}) =
+    [i|        <Object hidden="false" ref="Root::#{projectName}::#{name}" x="#{x}" y="#{y}"/>\n|]
 
 -- Class : MetaClass or Instance or ChangeParents
 instance XModelerable Name Tag Class where
-  get mlmName' tag (Class {cIsAbstract, cLevel, cName, cOf, cParents}) = case tag of
+  get projectName tag (Class {isAbstract, level, name, isOf, parents}) = case tag of
     TagMetaClass ->
       maybe
-      [i|    <addMetaClass abstract="#{cIsAbstract}" level="#{cLevel}" name="#{cName}" package="Root::#{mlmName'}" parents=""/>\n|]
+      [i|    <addMetaClass abstract="#{isAbstract}" level="#{level}" name="#{name}" package="Root::#{projectName}" parents=""/>\n|]
       (const "")
-      cOf
+      isOf
     TagInstance ->
       maybe
       ""
       (\x ->
-        [i|    <addInstance abstract="#{cIsAbstract}" name="#{cName}" of="Root::#{mlmName'}::#{x}" package="Root::#{mlmName'}" parents=""/>\n|]
+        [i|    <addInstance abstract="#{isAbstract}" name="#{name}" of="Root::#{projectName}::#{x}" package="Root::#{projectName}" parents=""/>\n|]
       )
-      cOf
+      isOf
     TagsChangeParent ->
-      if null cParents then "" else
-        [i|    <changeParent class="Root::#{mlmName'}::#{cName}" new="#{doParents}" old="" package="Root::#{mlmName'}"/>\n|]
-      where doParents = init (concatMap (\p -> [i|Root::#{mlmName'}::#{p},|]) cParents)
+      if null parents then "" else
+        [i|    <changeParent class="Root::#{projectName}::#{name}" new="#{doParents}" old="" package="Root::#{projectName}"/>\n|]
+      where doParents = init (concatMap (\p -> [i|Root::#{projectName}::#{p},|]) parents)
 
 -- Multiplicity
 instance XModelerable () () Multiplicity where
@@ -102,8 +102,8 @@ instance XModelerable () () Multiplicity where
 
 -- Attribute
 instance XModelerable Name () Attribute where
-  get mlmName' () (Attribute {tLevel, tName, tType, tClass, tMultiplicity}) =
-    [i|    <addAttribute class="Root::#{mlmName'}::#{tClass}" level="#{tLevel}" multiplicity="#{get () () tMultiplicity}" name="#{tName}" package="Root::#{mlmName'}" type="Root::#{get () () tType}"/>\n|]
+  get projectName () (Attribute {level, name, type', class', multiplicity}) =
+    [i|    <addAttribute class="Root::#{projectName}::#{class'}" level="#{level}" multiplicity="#{get () () multiplicity}" name="#{name}" package="Root::#{projectName}" type="Root::#{get () () type'}"/>\n|]
 
 -- OperationBody
 instance XModelerable Name () OperationBody where
@@ -111,61 +111,59 @@ instance XModelerable Name () OperationBody where
 
 -- Operation
 instance XModelerable Name () Operation where
-  get mlmName' () (Operation {oBody, oLevel, oIsMonitored, oName, oType, oClass}) =
-    [i|    <addOperation body="#{get mlmName' () oBody}" class="Root::${mlmName'}::#{oClass}" level="#{oLevel}" monitored="#{oIsMonitored}" name="#{oName}" package="Root::#{mlmName'}" paramNames="" paramTypes="" type="Root::#{get () () oType}"/>\n|]
+  get projectName () (Operation {body, level, isMonitored, name, type', class'}) =
+    [i|    <addOperation body="#{get projectName () body}" class="Root::${projectName}::#{class'}" level="#{level}" monitored="#{isMonitored}" name="#{name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () () type'}"/>\n|]
 
 -- Slot
 instance XModelerable Name () Slot where
-  get mlmName' () (Slot {sAttribute, sValue, sClass}) =
-    [i|    <changeSlotValue class="Root::#{mlmName'}::#{sClass}" package="Root::#{mlmName'}" slotName="#{sAttribute}" valueToBeParsed="#{get () () sValue}"/>\n|]
+  get projectName () (Slot {attribute, value, class'}) =
+    [i|    <changeSlotValue class="Root::#{projectName}::#{class'}" package="Root::#{projectName}" slotName="#{attribute}" valueToBeParsed="#{get () () value}"/>\n|]
 
 -- Association
 instance XModelerable Name () Association where
-  get mlmName' () (Association {aName, aSource, aTarget, aLvlSource, aLvlTarget, aMultSourceToTarget, aMultTargetToSource, aSourceVisibleFromTarget, aTargetVisibleFromSource}) =
-    [i|    <addAssociation accessSourceFromTargetName="#{aName}_#{from}" accessTargetFromSourceName="#{aName}_#{to}" classSource="Root::#{mlmName'}::#{from}" classTarget="Root::#{mlmName'}::#{to}" fwName="#{aName}" instLevelSource="#{aLvlSource}" instLevelTarget="#{aLvlTarget}" isSymmetric="false" isTransitive="false" aMultSourceToTarget="#{get () () aMultSourceToTarget}" aMultTargetToSource="#{get () () aMultTargetToSource}" package="Root::#{mlmName'}" reverseName="-1" aSourceVisibleFromTarget="#{aSourceVisibleFromTarget}" aTargetVisibleFromSource="#{aTargetVisibleFromSource}"/>\n|]
+  get projectName () (Association {name, source, target, lvlSource, lvlTarget, multSourceToTarget, multTargetToSource, sourceVisibleFromTarget, targetVisibleFromSource}) =
+    [i|    <addAssociation accessSourceFromTargetName="#{name}_#{from}" accessTargetFromSourceName="#{name}_#{to}" classSource="Root::#{projectName}::#{from}" classTarget="Root::#{projectName}::#{to}" fwName="#{name}" instLevelSource="#{lvlSource}" instLevelTarget="#{lvlTarget}" isSymmetric="false" isTransitive="false" multSourceToTarget="#{get () () multSourceToTarget}" multTargetToSource="#{get () () multTargetToSource}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="#{sourceVisibleFromTarget}" targetVisibleFromSource="#{targetVisibleFromSource}"/>\n|]
    where
-     from = show aSource
-     to = show aTarget
+     from = show source
+     to = show target
 
 -- Link
 instance XModelerable Name () Link where
-  get mlmName' () (Link {lSource, lTarget, lAssociation}) =
-    [i|    <addLink classSource="Root::#{mlmName'}::#{lSource}" classTarget="Root::#{mlmName'}::#{lTarget}" name="#{lAssociation}" package="Root::#{mlmName'}"/>\n|]
+  get projectName () (Link {source, target, association}) =
+    [i|    <addLink classSource="Root::#{projectName}::#{source}" classTarget="Root::#{projectName}::#{target}" name="#{association}" package="Root::#{projectName}"/>\n|]
 
 -- MLM
 instance XModelerable [Object] (Double, Int) MLM where
-  get mlmObjects (xx, txTy) (MLM {mlmName, mlmClasses, mlmAssociations, mlmLinks}) =
+  get mlmObjects (xx, txTy) (MLM {name = projectName, classes, associations, links}) =
     let
-      allTagsObject = concatMap (get mlmName ()) mlmObjects
-      --allMetaClasses = filter (isNothing . cOf) mlmClasses
-      allTagsMetaClass = concatMap (get mlmName TagMetaClass) mlmClasses
-      --allInstances = filter (isJust . cOf) mlmClasses
-      allTagsInstance = concatMap (get mlmName TagInstance) mlmClasses
-      allTagsChangeParents = concatMap (get mlmName TagsChangeParent) mlmClasses
+      allTagsObject = concatMap (get projectName ()) mlmObjects
+      allTagsMetaClass = concatMap (get projectName TagMetaClass) classes
+      allTagsInstance = concatMap (get projectName TagInstance) classes
+      allTagsChangeParents = concatMap (get projectName TagsChangeParent) classes
       allTagsAttribute =
         concatMap
-          (concatMap (get mlmName ()) . cAttributes)
-          mlmClasses
+          (concatMap (get projectName ()) . attributes)
+          classes
       allTagsOperation =
         concatMap
-          (concatMap (get mlmName ()) . cOperations)
-          mlmClasses
+          (concatMap (get projectName ()) . operations)
+          classes
       allTagsSlot =
         concatMap
-          (concatMap (get mlmName ()) . cSlots)
-          mlmClasses
-      allTagsAssociation = concatMap (get mlmName ()) mlmAssociations
-      allTagsLink = concatMap (get mlmName ()) mlmLinks
+          (concatMap (get projectName ()) . slots)
+          classes
+      allTagsAssociation = concatMap (get projectName ()) associations
+      allTagsLink = concatMap (get projectName ()) links
     in
       [i|<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <XModeler>
   <Version>2</Version>
   <Categories/>
   <Projects>
-    <Project name="Root::#{show mlmName}"/>
+    <Project name="Root::#{show projectName}"/>
   </Projects>
   <Diagrams>
-    <Diagram label="#{show mlmName}_diagram" package_path="Root::#{show mlmName}" showConstraintReports="true" showConstraints="true" showDerivedAttributes="true" showDerivedOperations="true" showGettersAndSetters="true" showMetaClassName="false" showOperationValues="true" showOperations="true" showSlots="true">
+    <Diagram label="#{show projectName}_diagram" package_path="Root::#{show projectName}" showConstraintReports="true" showConstraints="true" showDerivedAttributes="true" showDerivedOperations="true" showGettersAndSetters="true" showMetaClassName="false" showOperationValues="true" showOperations="true" showSlots="true">
       <Categories/>
       <Owners/>
       <Objects>
@@ -191,19 +189,19 @@ instance XModelerable [Object] (Double, Int) MLM where
 
 toXModeler :: (GraphvizCommand, Double -> Double, Double, Int ) -> MLM -> IO String
 toXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)
-              mlm@(MLM {mlmClasses, mlmAssociations, mlmLinks}) = let
+              mlm@(MLM {classes, associations, links}) = let
     vertices =
-      map (show . cName) mlmClasses :: [String]
+      map (show . (name :: Class -> Name)) classes :: [String]
     extractEdge from to x =
       (show (from x), show (to x), ()) :: (String, String, ())
     edges =
-      map (extractEdge aSource aTarget) mlmAssociations ++
-      map (extractEdge lSource lTarget) mlmLinks ++
+      map (extractEdge (source :: Association -> Name) (target :: Association -> Name)) associations ++
+      map (extractEdge (source :: Link -> Name) (target :: Link -> Name)) links ++
       concatMap
         (\child -> map
-          (\parent -> (show (cName child), show parent, ()))
-          (cParents child))
-        mlmClasses :: [(String, String, ())]
+          (\parent -> (show ((name :: Class -> Name) child), show parent, ()))
+          (parents child))
+        classes :: [(String, String, ())]
 
     adjust :: Double -> Int
     adjust = round . spaceOut
@@ -215,13 +213,14 @@ toXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)
   in do
     g <- layoutGraph layoutCommand $ mkGraph vertices edges
     let objects = map extractObject $ toList $ fst $ getGraph g :: [Object]
-    let xs = map objX objects
+    let xs = map x objects
     putStrLn "xs="
     print xs
-    let ys = map objY objects
+    let ys = map y objects
     putStrLn "ys="
     print ys
-    let xx = log $ max (getRange xs) (getRange ys) * scaleFactor / 1000 :: Double
+    let xx0 = log $ max (getRange xs) (getRange ys) * scaleFactor / 1000 :: Double
+    let xx = max xx0 0.1
     putStrLn "xx="
     print xx
     let txTy = round $ 50 * xx :: Int
