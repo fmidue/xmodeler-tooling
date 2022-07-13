@@ -27,14 +27,15 @@ import Data.List.UniqueStrict (allUnique)
 import Data.Char (isDigit)
 -- import Data.String.Interpolate (i)
 import Data.List.Split (splitOn)
+import Data.List (find)
 
-class Validatable a where
-  valid :: a -> Bool
+class Validatable c a where
+  valid :: c -> a -> Bool
 
 newtype Name = Name String deriving (Eq, Ord)
 
-instance Validatable Name where
-  valid name = let
+instance Validatable () Name where
+  valid () (Name name) = let
     validChar1 = flip elem (['a'..'z'] ++ ['A'..'Z'])
     validCharN char = validChar1 char || isDigit char || char == '_'
     in
@@ -51,17 +52,18 @@ data MLM = MLM {
   mlmLinks :: [Link]
 } deriving Show
 
-instance Validatable MLM where
-  valid (MLM {mlmName, mlmClasses, mlmAssociations, mlmLinks}) = let
+instance Validatable () MLM where
+  valid () mlm@(MLM {mlmName, mlmClasses, mlmAssociations, mlmLinks}) = let
     allClassesNames = map cName mlmClasses
     allAssociationsNames = map aName mlmAssociations
     in and [
-        valid mlmName,
+        not (null mlmClasses),
+        valid () mlmName,
         allUnique allClassesNames,
         allUnique allAssociationsNames,
-        all valid mlmClasses,
-        all valid mlmAssociations,
-        all valid mlmLinks
+        all (valid mlm) mlmClasses,
+        all (valid mlm) mlmAssociations,
+        all (valid mlm) mlmLinks
       ]
 
 -- instance Show MLM where
@@ -83,34 +85,6 @@ data Class = Class {
   cAttributes :: [Attribute],
   cOperations :: [Operation],
   cSlots :: [Slot]
-} deriving (Eq)
-
-concretizes :: Class -> Class -> Bool
-concretizes (Class {cOf}) y =
-  case cOf of
-    Just x -> x == y || x `concretizes` y
-    _ -> False
-
-inheritsFrom :: Class -> Class -> Bool
-inheritsFrom (Class {cParents}) y =
-  case cParents of
-    [] -> False
-    cParents' -> y `elem` cParents' || any (`inheritsFrom` y) cParents'
-
-instance Validatable Class where
-  valid class'@(Class {cName = cName', cLevel = cLevel' , cParents, cOf, cAttributes, cOperations, cSlots}) = and [
-    valid cName',
-    all ((== cLevel') . cLevel) cParents,
-    allUnique (map cName cParents),
-    not (class' `inheritsFrom` class'),
-    cLevel' > 0 || (null cAttributes && null cOperations),
-    all valid cAttributes,
-    all valid cOperations,
-    all valid cSlots,
-    case cOf of
-      Just cOf' -> cLevel cOf' == cLevel' + 1
-      Nothing -> True
-    ]
 } deriving (Eq, Show)
 
 getClass :: MLM -> Name -> Maybe Class
@@ -138,6 +112,19 @@ concretizes mlm w z = let
     maybe False (maybe False (\y -> concretizes mlm y z) . cOf) x ||
     maybe False (any (\y -> concretizes mlm y z) . cParents) x
 
+instance Validatable MLM Class where
+  valid mlm (Class {cName = cName', cLevel = cLevel' , cParents, cOf, cAttributes, cOperations, cSlots}) = and [
+        valid () cName',
+        all (maybe False ((== cLevel') . cLevel) . getClass mlm) cParents,
+        allUnique cParents,
+        not (concretizes mlm cName' cName'),
+        cLevel' > 0 || (null cAttributes && null cOperations),
+        all (valid mlm) cAttributes,
+        all (valid mlm) cOperations,
+        all (valid mlm) cSlots,
+        maybe True (maybe True ((== cLevel' + 1) . cLevel) . getClass mlm) cOf
+      ]
+
 -- instance Show Class where
 --   show (Class {cName, cIsAbstract, cLevel , cParents, cOf, cAttributes}) =
 --     [i|  - #{cName}:
@@ -154,13 +141,13 @@ data Attribute = Attribute {
   tMultiplicity :: Multiplicity
 } deriving (Eq, Show)
 
-instance Validatable Attribute where
-  valid (Attribute {tMultiplicity, tLevel, tType, tClass, tName}) = and [
-      valid tLevel,
-      valid tName,
-      valid tMultiplicity,
+instance Validatable MLM Attribute where
+  valid mlm (Attribute {tMultiplicity, tLevel, tType, tClass, tName}) = and [
+      valid () tLevel,
+      valid () tName,
+      valid () tMultiplicity,
       isUnassigned tType,
-      cLevel tClass > tLevel
+      maybe False ((> tLevel) . cLevel) (getClass mlm tClass)
     ]
 
 -- instance Show Attribute where
@@ -173,11 +160,17 @@ data Slot = Slot {
   sValue :: Type
 } deriving (Eq, Show)
 
-instance Validatable Slot where
-  valid (Slot {sAttribute, sClass, sValue}) =
-    sClass `concretizes` tClass sAttribute &&
-    tLevel sAttribute == cLevel sClass &&
-    not (isUnassigned sValue)
+instance Validatable MLM Slot where
+  valid mlm@(MLM {mlmClasses}) (Slot {sAttribute, sClass, sValue}) = let
+    findAttributeClass :: Maybe Class
+    findAttributeClass  = find (elem sAttribute . map tName . cAttributes) mlmClasses
+--    sAttribute' = maybe Nothing (find ((== sAttribute) . tName) . cAttributes) findAttributeClass
+    sAttribute' = ((find ((== sAttribute) . tName) . cAttributes) =<< findAttributeClass)
+    in
+      maybe False (concretizes mlm sClass . cName) findAttributeClass &&
+      maybe False ((\x -> maybe False ((== x) . tLevel) sAttribute') . cLevel) (getClass mlm sClass) &&
+      not (isUnassigned sValue)
+
 
 -- instance Show Slot where
 --   show (Slot {sAttribute, sValue}) =
@@ -192,9 +185,9 @@ data Operation = Operation {
   oClass :: Name
 } deriving (Eq, Show)
 
-instance Validatable Operation where
-  valid (Operation {oLevel, oClass, oType}) =
-    oLevel < cLevel oClass &&
+instance Validatable MLM Operation where
+  valid mlm (Operation {oLevel, oClass, oType}) =
+    maybe False ((> oLevel) . cLevel) (getClass mlm oClass) &&
     isUnassigned oType
 
 -- instance Show Operation where
@@ -206,8 +199,8 @@ data OperationBody = OperationBody {
   placeholder2 :: String
 } deriving (Eq, Show)
 
-instance Validatable OperationBody where
-  valid _ = True --placeholder
+instance Validatable mlm OperationBody where
+  valid _ _ = True --placeholder
 
 -- instance Show OperationBody where
 --   show (OperationBody {placeholder1, placeholder2}) =
@@ -225,22 +218,19 @@ data Association = Association {
   aMultSourceToTarget :: Multiplicity,
   aSourceVisibleFromTarget :: Bool,
   aTargetVisibleFromSource :: Bool
-} deriving (Eq)
-
-instance Validatable Association where
-  valid (Association {aSource, aTarget,
-    aLvlSource, aLvlTarget, aMultTargetToSource, aMultSourceToTarget, aName}) = and [
-    valid aName,
-    aLvlSource < cLevel aSource,
-    aLvlTarget < cLevel aTarget,
-    valid aMultTargetToSource,
-    valid aMultSourceToTarget
 } deriving (Eq, Show)
 
 getAssociation :: MLM -> Name -> Maybe Association
 getAssociation (MLM {mlmAssociations}) name =
   find ((== name) . aName) mlmAssociations
 
+instance Validatable MLM Association where
+  valid mlm (Association {aSource, aTarget, aLvlSource, aLvlTarget, aMultTargetToSource, aMultSourceToTarget, aName}) = and [
+    valid () aName,
+    maybe False ((> aLvlSource) . cLevel) (getClass mlm aSource),
+    maybe False ((> aLvlTarget) . cLevel) (getClass mlm aTarget),
+    valid () aMultTargetToSource,
+    valid () aMultSourceToTarget
     ]
 
 -- instance Show Association where
@@ -248,17 +238,21 @@ getAssociation (MLM {mlmAssociations}) name =
 --     [i|Association {aName = #{aName}, aSource = #{aSource}, aTarget = #{aTarget}, aLvlSource = #{aLvlSource}, aLvlTarget = #{aLvlTarget}, aMultTargetToSource = #{show aMultTargetToSource}, aMultSourceToTarget = #{show aMultSourceToTarget}, aSourceVisibleFromTarget = #{aSourceVisibleFromTarget}, aTargetVisibleFromSource = #{aTargetVisibleFromSource}}|]
 
 data Link = Link {
-
-instance Validatable Link where
-  valid (Link {lAssociation, lSource, lTarget}) = and [
-    lSource `concretizes` aSource lAssociation,
-    lTarget `concretizes` aTarget lAssociation,
-    cLevel lSource == aLvlSource lAssociation,
-    cLevel lTarget == aLvlTarget lAssociation
   lAssociation :: Name,
   lSource :: Name,
   lTarget :: Name
 } deriving (Eq, Show)
+
+instance Validatable MLM Link where
+  valid mlm (Link {lAssociation, lSource, lTarget}) = let
+    lAssociation' = getAssociation mlm lAssociation
+    check condition = maybe False condition lAssociation'
+    in
+    and [
+      check (concretizes mlm lSource . aSource),
+      check (concretizes mlm lTarget . aTarget),
+      check (\x -> maybe False ((== aLvlSource x) . cLevel) (getClass mlm lSource)),
+      check (\x -> maybe False ((== aLvlTarget x) . cLevel) (getClass mlm lTarget))
     ]
 
 -- instance Show Link where
@@ -270,8 +264,8 @@ data Multiplicity = Multiplicity {
   upper :: Int
 } deriving (Eq, Show)
 
-instance Validatable Multiplicity where
-  valid (Multiplicity {lower, upper}) =
+instance Validatable () Multiplicity where
+  valid () (Multiplicity {lower, upper}) =
     lower >= 0 &&
     upper <= upper || upper == -1
 
@@ -281,8 +275,8 @@ instance Validatable Multiplicity where
 
 type Level = Int
 
-instance Validatable Level where
-  valid level = level >= 0
+instance Validatable () Level where
+  valid () level = level >= 0
 
 data Type =
   Boolean (Maybe Bool) |
