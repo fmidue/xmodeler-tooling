@@ -31,7 +31,7 @@ import Data.List.Split (splitOn)
 class Validatable a where
   valid :: a -> Bool
 
-type Name = String
+newtype Name = Name String deriving (Eq, Ord)
 
 instance Validatable Name where
   valid name = let
@@ -40,6 +40,9 @@ instance Validatable Name where
     in
       all ($ name)
         [not . null, validChar1 . head, all validCharN . tail]
+
+instance Show Name where
+  show (Name name) = name
 
 data MLM = MLM {
   mlmName :: Name,
@@ -69,8 +72,8 @@ data Class = Class {
   cIsAbstract :: Bool,
   cLevel :: Level,
   cName :: Name,
-  cParents :: [Class],
-  cOf :: Maybe Class,
+  cParents :: [Name],
+  cOf :: Maybe Name,
   cAttributes :: [Attribute],
   cOperations :: [Operation],
   cSlots :: [Slot]
@@ -113,7 +116,7 @@ data Attribute = Attribute {
   tLevel :: Level,
   tName :: Name,
   tType :: Type,
-  tClass :: Class,
+  tClass :: Name,
   tMultiplicity :: Multiplicity
 } deriving (Eq)
 
@@ -131,8 +134,8 @@ instance Show Attribute where
     [i|Attribute {tClass = #{cName tClass}, tName = #{tName}, tLevel = #{tLevel}, tType = #{getTypeName tType}, tMultiplicity = #{show tMultiplicity}}|]
 
 data Slot = Slot {
-  sAttribute :: Attribute,
-  sClass :: Class,
+  sAttribute :: Name,
+  sClass :: Name,
   sValue :: Type
 } deriving (Eq)
 
@@ -152,8 +155,8 @@ data Operation = Operation {
   oType :: Type,
   oIsMonitored :: Bool,
   oBody :: OperationBody,
-  oClass :: Class
-} deriving (Eq)
+  oClass :: Name
+} deriving (Eq, Show)
 
 instance Validatable Operation where
   valid (Operation {oLevel, oClass, oType}) =
@@ -180,8 +183,8 @@ instance Show OperationBody where
 
 data Association = Association {
   aName :: Name,
-  aSource :: Class,
-  aTarget :: Class,
+  aSource :: Name,
+  aTarget :: Name,
   aLvlSource :: Level,
   aLvlTarget :: Level,
   aMultTargetToSource :: Multiplicity,
@@ -205,9 +208,6 @@ instance Show Association where
     [i|Association {aName = #{aName}, aSource = #{cName aSource}, aTarget = #{cName aTarget}, aLvlSource = #{aLvlSource}, aLvlTarget = #{aLvlTarget}, aMultTargetToSource = #{show aMultTargetToSource}, aMultSourceToTarget = #{show aMultSourceToTarget}, aSourceVisibleFromTarget = #{aSourceVisibleFromTarget}, aTargetVisibleFromSource = #{aTargetVisibleFromSource}}|]
 
 data Link = Link {
-  lAssociation :: Association,
-  lSource :: Class,
-  lTarget :: Class
 } deriving (Eq)
 
 instance Validatable Link where
@@ -216,6 +216,9 @@ instance Validatable Link where
     lTarget `concretizes` aTarget lAssociation,
     cLevel lSource == aLvlSource lAssociation,
     cLevel lTarget == aLvlTarget lAssociation
+  lAssociation :: Name,
+  lSource :: Name,
+  lTarget :: Name
     ]
 
 instance Show Link where
