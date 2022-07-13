@@ -113,6 +113,31 @@ instance Validatable Class where
     ]
 } deriving (Eq, Show)
 
+getClass :: MLM -> Name -> Maybe Class
+getClass (MLM {mlmClasses}) name =
+  find ((== name) . cName) mlmClasses
+
+inheritsFrom :: MLM -> Name -> Name -> Bool
+inheritsFrom mlm w z =
+  maybe False
+    (\x -> z `elem` cParents x || any (\y -> inheritsFrom mlm y z) (cParents x))
+  (getClass mlm w)
+
+instantiates :: MLM -> Name -> Name -> Bool
+instantiates mlm x z =
+  maybe False
+    (maybe False (\y -> y == z || concretizes mlm y z) . cOf)
+  (getClass mlm x)
+
+concretizes :: MLM -> Name -> Name -> Bool
+concretizes mlm w z = let
+  x = getClass mlm w
+  in
+    inheritsFrom mlm w z ||
+    instantiates mlm w z ||
+    maybe False (maybe False (\y -> concretizes mlm y z) . cOf) x ||
+    maybe False (any (\y -> concretizes mlm y z) . cParents) x
+
 -- instance Show Class where
 --   show (Class {cName, cIsAbstract, cLevel , cParents, cOf, cAttributes}) =
 --     [i|  - #{cName}:
@@ -210,6 +235,12 @@ instance Validatable Association where
     aLvlTarget < cLevel aTarget,
     valid aMultTargetToSource,
     valid aMultSourceToTarget
+} deriving (Eq, Show)
+
+getAssociation :: MLM -> Name -> Maybe Association
+getAssociation (MLM {mlmAssociations}) name =
+  find ((== name) . aName) mlmAssociations
+
     ]
 
 -- instance Show Association where
