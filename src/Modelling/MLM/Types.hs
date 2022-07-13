@@ -10,7 +10,7 @@ module Modelling.MLM.Types(
   Operation (..),
   Attribute (..),
   Multiplicity (..),
-  Name,
+  Name (..),
   OperationBody (..),
   Level,
   Validatable,
@@ -25,7 +25,7 @@ module Modelling.MLM.Types(
 
 import Data.List.UniqueStrict (allUnique)
 import Data.Char (isDigit)
-import Data.String.Interpolate (i)
+-- import Data.String.Interpolate (i)
 import Data.List.Split (splitOn)
 
 class Validatable a where
@@ -49,7 +49,7 @@ data MLM = MLM {
   mlmClasses :: [Class],
   mlmAssociations :: [Association],
   mlmLinks :: [Link]
-}
+} deriving Show
 
 instance Validatable MLM where
   valid (MLM {mlmName, mlmClasses, mlmAssociations, mlmLinks}) = let
@@ -64,9 +64,15 @@ instance Validatable MLM where
         all valid mlmLinks
       ]
 
-instance Show MLM where
-  show (MLM {mlmName, mlmClasses, mlmAssociations, mlmLinks}) =
-    [i|MLM {mlmName = #{mlmName}, mlmClasses = #{map show mlmClasses}, mlmAssociations = #{map show mlmAssociations}, mlmLinks = #{map show mlmLinks}}|]
+-- instance Show MLM where
+--   show mlm@(MLM {mlmName, mlmClasses, mlmAssociations, mlmLinks}) =
+--     [i|#{mlmName} is a#{if valid () mlm then " VALID" else "n INVALID"} Multi-Level Model containing the following:
+-- - Classes:
+-- #{map show mlmClasses}
+-- - Associations:
+-- #{map show mlmAssociations}
+-- - Links:
+-- #{map show mlmLinks}|]
 
 data Class = Class {
   cIsAbstract :: Bool,
@@ -105,12 +111,15 @@ instance Validatable Class where
       Just cOf' -> cLevel cOf' == cLevel' + 1
       Nothing -> True
     ]
+} deriving (Eq, Show)
 
-instance Show Class where
-  show (Class {cName = cName', cIsAbstract, cLevel , cParents, cOf, cAttributes, cOperations, cSlots}) = let
-    cOf' = maybe "" cName cOf
-    in
-    [i|Class {cIsAbstract = #{cIsAbstract}, cName = #{cName'}, cLevel = #{cLevel}, cOf = #{cOf'}, cParents = #{map cName cParents}, cAttributes = #{map show cAttributes}, cOperations = #{map show cOperations}, cSlots = #{map show cSlots}}|]
+-- instance Show Class where
+--   show (Class {cName, cIsAbstract, cLevel , cParents, cOf, cAttributes}) =
+--     [i|  - #{cName}:
+--     - #{if cIsAbstract then "abstract" else "not abstract"}
+--     - level = #{cLevel}#{maybe "" (\x -> "    - instance of class " ++ show x ++ "\n") cOf}#{if null cParents then "" else "    - inherits from classes " ++ concatMap show cParents ++ "\n"}#{if null cAttributes then "" else "    - attributes: " ++ "\n" ++ concatMap show cAttributes}|]
+
+    -- cOperations = #{map show cOperations}, cSlots = #{map show cSlots}}|]
 
 data Attribute = Attribute {
   tLevel :: Level,
@@ -118,7 +127,7 @@ data Attribute = Attribute {
   tType :: Type,
   tClass :: Name,
   tMultiplicity :: Multiplicity
-} deriving (Eq)
+} deriving (Eq, Show)
 
 instance Validatable Attribute where
   valid (Attribute {tMultiplicity, tLevel, tType, tClass, tName}) = and [
@@ -129,15 +138,15 @@ instance Validatable Attribute where
       cLevel tClass > tLevel
     ]
 
-instance Show Attribute where
-  show (Attribute {tLevel, tName, tType, tMultiplicity, tClass}) =
-    [i|Attribute {tClass = #{cName tClass}, tName = #{tName}, tLevel = #{tLevel}, tType = #{getTypeName tType}, tMultiplicity = #{show tMultiplicity}}|]
+-- instance Show Attribute where
+--   show (Attribute {tLevel, tName, tType, tMultiplicity, tClass}) =
+--     [i|Attribute {tClass = #{tClass}, tName = #{tName}, tLevel = #{tLevel}, tType = #{getTypeName tType}, tMultiplicity = #{show tMultiplicity}}|]
 
 data Slot = Slot {
   sAttribute :: Name,
   sClass :: Name,
   sValue :: Type
-} deriving (Eq)
+} deriving (Eq, Show)
 
 instance Validatable Slot where
   valid (Slot {sAttribute, sClass, sValue}) =
@@ -145,9 +154,9 @@ instance Validatable Slot where
     tLevel sAttribute == cLevel sClass &&
     not (isUnassigned sValue)
 
-instance Show Slot where
-  show (Slot {sAttribute, sValue}) =
-    [i|Slot {sAttribute = #{tName sAttribute}, sValue = #{show sValue}}|]
+-- instance Show Slot where
+--   show (Slot {sAttribute, sValue}) =
+--     [i|Slot {sAttribute = #{sAttribute}, sValue = #{show sValue}}|]
 
 data Operation = Operation {
   oLevel :: Int,
@@ -163,23 +172,23 @@ instance Validatable Operation where
     oLevel < cLevel oClass &&
     isUnassigned oType
 
-instance Show Operation where
-  show (Operation {oLevel, oName, oType, oIsMonitored, oBody}) =
-    [i|Operation {oName = #{oName}, oLevel = #{oLevel}, oType = #{show oType}, oIsMonitored = #{oIsMonitored}, oBody = #{oBody}}|]
+-- instance Show Operation where
+--   show (Operation {oLevel, oName, oType, oIsMonitored, oBody}) =
+--     [i|Operation {oName = #{oName}, oLevel = #{oLevel}, oType = #{show oType}, oIsMonitored = #{oIsMonitored}, oBody = #{oBody}}|]
 
 data OperationBody = OperationBody {
   placeholder1 :: String,
   placeholder2 :: String
-} deriving (Eq)
+} deriving (Eq, Show)
 
 instance Validatable OperationBody where
   valid _ = True --placeholder
 
-instance Show OperationBody where
-  show (OperationBody {placeholder1, placeholder2}) =
-    "placeholder : operation body" ++
-    placeholder1 ++
-    placeholder2
+-- instance Show OperationBody where
+--   show (OperationBody {placeholder1, placeholder2}) =
+--     "placeholder : operation body" ++
+--     placeholder1 ++
+--     placeholder2
 
 data Association = Association {
   aName :: Name,
@@ -203,12 +212,11 @@ instance Validatable Association where
     valid aMultSourceToTarget
     ]
 
-instance Show Association where
-  show (Association {aName, aSource, aTarget, aLvlSource, aLvlTarget, aMultTargetToSource, aMultSourceToTarget, aSourceVisibleFromTarget, aTargetVisibleFromSource}) =
-    [i|Association {aName = #{aName}, aSource = #{cName aSource}, aTarget = #{cName aTarget}, aLvlSource = #{aLvlSource}, aLvlTarget = #{aLvlTarget}, aMultTargetToSource = #{show aMultTargetToSource}, aMultSourceToTarget = #{show aMultSourceToTarget}, aSourceVisibleFromTarget = #{aSourceVisibleFromTarget}, aTargetVisibleFromSource = #{aTargetVisibleFromSource}}|]
+-- instance Show Association where
+--   show (Association {aName, aSource, aTarget, aLvlSource, aLvlTarget, aMultTargetToSource, aMultSourceToTarget, aSourceVisibleFromTarget, aTargetVisibleFromSource}) =
+--     [i|Association {aName = #{aName}, aSource = #{aSource}, aTarget = #{aTarget}, aLvlSource = #{aLvlSource}, aLvlTarget = #{aLvlTarget}, aMultTargetToSource = #{show aMultTargetToSource}, aMultSourceToTarget = #{show aMultSourceToTarget}, aSourceVisibleFromTarget = #{aSourceVisibleFromTarget}, aTargetVisibleFromSource = #{aTargetVisibleFromSource}}|]
 
 data Link = Link {
-} deriving (Eq)
 
 instance Validatable Link where
   valid (Link {lAssociation, lSource, lTarget}) = and [
@@ -219,26 +227,26 @@ instance Validatable Link where
   lAssociation :: Name,
   lSource :: Name,
   lTarget :: Name
+} deriving (Eq, Show)
     ]
 
-instance Show Link where
-  show (Link {lAssociation, lSource, lTarget}) =
-    [i|Link {lAssociation = #{aName lAssociation}, lSource = #{cName lSource}, lTarget = #{cName lTarget}}|]
+-- instance Show Link where
+--   show (Link {lAssociation, lSource, lTarget}) =
+--     [i|Link {lAssociation = #{lAssociation}, lSource = #{lSource}, lTarget = #{lTarget}}|]
 
 data Multiplicity = Multiplicity {
   lower :: Int,
   upper :: Int
-} deriving (Eq)
+} deriving (Eq, Show)
 
 instance Validatable Multiplicity where
   valid (Multiplicity {lower, upper}) =
     lower >= 0 &&
     upper <= upper || upper == -1
 
-
-instance Show Multiplicity where
-  show (Multiplicity {lower, upper}) =
-    show (lower, upper)
+-- instance Show Multiplicity where
+--   show (Multiplicity {lower, upper}) =
+--     show (lower, upper)
 
 type Level = Int
 
