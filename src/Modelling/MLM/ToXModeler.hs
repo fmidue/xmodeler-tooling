@@ -101,23 +101,23 @@ instance XModelerable () () Multiplicity where
     [i|Seq{#{lower},#{upper},#{show (upper /= -1)},false}|]
 
 -- Attribute
-instance XModelerable Name () Attribute where
-  get projectName () (Attribute {level, name, type', class', multiplicity}) =
-    [i|    <addAttribute class="Root::#{projectName}::#{class'}" level="#{level}" multiplicity="#{get () () multiplicity}" name="#{name}" package="Root::#{projectName}" type="Root::#{get () () type'}"/>\n|]
+instance XModelerable Name Name Attribute where
+  get projectName className (Attribute {level, name, type', multiplicity}) =
+    [i|    <addAttribute class="Root::#{projectName}::#{className}" level="#{level}" multiplicity="#{get () () multiplicity}" name="#{name}" package="Root::#{projectName}" type="Root::#{get () () type'}"/>\n|]
 
 -- OperationBody
 instance XModelerable Name () OperationBody where
   get _ _ _ = "STILL UNDEFINED OPERATION BODY"
 
 -- Operation
-instance XModelerable Name () Operation where
-  get projectName () (Operation {body, level, isMonitored, name, type', class'}) =
-    [i|    <addOperation body="#{get projectName () body}" class="Root::${projectName}::#{class'}" level="#{level}" monitored="#{isMonitored}" name="#{name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () () type'}"/>\n|]
+instance XModelerable Name Name Operation where
+  get projectName attributeClass (Operation {body, level, isMonitored, name, type'}) =
+    [i|    <addOperation body="#{get projectName () body}" class="Root::${projectName}::#{attributeClass}" level="#{level}" monitored="#{isMonitored}" name="#{name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () () type'}"/>\n|]
 
 -- Slot
-instance XModelerable Name () Slot where
-  get projectName () (Slot {attribute, value, class'}) =
-    [i|    <changeSlotValue class="Root::#{projectName}::#{class'}" package="Root::#{projectName}" slotName="#{attribute}" valueToBeParsed="#{get () () value}"/>\n|]
+instance XModelerable Name Name Slot where
+  get projectName slotClass (Slot {attribute, value}) =
+    [i|    <changeSlotValue class="Root::#{projectName}::#{slotClass}" package="Root::#{projectName}" slotName="#{attribute}" valueToBeParsed="#{get () () value}"/>\n|]
 
 -- Association
 instance XModelerable Name () Association where
@@ -142,15 +142,15 @@ instance XModelerable [Object] (Double, Int) MLM where
       allTagsChangeParents = concatMap (get projectName TagsChangeParent) classes
       allTagsAttribute =
         concatMap
-          (concatMap (get projectName ()) . attributes)
+          (\x -> concatMap (get projectName ((name :: Class -> Name) x)) (attributes x))
           classes
       allTagsOperation =
         concatMap
-          (concatMap (get projectName ()) . operations)
+          (\x -> concatMap (get projectName ((name :: Class -> Name) x)) (operations x))
           classes
       allTagsSlot =
         concatMap
-          (concatMap (get projectName ()) . slots)
+          (\x -> concatMap (get projectName ((name :: Class -> Name) x)) (slots x))
           classes
       allTagsAssociation = concatMap (get projectName ()) associations
       allTagsLink = concatMap (get projectName ()) links
