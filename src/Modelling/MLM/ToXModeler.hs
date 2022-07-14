@@ -97,7 +97,7 @@ instance XModelerable Name Tag Class where
 
 -- Multiplicity
 instance XModelerable () () Multiplicity where
-  get () () (Multiplicity {lower, upper}) =
+  get () () (Multiplicity (lower, upper)) =
     [i|Seq{#{lower},#{upper},#{show (upper /= -1)},false}|]
 
 -- Attribute

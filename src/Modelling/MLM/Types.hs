@@ -27,6 +27,7 @@ import Data.List.UniqueStrict (allUnique)
 import Data.Char (isDigit)
 import Data.List.Split (splitOn)
 import Data.List (find)
+import Data.Ix (inRange)
 
 class Validatable c a where
   valid :: c -> a -> Bool
@@ -99,7 +100,24 @@ concretizes mlm w z = let
     maybe False (any (\y -> concretizes mlm y z) . parents) x
 
 instance Validatable MLM Class where
-  valid mlm (Class {name = className, level = level' , parents, isOf, attributes, operations, slots}) = and [
+  valid mlm@MLM {associations, links} (Class {name = className, level = level' , parents, isOf, attributes, operations, slots}) = let
+
+    linksWithClassAs sourceOrTarget =
+      filter ((== className) . sourceOrTarget) links
+
+    linksOf asso =
+      filter ((== (name :: Association -> Name) asso) . association)
+
+    inRange' :: Multiplicity -> [Link] -> Bool
+    inRange' (Multiplicity (a, b)) = inRange (a, b) . length
+
+    check asso =
+      inRange' (multSourceToTarget asso) (linksOf asso (linksWithClassAs (source :: Link -> Name))) &&
+      inRange' (multTargetToSource asso) (linksOf asso (linksWithClassAs (target :: Link -> Name)))
+
+    allLinksWithClassAreValid = all check associations
+    in
+      and [
         valid () className,
         all (maybe False ((== level') . (level :: Class -> Level)) . getClass mlm) parents,
         allUnique parents,
@@ -108,7 +126,8 @@ instance Validatable MLM Class where
         all (valid level') attributes,
         all (valid (mlm, className)) operations,
         all (valid (mlm, className)) slots,
-        maybe True (maybe True ((== level' + 1) . (level :: Class -> Level)) . getClass mlm) isOf
+        maybe True (maybe True ((== level' + 1) . (level :: Class -> Level)) . getClass mlm) isOf,
+        allLinksWithClassAreValid
       ]
 
 data Attribute = Attribute {
@@ -208,13 +227,10 @@ instance Validatable MLM Link where
       check (\x -> maybe False ((== lvlTarget x) . (level :: Class -> Level)) (getClass mlm linkTarget))
     ]
 
-data Multiplicity = Multiplicity {
-  lower :: Int,
-  upper :: Int
-} deriving (Eq, Show)
+data Multiplicity = Multiplicity (Int, Int) deriving (Eq, Show)
 
 instance Validatable () Multiplicity where
-  valid () (Multiplicity {lower, upper}) =
+  valid () (Multiplicity (lower, upper)) =
     lower >= 0 &&
     upper <= upper || upper == -1
 
