@@ -84,20 +84,20 @@ inheritsFrom mlm w z =
     (\x -> z `elem` parents x || any (\y -> inheritsFrom mlm y z) (parents x))
   (getClass mlm w)
 
-instantiates :: MLM -> Name -> Name -> Bool
-instantiates mlm x z =
+concretizes :: MLM -> Name -> Name -> Bool
+concretizes mlm x z =
   maybe False
     (maybe False (\y -> y == z || concretizes mlm y z) . isOf)
   (getClass mlm x)
 
-concretizes :: MLM -> Name -> Name -> Bool
-concretizes mlm w z = let
+concretizesOrInheritsFrom :: MLM -> Name -> Name -> Bool
+concretizesOrInheritsFrom mlm w z = let
   x = getClass mlm w
   in
     inheritsFrom mlm w z ||
-    instantiates mlm w z ||
-    maybe False (maybe False (\y -> concretizes mlm y z) . isOf) x ||
-    maybe False (any (\y -> concretizes mlm y z) . parents) x
+    concretizes mlm w z ||
+    maybe False (maybe False (\y -> concretizesOrInheritsFrom mlm y z) . isOf) x ||
+    maybe False (any (\y -> concretizesOrInheritsFrom mlm y z) . parents) x
 
 instance Validatable MLM Class where
   valid mlm@MLM {associations, links} (Class {name = className, level = level' , parents, isOf, attributes, operations, slots}) = let
@@ -121,7 +121,7 @@ instance Validatable MLM Class where
         valid () className,
         all (maybe False ((== level') . (level :: Class -> Level)) . getClass mlm) parents,
         allUnique parents,
-        not (concretizes mlm className className),
+        not (concretizesOrInheritsFrom mlm className className),
         level' > 0 || (null attributes && null operations),
         all (valid level') attributes,
         all (valid (mlm, className)) operations,
@@ -158,7 +158,7 @@ instance Validatable (MLM, Name) Slot where
 --    attribute' = maybe Nothing (find ((== attribute) . name) . attributes) findAttributeClass
     attribute' = ((find ((== attribute) . (name :: Attribute -> Name)) . attributes) =<< findAttributeClass)
     in
-      maybe False (concretizes mlm slotClass . (name :: Class -> Name)) findAttributeClass &&
+      maybe False (concretizesOrInheritsFrom mlm slotClass . (name :: Class -> Name)) findAttributeClass &&
       maybe False ((\x -> maybe False ((== x) . (level :: Attribute -> Level)) attribute') . (level :: Class -> Level)) (getClass mlm slotClass) &&
       not (isUnassigned value)
 
@@ -221,13 +221,13 @@ instance Validatable MLM Link where
     check condition = maybe False condition association'
     in
     and [
-      check (concretizes mlm linkSource . (source :: Association -> Name)),
-      check (concretizes mlm linkTarget . (target :: Association -> Name)),
+      check (concretizesOrInheritsFrom mlm linkSource . (source :: Association -> Name)),
+      check (concretizesOrInheritsFrom mlm linkTarget . (target :: Association -> Name)),
       check (\x -> maybe False ((== lvlSource x) . (level :: Class -> Level)) (getClass mlm linkSource)),
       check (\x -> maybe False ((== lvlTarget x) . (level :: Class -> Level)) (getClass mlm linkTarget))
     ]
 
-data Multiplicity = Multiplicity (Int, Int) deriving (Eq, Show)
+newtype Multiplicity = Multiplicity (Int, Int) deriving (Eq, Show)
 
 instance Validatable () Multiplicity where
   valid () (Multiplicity (lower, upper)) =
