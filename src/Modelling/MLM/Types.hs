@@ -26,7 +26,7 @@ module Modelling.MLM.Types(
 import Data.List.UniqueStrict (allUnique)
 import Data.Char (isDigit)
 import Data.List.Split (splitOn)
-import Data.List (find)
+import Data.List (find, sort, group)
 import Data.Ix (inRange)
 
 class Validatable c a where
@@ -53,13 +53,23 @@ data MLM = MLM {
 } deriving Show
 
 instance Validatable () MLM where
-  valid () mlm@(MLM {name = name', classes, associations, links}) = and [
+  valid () mlm@(MLM {name = name', classes, associations, links}) = let
+    linksOf x = filter (((name :: Association -> Name) x ==) . association) links
+    sourcesOf = map (source :: Link -> Name) . linksOf
+    targetsOf = map (target :: Link -> Name) . linksOf
+    allInRange (Multiplicity (a,b)) = all (inRange (a,b) . length) . group . sort
+    multNotViolated x =
+      allInRange (multSourceToTarget x) (sourcesOf x) &&
+      allInRange (multTargetToSource x) (targetsOf x)
+    in
+    and [
         not (null classes),
         valid () name',
         allUnique (map (name :: Class -> Name) classes),
         allUnique (map (name :: Association -> Name) associations),
         all (valid mlm) classes,
         all (valid mlm) associations,
+        all multNotViolated associations,
         all (valid mlm) links
       ]
 
@@ -100,22 +110,8 @@ concretizesOrInheritsFrom mlm w z = let
     maybe False (any (\y -> concretizesOrInheritsFrom mlm y z) . parents) x
 
 instance Validatable MLM Class where
-  valid mlm@MLM {associations, links} (Class {name = className, level = level' , parents, isOf, attributes, operations, slots}) = let
+  valid mlm (Class {name = className, level = level' , parents, isOf, attributes, operations, slots}) = let
 
-    linksWithClassAs sourceOrTarget =
-      filter ((== className) . sourceOrTarget) links
-
-    linksOf asso =
-      filter ((== (name :: Association -> Name) asso) . association)
-
-    inRange' :: Multiplicity -> [Link] -> Bool
-    inRange' (Multiplicity (a, b)) = inRange (a, b) . length
-
-    check asso =
-      inRange' (multSourceToTarget asso) (linksOf asso (linksWithClassAs (source :: Link -> Name))) &&
-      inRange' (multTargetToSource asso) (linksOf asso (linksWithClassAs (target :: Link -> Name)))
-
-    allLinksWithClassAreValid = all check associations
     in
       and [
         valid () className,
@@ -126,8 +122,7 @@ instance Validatable MLM Class where
         all (valid level') attributes,
         all (valid (mlm, className)) operations,
         all (valid (mlm, className)) slots,
-        maybe True (maybe True ((== level' + 1) . (level :: Class -> Level)) . getClass mlm) isOf,
-        allLinksWithClassAreValid
+        maybe True (maybe True ((== level' + 1) . (level :: Class -> Level)) . getClass mlm) isOf
       ]
 
 data Attribute = Attribute {
