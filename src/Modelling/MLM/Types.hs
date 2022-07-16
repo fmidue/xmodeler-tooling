@@ -53,7 +53,31 @@ data MLM = MLM {
 } deriving Show
 
 instance Validatable () MLM where
-  valid () mlm@(MLM {name = name', classes, associations, links}) = let
+  valid () (MLM {name = projectName, classes, associations, links}) = let
+    -- navigation
+    getClass className = find ((== className) . (name :: Class -> Name)) classes
+    getAssociation link' = find ((== association link') . (name :: Association -> Name)) associations
+
+    -- x inheritsFrom y
+    inheritsFrom :: Name -> Name -> Bool
+    inheritsFrom x y = maybe False
+      (any (\parent -> parent == y || parent `inheritsFrom` y) . parents)
+      (getClass x)
+
+    -- x concretizes y
+    concretizes x y = maybe False
+      (maybe False (\classifier' -> classifier' == y || classifier' `concretizes` y) . classifier)
+      (getClass x)
+
+    -- x concretizesOrInheritsFrom y:
+    (<--) x0 y = let x = getClass x0 in or [
+      x0 `inheritsFrom` y,
+      x0 `concretizes` y,
+      maybe False (maybe False (<-- y) . classifier) x,
+      maybe False (any (<-- y) . parents) x
+      ]
+
+    -- whether an association multiplicity is violated:
     linksOf x = filter (((name :: Association -> Name) x ==) . association) links
     sourcesOf = map (source :: Link -> Name) . linksOf
     targetsOf = map (target :: Link -> Name) . linksOf
@@ -61,69 +85,79 @@ instance Validatable () MLM where
     multNotViolated x =
       allInRange (multSourceToTarget x) (sourcesOf x) &&
       allInRange (multTargetToSource x) (targetsOf x)
-    in
-    and [
-        not (null classes),
-        valid () name',
-        allUnique (map (name :: Class -> Name) classes),
-        allUnique (map (name :: Association -> Name) associations),
-        all (valid mlm) classes,
-        all (valid mlm) associations,
-        all multNotViolated associations,
-        all (valid mlm) links
-      ]
+
+    -- ...
+    lvlIsClassifierLvlMinusOne class' =
+      maybe True (\classifierMentioned ->
+        maybe False (\classifierExisting ->
+          ((level :: Class -> Level) classifierExisting ==
+          (level :: Class -> Level) class' + 1)
+        ) (getClass classifierMentioned)
+      ) (classifier class')
+
+    -- whether source of link concretizes or inherits from source of association of that link and
+    -- whether target of link concretizes or inherits from target of association of that link
+    checkSourceAndTarget x = maybe False (\asso ->
+        (source :: Link -> Name) x <-- (source :: Association -> Name) asso &&
+        (target :: Link -> Name) x <-- (target :: Association -> Name) asso
+      ) (getAssociation x)
+
+    -- determine scope:
+    scope :: Class -> [Class]
+    scope x = filter (((name :: Class -> Name) x <--) . (name :: Class -> Name)) classes
+
+    in and [
+      not (null classes),
+      valid () projectName,
+      allUnique (map (name :: Class -> Name) classes),
+      allUnique (map (name :: Association -> Name) associations),
+      all multNotViolated associations,
+      all ((\x -> not (x <-- x)) . (name :: Class -> Name)) classes,
+      all lvlIsClassifierLvlMinusOne classes,
+      all (\x -> valid (scope x, map getClass (parents x)) x) classes,
+      all (\x -> valid (
+          getClass ((source :: Association -> Name) x),
+          getClass ((target :: Association -> Name) x)
+        ) x) associations,
+      all multNotViolated associations,
+      all checkSourceAndTarget links,
+      all (\x -> valid
+          (
+            getClass ((source :: Link -> Name) x),
+            getClass ((target :: Link -> Name) x)
+          )
+          (
+            getAssociation x
+          )
+        ) links
+    ]
 
 data Class = Class {
   isAbstract :: Bool,
   level :: Level,
   name :: Name,
   parents :: [Name],
-  isOf :: Maybe Name,
+  classifier :: Maybe Name,
   attributes :: [Attribute],
   operations :: [Operation],
   slots :: [Slot]
 } deriving (Eq, Show)
 
-getClass :: MLM -> Name -> Maybe Class
-getClass (MLM {classes}) x =
-  find ((== x) . (name :: Class -> Name)) classes
-
-inheritsFrom :: MLM -> Name -> Name -> Bool
-inheritsFrom mlm w z =
-  maybe False
-    (\x -> z `elem` parents x || any (\y -> inheritsFrom mlm y z) (parents x))
-  (getClass mlm w)
-
-concretizes :: MLM -> Name -> Name -> Bool
-concretizes mlm x z =
-  maybe False
-    (maybe False (\y -> y == z || concretizes mlm y z) . isOf)
-  (getClass mlm x)
-
-concretizesOrInheritsFrom :: MLM -> Name -> Name -> Bool
-concretizesOrInheritsFrom mlm w z = let
-  x = getClass mlm w
-  in
-    inheritsFrom mlm w z ||
-    concretizes mlm w z ||
-    maybe False (maybe False (\y -> concretizesOrInheritsFrom mlm y z) . isOf) x ||
-    maybe False (any (\y -> concretizesOrInheritsFrom mlm y z) . parents) x
-
-instance Validatable MLM Class where
-  valid mlm (Class {name = className, level = level' , parents, isOf, attributes, operations, slots}) = let
-
+instance Validatable ([Class], [Maybe Class]) Class where
+  valid (classScope, parentsClasses) (Class {name = className, level = level', attributes = attributes', operations, slots, parents}) = let
+    getAttributeClass x = find (elem x . map (name :: Attribute -> Name) . attributes) classScope
+    -- getAttribute x = maybe Nothing (find ((== attribute) . name) . attributes) (getAttributeClass x)
+    getAttribute x = ((find ((== x) . (name :: Attribute -> Name)) . attributes) =<< getAttributeClass x)
     in
-      and [
+    and [
         valid () className,
-        all (maybe False ((== level') . (level :: Class -> Level)) . getClass mlm) parents,
+        all (maybe False ((== level') . (level :: Class -> Level))) parentsClasses,
         allUnique parents,
-        not (concretizesOrInheritsFrom mlm className className),
-        level' > 0 || (null attributes && null operations),
-        all (valid level') attributes,
-        all (valid (mlm, className)) operations,
-        all (valid (mlm, className)) slots,
-        maybe True (maybe True ((== level' + 1) . (level :: Class -> Level)) . getClass mlm) isOf
-      ]
+        level' > 0 || (null attributes' && null operations),
+        all (valid level') attributes',
+        all (valid level') operations,
+        all (\slot -> valid (getAttribute (attribute slot) , level') slot) slots
+        ]
 
 data Attribute = Attribute {
   level :: Level,
@@ -146,15 +180,11 @@ data Slot = Slot {
   value :: Type
 } deriving (Eq, Show)
 
-instance Validatable (MLM, Name) Slot where
-  valid (mlm@MLM {classes}, slotClass) (Slot {attribute, value}) = let
-    findAttributeClass :: Maybe Class
-    findAttributeClass  = find (elem attribute . map (name :: Attribute -> Name) . attributes) (classes :: [Class])
---    attribute' = maybe Nothing (find ((== attribute) . name) . attributes) findAttributeClass
-    attribute' = ((find ((== attribute) . (name :: Attribute -> Name)) . attributes) =<< findAttributeClass)
+instance Validatable (Maybe Attribute, Level) Slot where
+  valid (slotAttribute, slotClassLvl) (Slot {value}) = let
     in
-      maybe False (concretizesOrInheritsFrom mlm slotClass . (name :: Class -> Name)) findAttributeClass &&
-      maybe False ((\x -> maybe False ((== x) . (level :: Attribute -> Level)) attribute') . (level :: Class -> Level)) (getClass mlm slotClass) &&
+      maybe False ((slotClassLvl ==) . (level :: Attribute -> Level)) slotAttribute
+      &&
       not (isUnassigned value)
 
 data Operation = Operation {
@@ -165,9 +195,10 @@ data Operation = Operation {
   body :: OperationBody
 } deriving (Eq, Show)
 
-instance Validatable (MLM, Name) Operation where
-  valid (mlm, operationClass) (Operation {level = level', type'}) =
-    maybe False ((> level') . (level :: Class -> Level)) (getClass mlm operationClass) &&
+instance Validatable Level Operation where
+  valid operationClassLvl (Operation {level = level', type'}) =
+    operationClassLvl > level'
+    &&
     isUnassigned type'
 
 data OperationBody = OperationBody {
@@ -190,16 +221,16 @@ data Association = Association {
   targetVisibleFromSource :: Bool
 } deriving (Eq, Show)
 
-getAssociation :: MLM -> Name -> Maybe Association
-getAssociation (MLM {associations}) x =
-  find ((== x) . (name :: Association -> Name)) associations
+-- getAssociation :: MLM -> Name -> Maybe Association
+-- getAssociation (MLM {associations}) x =
+--   find ((== x) . (name :: Association -> Name)) associations
 
-instance Validatable MLM Association where
-  valid mlm (Association {source, target, lvlSource, lvlTarget, multTargetToSource, multSourceToTarget, name}) =
+instance Validatable (Maybe Class, Maybe Class) Association where
+  valid (sourceClass, targetClass) (Association {lvlSource, lvlTarget, multTargetToSource, multSourceToTarget, name}) =
     and [
       valid () name,
-      maybe False ((> lvlSource) . (level :: Class -> Level)) (getClass mlm source),
-      maybe False ((> lvlTarget) . (level :: Class -> Level)) (getClass mlm target),
+      maybe False ((> lvlSource) . (level :: Class -> Level)) sourceClass,
+      maybe False ((> lvlTarget) . (level :: Class -> Level)) targetClass,
       valid () multTargetToSource,
       valid () multSourceToTarget
       ]
@@ -210,17 +241,16 @@ data Link = Link {
   target :: Name
 } deriving (Eq, Show)
 
-instance Validatable MLM Link where
-  valid mlm (Link {association, source = linkSource , target = linkTarget}) = let
-    association' = getAssociation mlm association
-    check condition = maybe False condition association'
-    in
-    and [
-      check (concretizesOrInheritsFrom mlm linkSource . (source :: Association -> Name)),
-      check (concretizesOrInheritsFrom mlm linkTarget . (target :: Association -> Name)),
-      check (\x -> maybe False ((== lvlSource x) . (level :: Class -> Level)) (getClass mlm linkSource)),
-      check (\x -> maybe False ((== lvlTarget x) . (level :: Class -> Level)) (getClass mlm linkTarget))
-    ]
+instance Validatable (Maybe Class, Maybe Class) (Maybe Association) where
+  valid (linkSource0, linkTarget0) =
+    maybe False (\linkAssociation ->
+      maybe False (\linkSource ->
+        maybe False (\linkTarget ->
+          lvlSource linkAssociation == (level :: Class -> Level) linkSource &&
+          lvlTarget linkAssociation == (level :: Class -> Level) linkTarget
+        ) linkTarget0
+      ) linkSource0
+    )
 
 newtype Multiplicity = Multiplicity (Int, Int) deriving (Eq, Show)
 

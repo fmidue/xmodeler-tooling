@@ -77,19 +77,19 @@ instance XModelerable Name () Object where
 
 -- Class : MetaClass or Instance or ChangeParents
 instance XModelerable Name Tag Class where
-  get projectName tag (Class {isAbstract, level, name, isOf, parents}) = case tag of
+  get projectName tag (Class {isAbstract, level, name, classifier, parents}) = case tag of
     TagMetaClass ->
       maybe
       [i|    <addMetaClass abstract="#{isAbstract}" level="#{level}" name="#{name}" package="Root::#{projectName}" parents=""/>\n|]
       (const "")
-      isOf
+      classifier
     TagInstance ->
       maybe
       ""
       (\x ->
         [i|    <addInstance abstract="#{isAbstract}" name="#{name}" of="Root::#{projectName}::#{x}" package="Root::#{projectName}" parents=""/>\n|]
       )
-      isOf
+      classifier
     TagsChangeParent ->
       if null parents then "" else
         [i|    <changeParent class="Root::#{projectName}::#{name}" new="#{doParents}" old="" package="Root::#{projectName}"/>\n|]
