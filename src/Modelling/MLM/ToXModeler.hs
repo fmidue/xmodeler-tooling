@@ -1,5 +1,4 @@
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE NamedFieldPuns #-}
 
 module Modelling.MLM.ToXModeler (toXModeler) where
 

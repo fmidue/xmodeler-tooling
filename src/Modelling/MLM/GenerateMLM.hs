@@ -1,6 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
-
-
 module Modelling.MLM.GenerateMLM (generateMLM) where
 
 -- import Modelling.MLM.Types
