@@ -35,14 +35,14 @@ data Object = Object {
   y :: Int
 } deriving Show
 
-class XModelerable c t a where
-  get :: c -> t -> a -> String
+class XModelerable context a where
+  get :: context -> a -> String
 
--- Name : no need, because `get () () Name` would be just `show Name`
+-- Name : no need, because `get () Name` would be just `show Name`
 
 -- Type
-instance XModelerable () () Type where
-  get () () t = let
+instance XModelerable () Type where
+  get () t = let
     cor = "XCore::" ++ getTypeName t
     aux = "Auxiliary::" ++ getTypeName t
     in
@@ -69,13 +69,13 @@ instance XModelerable () () Type where
         _ -> "null"
 
 -- Object
-instance XModelerable Name () Object where
-  get (Name projectName) () (Object {name, x, y}) =
+instance XModelerable Name Object where
+  get projectName (Object {name, x, y}) =
     [i|        <Object hidden="false" ref="Root::#{projectName}::#{name}" x="#{x}" y="#{y}"/>\n|]
 
 -- Class : MetaClass or Instance or ChangeParents
-instance XModelerable Name Tag Class where
-  get projectName tag (Class {isAbstract, level, name, classifier, parents}) = case tag of
+instance XModelerable (Name, Tag) Class where
+  get (projectName, tag) (Class {isAbstract, level, name, classifier, parents}) = case tag of
     TagMetaClass ->
       maybe
       [i|    <addMetaClass abstract="#{isAbstract}" level="#{level}" name="#{name}" package="Root::#{projectName}" parents=""/>\n|]
@@ -94,64 +94,64 @@ instance XModelerable Name Tag Class where
       where doParents = init (concatMap (\p -> [i|Root::#{projectName}::#{p},|]) parents)
 
 -- Multiplicity
-instance XModelerable () () Multiplicity where
-  get () () (Multiplicity (lower, upper)) =
+instance XModelerable () Multiplicity where
+  get () (Multiplicity (lower, upper)) =
     [i|Seq{#{lower},#{upper},#{show (upper /= -1)},false}|]
 
 -- Attribute
-instance XModelerable Name Name Attribute where
-  get projectName className (Attribute {level, name, type', multiplicity}) =
-    [i|    <addAttribute class="Root::#{projectName}::#{className}" level="#{level}" multiplicity="#{get () () multiplicity}" name="#{name}" package="Root::#{projectName}" type="Root::#{get () () type'}"/>\n|]
+instance XModelerable (Name, Name) Attribute where
+  get (projectName, className) (Attribute {level, name, type', multiplicity}) =
+    [i|    <addAttribute class="Root::#{projectName}::#{className}" level="#{level}" multiplicity="#{get () multiplicity}" name="#{name}" package="Root::#{projectName}" type="Root::#{get () type'}"/>\n|]
 
 -- OperationBody
-instance XModelerable Name () OperationBody where
-  get _ _ _ = "STILL UNDEFINED OPERATION BODY"
+instance XModelerable Name OperationBody where
+  get _ _ = "STILL UNDEFINED OPERATION BODY"
 
 -- Operation
-instance XModelerable Name Name Operation where
-  get projectName attributeClass (Operation {body, level, isMonitored, name, type'}) =
-    [i|    <addOperation body="#{get projectName () body}" class="Root::${projectName}::#{attributeClass}" level="#{level}" monitored="#{isMonitored}" name="#{name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () () type'}"/>\n|]
+instance XModelerable (Name, Name) Operation where
+  get (projectName, attributeClass) (Operation {body, level, isMonitored, name, type'}) =
+    [i|    <addOperation body="#{get projectName body}" class="Root::${projectName}::#{attributeClass}" level="#{level}" monitored="#{isMonitored}" name="#{name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () type'}"/>\n|]
 
 -- Slot
-instance XModelerable Name Name Slot where
-  get projectName slotClass (Slot {attribute, value}) =
-    [i|    <changeSlotValue class="Root::#{projectName}::#{slotClass}" package="Root::#{projectName}" slotName="#{attribute}" valueToBeParsed="#{get () () value}"/>\n|]
+instance XModelerable (Name, Name) Slot where
+  get (projectName, slotClass) (Slot {attribute, value}) =
+    [i|    <changeSlotValue class="Root::#{projectName}::#{slotClass}" package="Root::#{projectName}" slotName="#{attribute}" valueToBeParsed="#{get () value}"/>\n|]
 
 -- Association
-instance XModelerable Name () Association where
-  get projectName () (Association {name, source, target, lvlSource, lvlTarget, multSourceToTarget, multTargetToSource, sourceVisibleFromTarget, targetVisibleFromSource}) =
-    [i|    <addAssociation accessSourceFromTargetName="#{name}_#{from}" accessTargetFromSourceName="#{name}_#{to}" classSource="Root::#{projectName}::#{from}" classTarget="Root::#{projectName}::#{to}" fwName="#{name}" instLevelSource="#{lvlSource}" instLevelTarget="#{lvlTarget}" isSymmetric="false" isTransitive="false" multSourceToTarget="#{get () () multSourceToTarget}" multTargetToSource="#{get () () multTargetToSource}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="#{sourceVisibleFromTarget}" targetVisibleFromSource="#{targetVisibleFromSource}"/>\n|]
+instance XModelerable Name Association where
+  get projectName (Association {name, source, target, lvlSource, lvlTarget, multSourceToTarget, multTargetToSource, sourceVisibleFromTarget, targetVisibleFromSource}) =
+    [i|    <addAssociation accessSourceFromTargetName="#{name}_#{from}" accessTargetFromSourceName="#{name}_#{to}" classSource="Root::#{projectName}::#{from}" classTarget="Root::#{projectName}::#{to}" fwName="#{name}" instLevelSource="#{lvlSource}" instLevelTarget="#{lvlTarget}" isSymmetric="false" isTransitive="false" multSourceToTarget="#{get () multSourceToTarget}" multTargetToSource="#{get () multTargetToSource}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="#{sourceVisibleFromTarget}" targetVisibleFromSource="#{targetVisibleFromSource}"/>\n|]
    where
      from = show source
      to = show target
 
 -- Link
-instance XModelerable Name () Link where
-  get projectName () (Link {source, target, association}) =
+instance XModelerable Name Link where
+  get projectName (Link {source, target, association}) =
     [i|    <addLink classSource="Root::#{projectName}::#{source}" classTarget="Root::#{projectName}::#{target}" name="#{association}" package="Root::#{projectName}"/>\n|]
 
 -- MLM
-instance XModelerable [Object] (Double, Int) MLM where
-  get mlmObjects (xx, txTy) (MLM {name = projectName, classes, associations, links}) =
+instance XModelerable ([Object], Double, Int) MLM where
+  get (mlmObjects, xx, txTy) (MLM {name = projectName, classes, associations, links}) =
     let
-      allTagsObject = concatMap (get projectName ()) mlmObjects
-      allTagsMetaClass = concatMap (get projectName TagMetaClass) classes
-      allTagsInstance = concatMap (get projectName TagInstance) classes
-      allTagsChangeParents = concatMap (get projectName TagsChangeParent) classes
+      allTagsObject = concatMap (get projectName) mlmObjects
+      allTagsMetaClass = concatMap (get (projectName, TagMetaClass)) classes
+      allTagsInstance = concatMap (get (projectName, TagInstance)) classes
+      allTagsChangeParents = concatMap (get (projectName, TagsChangeParent)) classes
       allTagsAttribute =
         concatMap
-          (\x -> concatMap (get projectName (#name x)) (#attributes x))
+          (\x -> concatMap (get (projectName, #name x)) (#attributes x))
           classes
       allTagsOperation =
         concatMap
-          (\x -> concatMap (get projectName (#name x)) (#operations x))
+          (\x -> concatMap (get (projectName, #name x)) (#operations x))
           classes
       allTagsSlot =
         concatMap
-          (\x -> concatMap (get projectName (#name x)) (#slots x))
+          (\x -> concatMap (get (projectName, #name x)) (#slots x))
           classes
-      allTagsAssociation = concatMap (get projectName ()) associations
-      allTagsLink = concatMap (get projectName ()) links
+      allTagsAssociation = concatMap (get projectName) associations
+      allTagsLink = concatMap (get projectName ) links
     in
       [i|<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <XModeler>
@@ -223,4 +223,4 @@ toXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)
     let txTy = round $ 50 * xx :: Int
     putStrLn "txty="
     print txTy
-    return $ get objects (xx, txTy) mlm
+    return $ get (objects, xx, txTy) mlm

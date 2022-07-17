@@ -35,8 +35,8 @@ import GHC.Records
 instance HasField x r a => IsLabel x (r -> a) where
   fromLabel = getField @x
 
-class Validatable c a where
-  valid :: c -> a -> Bool
+class Validatable context a where
+  valid :: context -> a -> Bool
 
 newtype Name = Name String deriving (Eq, Ord)
 
