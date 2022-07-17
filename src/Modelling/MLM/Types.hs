@@ -87,6 +87,7 @@ instance Validatable () MLM where
     linksOf x = filter ((#name x ==) . #association) links
     sourcesOf = map #source . linksOf
     targetsOf = map #target . linksOf
+    allInRange (Multiplicity (a,-1)) = allInRange (Multiplicity (a,maxBound))
     allInRange (Multiplicity (a,b)) = all (inRange (a,b) . length) . group . sort
     multNotViolated x =
       allInRange (multSourceToTarget x) (sourcesOf x) &&
