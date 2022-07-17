@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedLabels #-}
@@ -29,6 +30,13 @@ import Data.List.Split (splitOn)
 import Data.List (find, sort, group)
 import Data.Ix (inRange)
 
+import GHC.OverloadedLabels
+import GHC.Records
+
+-- IsLabel orphan instance for (->) --
+instance HasField x r a => IsLabel x (r -> a) where
+  fromLabel = getField @x
+
 class Validatable c a where
   valid :: c -> a -> Bool
 
@@ -55,8 +63,8 @@ data MLM = MLM {
 instance Validatable () MLM where
   valid () (MLM {name = projectName, classes, associations, links}) = let
     -- navigation
-    getClass className = find ((== className) . (name :: Class -> Name)) classes
-    getAssociation link' = find ((== association link') . (name :: Association -> Name)) associations
+    getClass className = find ((== className) . #name) classes
+    getAssociation link' = find ((== association link') . #name) associations
 
     -- x inheritsFrom y
     inheritsFrom :: Name -> Name -> Bool
