@@ -160,16 +160,16 @@ instance Validatable ([Class], [Maybe Class]) Class where
 data Attribute = Attribute {
   level :: Level,
   name :: Name,
-  type' :: Type,
+  dataType :: Type,
   multiplicity :: Multiplicity
 } deriving (Eq, Show)
 
 instance Validatable Level Attribute where
-  valid classLevel (Attribute {multiplicity, level = attributeLevel, type', name}) = and [
+  valid classLevel (Attribute {multiplicity, level = attributeLevel, dataType, name}) = and [
       valid () attributeLevel,
       valid () name,
       valid () multiplicity,
-      isUnassigned type',
+      isUnassigned dataType,
       classLevel > attributeLevel
     ]
 
@@ -188,14 +188,14 @@ instance Validatable (Maybe Attribute, Level) Slot where
 data Operation = Operation {
   level :: Int,
   name :: Name,
-  type' :: Type,
+  dataType :: Type,
   isMonitored :: Bool,
   body :: OperationBody
 } deriving (Eq, Show)
 
 instance Validatable Level Operation where
-  valid operationClassLvl (Operation {level = level', type'}) =
-    operationClassLvl > level' && isUnassigned type'
+  valid operationClassLvl (Operation {level , dataType}) =
+    operationClassLvl > level && isUnassigned dataType
 
 data OperationBody = OperationBody {
   placeholder1 :: String,
@@ -249,7 +249,7 @@ newtype Multiplicity = Multiplicity (Int, Int) deriving (Eq, Show)
 instance Validatable () Multiplicity where
   valid () (Multiplicity (lower, upper)) =
     lower >= 0 &&
-    upper <= upper || upper == -1
+    lower <= upper || upper == -1
 
 type Level = Int
 

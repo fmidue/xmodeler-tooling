@@ -100,8 +100,8 @@ instance XModelerable () Multiplicity where
 
 -- Attribute
 instance XModelerable (Name, Name) Attribute where
-  get (projectName, className) (Attribute {level, name, type', multiplicity}) =
-    [i|    <addAttribute class="Root::#{projectName}::#{className}" level="#{level}" multiplicity="#{get () multiplicity}" name="#{name}" package="Root::#{projectName}" type="Root::#{get () type'}"/>\n|]
+  get (projectName, className) (Attribute {level, name, dataType, multiplicity}) =
+    [i|    <addAttribute class="Root::#{projectName}::#{className}" level="#{level}" multiplicity="#{get () multiplicity}" name="#{name}" package="Root::#{projectName}" type="Root::#{get () dataType}"/>\n|]
 
 -- OperationBody
 instance XModelerable Name OperationBody where
@@ -109,8 +109,8 @@ instance XModelerable Name OperationBody where
 
 -- Operation
 instance XModelerable (Name, Name) Operation where
-  get (projectName, attributeClass) (Operation {body, level, isMonitored, name, type'}) =
-    [i|    <addOperation body="#{get projectName body}" class="Root::${projectName}::#{attributeClass}" level="#{level}" monitored="#{isMonitored}" name="#{name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () type'}"/>\n|]
+  get (projectName, attributeClass) (Operation {body, level, isMonitored, name, dataType}) =
+    [i|    <addOperation body="#{get projectName body}" class="Root::${projectName}::#{attributeClass}" level="#{level}" monitored="#{isMonitored}" name="#{name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () dataType}"/>\n|]
 
 -- Slot
 instance XModelerable (Name, Name) Slot where
