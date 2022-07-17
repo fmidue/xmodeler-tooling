@@ -1,6 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE NamedFieldPuns #-}
---{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Modelling.MLM.ToXModeler (toXModeler) where
 
@@ -142,15 +141,15 @@ instance XModelerable [Object] (Double, Int) MLM where
       allTagsChangeParents = concatMap (get projectName TagsChangeParent) classes
       allTagsAttribute =
         concatMap
-          (\x -> concatMap (get projectName ((name :: Class -> Name) x)) (attributes x))
+          (\x -> concatMap (get projectName (#name x)) (#attributes x))
           classes
       allTagsOperation =
         concatMap
-          (\x -> concatMap (get projectName ((name :: Class -> Name) x)) (operations x))
+          (\x -> concatMap (get projectName (#name x)) (#operations x))
           classes
       allTagsSlot =
         concatMap
-          (\x -> concatMap (get projectName ((name :: Class -> Name) x)) (slots x))
+          (\x -> concatMap (get projectName (#name x)) (#slots x))
           classes
       allTagsAssociation = concatMap (get projectName ()) associations
       allTagsLink = concatMap (get projectName ()) links
@@ -190,17 +189,16 @@ instance XModelerable [Object] (Double, Int) MLM where
 toXModeler :: (GraphvizCommand, Double -> Double, Double, Int ) -> MLM -> IO String
 toXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)
               mlm@(MLM {classes, associations, links}) = let
-    vertices =
-      map (show . (name :: Class -> Name)) classes :: [String]
+    vertices = map (show . #name) classes :: [String]
     extractEdge from to x =
       (show (from x), show (to x), ()) :: (String, String, ())
     edges =
-      map (extractEdge (source :: Association -> Name) (target :: Association -> Name)) associations ++
-      map (extractEdge (source :: Link -> Name) (target :: Link -> Name)) links ++
+      map (extractEdge #source #target) associations ++
+      map (extractEdge #source #target) links ++
       concatMap
         (\child -> map
-          (\parent -> (show ((name :: Class -> Name) child), show parent, ()))
-          (parents child))
+          (\parent -> (show (#name child), show parent, ()))
+          (#parents child))
         classes :: [(String, String, ())]
 
     adjust :: Double -> Int

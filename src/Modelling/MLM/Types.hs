@@ -2,6 +2,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE FlexibleContexts #-}
 module Modelling.MLM.Types(
   MLM (..),
   Link (..),
@@ -64,31 +65,31 @@ instance Validatable () MLM where
   valid () (MLM {name = projectName, classes, associations, links}) = let
     -- navigation
     getClass className = find ((== className) . #name) classes
-    getAssociation link' = find ((== association link') . #name) associations
+    getAssociation link' = find ((== #association link') . #name) associations
 
     -- x inheritsFrom y
     inheritsFrom :: Name -> Name -> Bool
     inheritsFrom x y = maybe False
-      (any (\parent -> parent == y || parent `inheritsFrom` y) . parents)
+      (any (\parent -> parent == y || parent `inheritsFrom` y) . #parents)
       (getClass x)
 
     -- x concretizes y
     concretizes x y = maybe False
-      (maybe False (\classifier' -> classifier' == y || classifier' `concretizes` y) . classifier)
+      (maybe False (\classifier' -> classifier' == y || classifier' `concretizes` y) . #classifier)
       (getClass x)
 
     -- x concretizesOrInheritsFrom y:
     (<--) x0 y = let x = getClass x0 in or [
       x0 `inheritsFrom` y,
       x0 `concretizes` y,
-      maybe False (maybe False (<-- y) . classifier) x,
-      maybe False (any (<-- y) . parents) x
+      maybe False (maybe False (<-- y) . #classifier) x,
+      maybe False (any (<-- y) . #parents) x
       ]
 
     -- whether an association multiplicity is violated:
-    linksOf x = filter (((name :: Association -> Name) x ==) . association) links
-    sourcesOf = map (source :: Link -> Name) . linksOf
-    targetsOf = map (target :: Link -> Name) . linksOf
+    linksOf x = filter ((#name x ==) . #association) links
+    sourcesOf = map #source . linksOf
+    targetsOf = map #target . linksOf
     allInRange (Multiplicity (a,b)) = all (inRange (a,b) . length) . group . sort
     multNotViolated x =
       allInRange (multSourceToTarget x) (sourcesOf x) &&
@@ -98,45 +99,36 @@ instance Validatable () MLM where
     lvlIsClassifierLvlMinusOne class' =
       maybe True (\classifierMentioned ->
         maybe False (\classifierExisting ->
-          ((level :: Class -> Level) classifierExisting ==
-          (level :: Class -> Level) class' + 1)
+          (#level classifierExisting ==
+          #level class' + 1)
         ) (getClass classifierMentioned)
-      ) (classifier class')
+      ) (#classifier class')
 
     -- whether source of link concretizes or inherits from source of association of that link and
     -- whether target of link concretizes or inherits from target of association of that link
     checkSourceAndTarget x = maybe False (\asso ->
-        (source :: Link -> Name) x <-- (source :: Association -> Name) asso &&
-        (target :: Link -> Name) x <-- (target :: Association -> Name) asso
+        #source x <-- #source asso && #target x <-- #target asso
       ) (getAssociation x)
 
     -- determine scope:
     scope :: Class -> [Class]
-    scope x = filter (((name :: Class -> Name) x <--) . (name :: Class -> Name)) classes
+    scope x = filter ((#name x <--) . #name) classes
 
     in and [
       not (null classes),
       valid () projectName,
-      allUnique (map (name :: Class -> Name) classes),
-      allUnique (map (name :: Association -> Name) associations),
+      allUnique (map #name classes),
+      allUnique (map #name associations),
       all multNotViolated associations,
-      all ((\x -> not (x <-- x)) . (name :: Class -> Name)) classes,
+      all ((\x -> not (x <-- x)) . #name) classes,
       all lvlIsClassifierLvlMinusOne classes,
-      all (\x -> valid (scope x, map getClass (parents x)) x) classes,
-      all (\x -> valid (
-          getClass ((source :: Association -> Name) x),
-          getClass ((target :: Association -> Name) x)
-        ) x) associations,
+      all (\x -> valid (scope x, map getClass (#parents x)) x) classes,
+      all (\x -> valid (getClass (#source x), getClass (#target x)) x) associations,
       all multNotViolated associations,
       all checkSourceAndTarget links,
       all (\x -> valid
-          (
-            getClass ((source :: Link -> Name) x),
-            getClass ((target :: Link -> Name) x)
-          )
-          (
-            getAssociation x
-          )
+          (getClass (#source x),getClass (#target x))
+          (getAssociation x)
         ) links
     ]
 
@@ -153,18 +145,18 @@ data Class = Class {
 
 instance Validatable ([Class], [Maybe Class]) Class where
   valid (classScope, parentsClasses) (Class {name = className, level = level', attributes = attributes', operations, slots, parents}) = let
-    getAttributeClass x = find (elem x . map (name :: Attribute -> Name) . attributes) classScope
+    getAttributeClass x = find (elem x . map #name . #attributes) classScope
     -- getAttribute x = maybe Nothing (find ((== attribute) . name) . attributes) (getAttributeClass x)
-    getAttribute x = ((find ((== x) . (name :: Attribute -> Name)) . attributes) =<< getAttributeClass x)
+    getAttribute x = ((find ((== x) . #name) . #attributes) =<< getAttributeClass x)
     in
     and [
         valid () className,
-        all (maybe False ((== level') . (level :: Class -> Level))) parentsClasses,
+        all (maybe False ((== level') . #level)) parentsClasses,
         allUnique parents,
         level' > 0 || (null attributes' && null operations),
         all (valid level') attributes',
         all (valid level') operations,
-        all (\slot -> valid (getAttribute (attribute slot) , level') slot) slots
+        all (\x -> valid (getAttribute (#attribute x) , level') x) slots
         ]
 
 data Attribute = Attribute {
@@ -191,7 +183,7 @@ data Slot = Slot {
 instance Validatable (Maybe Attribute, Level) Slot where
   valid (slotAttribute, slotClassLvl) (Slot {value}) = let
     in
-      maybe False ((slotClassLvl ==) . (level :: Attribute -> Level)) slotAttribute
+      maybe False ((slotClassLvl ==) . #level) slotAttribute
       &&
       not (isUnassigned value)
 
@@ -205,9 +197,7 @@ data Operation = Operation {
 
 instance Validatable Level Operation where
   valid operationClassLvl (Operation {level = level', type'}) =
-    operationClassLvl > level'
-    &&
-    isUnassigned type'
+    operationClassLvl > level' && isUnassigned type'
 
 data OperationBody = OperationBody {
   placeholder1 :: String,
@@ -229,16 +219,12 @@ data Association = Association {
   targetVisibleFromSource :: Bool
 } deriving (Eq, Show)
 
--- getAssociation :: MLM -> Name -> Maybe Association
--- getAssociation (MLM {associations}) x =
---   find ((== x) . (name :: Association -> Name)) associations
-
 instance Validatable (Maybe Class, Maybe Class) Association where
   valid (sourceClass, targetClass) (Association {lvlSource, lvlTarget, multTargetToSource, multSourceToTarget, name}) =
     and [
       valid () name,
-      maybe False ((> lvlSource) . (level :: Class -> Level)) sourceClass,
-      maybe False ((> lvlTarget) . (level :: Class -> Level)) targetClass,
+      maybe False ((> lvlSource) . #level) sourceClass,
+      maybe False ((> lvlTarget) . #level) targetClass,
       valid () multTargetToSource,
       valid () multSourceToTarget
       ]
@@ -254,8 +240,8 @@ instance Validatable (Maybe Class, Maybe Class) (Maybe Association) where
     maybe False (\linkAssociation ->
       maybe False (\linkSource ->
         maybe False (\linkTarget ->
-          lvlSource linkAssociation == (level :: Class -> Level) linkSource &&
-          lvlTarget linkAssociation == (level :: Class -> Level) linkTarget
+          #lvlSource linkAssociation == #level linkSource &&
+          #lvlTarget linkAssociation == #level linkTarget
         ) linkTarget0
       ) linkSource0
     )
