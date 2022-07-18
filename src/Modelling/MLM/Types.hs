@@ -22,12 +22,12 @@ module Modelling.MLM.Types(
   currencySymbol
 ) where
 
-import Data.List.UniqueStrict (allUnique)
+import Data.List.UniqueStrict (allUnique, sortUniq)
 import Data.Char (isDigit)
 import Data.List.Split (splitOn)
 import Data.List (find, sort, group)
 import Data.Ix (inRange)
-
+import Data.Maybe (isJust)
 import GHC.OverloadedLabels
 import GHC.Records
 
@@ -60,28 +60,40 @@ data MLM = MLM {
 
 instance Validatable () MLM where
   valid () (MLM {name = projectName, classes, associations, links}) = let
+    allClassesNames = map #name classes :: [Name]
+
     -- navigation
     getClass className = find ((== className) . #name) classes
     getAssociation link' = find ((== #association link') . #name) associations
 
-    -- x inheritsFrom y
-    inheritsFrom :: Name -> Name -> Bool
-    inheritsFrom x y = maybe False
-      (any (\parent -> parent == y || parent `inheritsFrom` y) . #parents)
-      (getClass x)
+    -- get all parents and the classifier of a class
+    parentsAndClassifier :: Name -> [Name]
+    parentsAndClassifier x =
+      maybe [] (\classX ->
+        maybe (#parents classX) (\classifierMentioned ->
+          maybe (#parents classX) (\classifierExisting ->
+            (#name classifierExisting) : (#parents classX)
+          ) (getClass classifierMentioned)
+        ) (#classifier classX)
+      ) (getClass x)
 
-    -- x concretizes y
-    concretizes x y = maybe False
-      (maybe False (\classifier' -> classifier' == y || classifier' `concretizes` y) . #classifier)
-      (getClass x)
+    -- pair a class with all of its parents and classifier
+    dict1 :: Name -> [(Name, Name)]
+    dict1 x = map (x,) (parentsAndClassifier x)
 
-    -- x concretizesOrInheritsFrom y:
-    (<--) x0 y = let x = getClass x0 in or [
-      x0 `inheritsFrom` y,
-      x0 `concretizes` y,
-      maybe False (maybe False (<-- y) . #classifier) x,
-      maybe False (any (<-- y) . #parents) x
-      ]
+    -- pair all classes, each with its parents and classifier
+    dict :: [(Name, Name)]
+    dict = sortUniq $ concatMap dict1 allClassesNames
+
+    -- check if there are no cycles in the MLM
+    noCycles :: [(Name, Name)] -> Bool
+    noCycles [] = True
+    noCycles list = let peeled = filter (isJust . flip lookup list . snd) list in
+      (length peeled < length list) && noCycles peeled
+
+    -- whether x concretizes or inherits from z
+    (\/) :: Name -> Name -> Bool
+    (\/) x z = maybe False (\y -> y==z || y \/ z) $ lookup x dict
 
     -- whether an association multiplicity is violated:
     linksOf x = filter ((#name x ==) . #association) links
@@ -93,7 +105,7 @@ instance Validatable () MLM where
       allInRange (multSourceToTarget x) (sourcesOf x) &&
       allInRange (multTargetToSource x) (targetsOf x)
 
-    -- ...
+    -- whether a class concretizes a class whose level is not higher by 1
     lvlIsClassifierLvlMinusOne class' =
       maybe True (\classifierMentioned ->
         maybe False (\classifierExisting ->
@@ -105,20 +117,20 @@ instance Validatable () MLM where
     -- whether source of link concretizes or inherits from source of association of that link and
     -- whether target of link concretizes or inherits from target of association of that link
     checkSourceAndTarget x = maybe False (\asso ->
-        #source x <-- #source asso && #target x <-- #target asso
+        #source x \/ #source asso && #target x \/ #target asso
       ) (getAssociation x)
 
     -- determine scope:
     scope :: Class -> [Class]
-    scope x = filter ((#name x <--) . #name) classes
+    scope x = filter ((#name x \/) . #name) classes
 
     in and [
       not (null classes),
       valid () projectName,
-      allUnique (map #name classes),
+      allUnique allClassesNames,
       allUnique (map #name associations),
       all multNotViolated associations,
-      all ((\x -> not (x <-- x)) . #name) classes,
+      noCycles dict,
       all lvlIsClassifierLvlMinusOne classes,
       all (\x -> valid (scope x, map getClass (#parents x)) x) classes,
       all (\x -> valid (getClass (#source x), getClass (#target x)) x) associations,
