@@ -27,7 +27,9 @@ import Modelling.MLM.Types (
   currencySymbol
   )
 
-data Tag = TagMetaClass | TagInstance | TagsChangeParent
+newtype AsMetaClass = AsMetaClass Class
+newtype AsInstance = AsInstance Class
+newtype AsChild = AsChild Class
 
 data Object = Object {
   name :: Name,
@@ -73,25 +75,29 @@ instance XModelerable Name Object where
   get projectName (Object {name, x, y}) =
     [i|        <Object hidden="false" ref="Root::#{projectName}::#{name}" x="#{x}" y="#{y}"/>\n|]
 
--- Class : MetaClass or Instance or ChangeParents
-instance XModelerable (Name, Tag) Class where
-  get (projectName, tag) (Class {isAbstract, level, name, classifier, parents}) = case tag of
-    TagMetaClass ->
-      maybe
-      [i|    <addMetaClass abstract="#{isAbstract}" level="#{level}" name="#{name}" package="Root::#{projectName}" parents=""/>\n|]
-      (const "")
-      classifier
-    TagInstance ->
-      maybe
-      ""
-      (\x ->
-        [i|    <addInstance abstract="#{isAbstract}" name="#{name}" of="Root::#{projectName}::#{x}" package="Root::#{projectName}" parents=""/>\n|]
-      )
-      classifier
-    TagsChangeParent ->
-      if null parents then "" else
-        [i|    <changeParent class="Root::#{projectName}::#{name}" new="#{doParents}" old="" package="Root::#{projectName}"/>\n|]
-      where doParents = init (concatMap (\p -> [i|Root::#{projectName}::#{p},|]) parents)
+-- Class : MetaClass
+instance XModelerable Name AsMetaClass where
+  get projectName (AsMetaClass (Class {isAbstract, level, name, classifier})) =
+    maybe
+    [i|    <addMetaClass abstract="#{isAbstract}" level="#{level}" name="#{name}" package="Root::#{projectName}" parents=""/>\n|]
+    (const "")
+    classifier
+--  Class : Instance
+instance XModelerable Name AsInstance where
+  get projectName (AsInstance (Class {isAbstract, name, classifier})) =
+    maybe
+    ""
+    (\x ->
+      [i|    <addInstance abstract="#{isAbstract}" name="#{name}" of="Root::#{projectName}::#{x}" package="Root::#{projectName}" parents=""/>\n|]
+    )
+    classifier
+
+-- Class : ChangeParents (Child)
+instance XModelerable Name AsChild where
+  get projectName (AsChild (Class {name, parents})) =
+    if null parents then "" else
+      [i|    <changeParent class="Root::#{projectName}::#{name}" new="#{doParents}" old="" package="Root::#{projectName}"/>\n|]
+    where doParents = init (concatMap (\p -> [i|Root::#{projectName}::#{p},|]) parents)
 
 -- Multiplicity
 instance XModelerable () Multiplicity where
@@ -135,9 +141,9 @@ instance XModelerable ([Object], Double, Int) MLM where
   get (mlmObjects, xx, txTy) (MLM {name = projectName, classes, associations, links}) =
     let
       allTagsObject = concatMap (get projectName) mlmObjects
-      allTagsMetaClass = concatMap (get (projectName, TagMetaClass)) classes
-      allTagsInstance = concatMap (get (projectName, TagInstance)) classes
-      allTagsChangeParents = concatMap (get (projectName, TagsChangeParent)) classes
+      allTagsMetaClass = concatMap (get projectName . AsMetaClass) classes
+      allTagsInstance = concatMap (get projectName . AsInstance) classes
+      allTagsChangeParents = concatMap (get projectName . AsChild) classes
       allTagsAttribute =
         concatMap
           (\x -> concatMap (get (projectName, #name x)) (#attributes x))
