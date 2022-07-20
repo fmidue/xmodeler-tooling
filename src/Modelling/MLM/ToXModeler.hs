@@ -6,6 +6,7 @@ import Data.Char (ord)
 import Data.Map.Strict (toList)
 import Data.String.Interpolate (i)
 import Data.GraphViz (GraphvizCommand)
+import Data.Maybe (isJust, isNothing)
 import Diagrams.Points (Point (P))
 import Diagrams.TwoD.Types (V2 (V2))
 import Diagrams.TwoD.GraphViz (layoutGraph, mkGraph, getGraph)
@@ -27,7 +28,7 @@ import Modelling.MLM.Types (
   currencySymbol
   )
 
-newtype AsMetaClass = AsMetaClass Class
+newtype AsUnclassified = AsUnclassified Class
 newtype AsInstance = AsInstance Class
 newtype AsChild = AsChild Class
 
@@ -75,29 +76,23 @@ instance XModelerable Name Object where
   get projectName (Object {name, x, y}) =
     [i|        <Object hidden="false" ref="Root::#{projectName}::#{name}" x="#{x}" y="#{y}"/>\n|]
 
--- Class : MetaClass
-instance XModelerable Name AsMetaClass where
-  get projectName (AsMetaClass (Class {isAbstract, level, name, classifier})) =
-    maybe
+-- Class
+instance XModelerable Name AsUnclassified where
+  get projectName (AsUnclassified (Class {isAbstract, level, name, classifier = Nothing})) =
     [i|    <addMetaClass abstract="#{isAbstract}" level="#{level}" name="#{name}" package="Root::#{projectName}" parents=""/>\n|]
-    (const "")
-    classifier
+  get _ _ = ""
+
 --  Class : Instance
 instance XModelerable Name AsInstance where
-  get projectName (AsInstance (Class {isAbstract, name, classifier})) =
-    maybe
-    ""
-    (\x ->
-      [i|    <addInstance abstract="#{isAbstract}" name="#{name}" of="Root::#{projectName}::#{x}" package="Root::#{projectName}" parents=""/>\n|]
-    )
-    classifier
+  get projectName (AsInstance (Class {isAbstract, name, classifier = Just classifierName})) =
+    [i|    <addInstance abstract="#{isAbstract}" name="#{name}" of="Root::#{projectName}::#{classifierName}" package="Root::#{projectName}" parents=""/>\n|]
+  get _ _ = ""
 
 -- Class : ChangeParents (Child)
 instance XModelerable Name AsChild where
   get projectName (AsChild (Class {name, parents})) =
-    if null parents then "" else
-      [i|    <changeParent class="Root::#{projectName}::#{name}" new="#{doParents}" old="" package="Root::#{projectName}"/>\n|]
-    where doParents = init (concatMap (\p -> [i|Root::#{projectName}::#{p},|]) parents)
+    [i|    <changeParent class="Root::#{projectName}::#{name}" new="#{doParents}" old="" package="Root::#{projectName}"/>\n|]
+      where doParents = init (concatMap (\p -> [i|Root::#{projectName}::#{p},|]) parents)
 
 -- Multiplicity
 instance XModelerable () Multiplicity where
@@ -140,10 +135,17 @@ instance XModelerable Name Link where
 instance XModelerable ([Object], Double, Int) MLM where
   get (mlmObjects, xx, txTy) (MLM {name = projectName, classes, associations, links}) =
     let
-      allTagsObject = concatMap (get projectName) mlmObjects
-      allTagsMetaClass = concatMap (get projectName . AsMetaClass) classes
-      allTagsInstance = concatMap (get projectName . AsInstance) classes
-      allTagsChangeParents = concatMap (get projectName . AsChild) classes
+      allTagsObject =
+        concatMap (get projectName) mlmObjects
+      allTagsMetaClass =
+        concatMap (get projectName . AsUnclassified) $
+          filter (isNothing . #classifier) classes
+      allTagsInstance =
+        concatMap (get projectName . AsInstance) $
+          filter (isJust . #classifier) classes
+      allTagsChangeParents =
+        concatMap (get projectName . AsChild) $
+          filter (not . null . #parents) classes
       allTagsAttribute =
         concatMap
           (\x -> concatMap (get (projectName, #name x)) (#attributes x))
