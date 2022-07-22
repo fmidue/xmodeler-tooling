@@ -80,13 +80,13 @@ instance XModelerable Name Object where
 instance XModelerable Name AsUnclassified where
   get projectName (AsUnclassified (Class {isAbstract, level, name, classifier = Nothing})) =
     [i|    <addMetaClass abstract="#{isAbstract}" level="#{level}" name="#{name}" package="Root::#{projectName}" parents=""/>\n|]
-  get _ _ = "ERROR! This class is supposed to have no classifier, but it seems to have one!"
+  get _ _ = error "ERROR! This class is supposed to have no classifier, but it seems to have one!"
 
 --  Class : Instance
 instance XModelerable Name AsInstance where
   get projectName (AsInstance (Class {isAbstract, name, classifier = Just classifierName})) =
     [i|    <addInstance abstract="#{isAbstract}" name="#{name}" of="Root::#{projectName}::#{classifierName}" package="Root::#{projectName}" parents=""/>\n|]
-  get _ _ = "ERROR! This class is supposed to have a classifier, but it seems to have none!"
+  get _ _ = error "ERROR! This class is supposed to have a classifier, but it seems to have none!"
 
 -- Class : ChangeParents (Child)
 instance XModelerable Name AsChild where
