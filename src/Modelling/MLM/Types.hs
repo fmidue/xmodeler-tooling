@@ -161,6 +161,7 @@ instance Validatable ([Class], [Maybe Class]) Class where
     in
     and [
         valid () className,
+        valid () level',
         all (maybe False ((== level') . #level)) parentsClasses,
         allUnique parents,
         level' > 0 || (null attributes' && null operations),
