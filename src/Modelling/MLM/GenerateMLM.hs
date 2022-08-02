@@ -1,8 +1,8 @@
 module Modelling.MLM.GenerateMLM (generateMLM) where
 
 import Modelling.MLM.Types
-import System.Random
-
+import Test.QuickCheck (elements, generate, chooseInt, frequency)
+import Data.Digits (digits)
 
 class Modifiable a b where
     (<<<) :: a -> b -> a
@@ -45,6 +45,14 @@ instance Modifiable Class Operation where
 instance Modifiable Class Slot where
     (<<<) y@(Class {slots}) x =
          y {slots = slots ++ [x]}
+-- -------- let y concretize x
+-- instance Modifiable Class Class where
+--     (<<<) y (Class {name, level}) =
+--         y <<< Just name <<< (level - 1)
+-- -------- let y inherit from xs
+-- instance Modifiable Class [Class] where
+--     (<<<) y xs =
+--         y {parents = map #name xs}
 
 -------- Attribute
 instance Modifiable Attribute Level where
@@ -141,31 +149,97 @@ classNameSpace = map Name nameSpaceCapital
 -- if there is a class of level n, then there has to be at least a class of level n-1.
 -- there is at least one class of level 0.
 
-(>>>) :: Modifiable a b => b -> a -> a
-(>>>) = flip (<<<)
+-- (>>>) :: Modifiable a b => b -> a -> a
+-- (>>>) = flip (<<<)
 
-getRandomElem :: [a] -> IO a
-getRandomElem [] = error "empty list !!!"
-getRandomElem list = do
-    i <- randomRIO (0, length list - 1 :: Int)
-    return $ list !! i
+-- -------- let y concretize x
+--  Modifiable Class Class where
+--     (<<<) y (Class {name, level}) =
+--         y <<< Just name <<< (level - 1)
+-- -------- let y inherit from xs
+-- instance Modifiable Class [Class] where
+--     (<<<) y xs =
+--         y {parents = map #name xs}
 
-generateMLM :: Name -> Int -> Int -> IO MLM
-generateMLM projectName numClasses maxLvl = let
-    mlm = MLM projectName [] [] []
-    classesToAdd0 = [
-        Class False 0 (classNameSpace !! i) [] Nothing [] [] []
-            | i <- [0..numClasses-1]]
-    f soFar [] = return soFar
-    f [] (x:xs) = f [x {classifier = Nothing, level = maxLvl}] xs
-    f soFar (x:xs)
-        | length soFar <= maxLvl =
-            f (x {classifier = Just (#name (head soFar)), level = #level (head soFar) - 1} : soFar) xs
-        | otherwise = do
-            randElem <- getRandomElem (filter ((>0) . #level) soFar)
-            f (x {classifier = Just (#name randElem), level = #level randElem - 1} : soFar) xs
+normalizeClassLevels :: [Class] -> [Class]
+normalizeClassLevels classes = let lowest = minimum $ map #level classes in
+    map (\x -> x <<< (#level x - lowest)) classes
+
+generateMLM :: Name -> Int -> Int -> Int -> Int -> IO MLM
+generateMLM projectName numClasses0 maxLvl0 chanceToNotConcretize chanceToNotInherit = let
+    -- addConcretizations :: [Class] -> Level -> [Class] -> IO [Class]
+    -- addConcretizations [] _ soFar =
+    --     return soFar
+    -- addConcretizations (x:xs) level [] =
+    --     addConcretizations xs (level - 1) [x <<< level <<< (Nothing :: Maybe Name)]
+    -- addConcretizations (x:xs) 0 soFar = do
+    --     randomClass <- generate $ elements $ filter ((>0) . #level) soFar
+    --     x' <- x `concretizing` Just randomClass
+    --     addConcretizations xs 0 (x' : soFar)
+    -- addConcretizations (x:xs) level soFar = do
+    --     x' <- x `concretizing` Just (last soFar)
+    --     addConcretizations xs (level - 1) (soFar ++ [x'])
+
+    numClasses = max 1 numClasses0
+    maxLvl = max 0 maxLvl0
+    classesToAdd0 = [Class False 0 (classNameSpace !! i) [] Nothing [] [] [] | i <- [0..numClasses-1]] :: [Class]
+
+    percentize :: Int -> Int
+    percentize = (10 ^) . length . digits 10 . abs
+    totalWeightConcretization = percentize chanceToNotConcretize
+    -- totalWeightInheritance = percentize chanceToNotInherit
+
+    concretizing :: Class -> Maybe Class -> IO Class
+    concretizing x (Just (Class {name, level})) = return $ x <<< Just name <<< (level - 1)
+    concretizing x Nothing = do
+        randomLevel <- generate $ chooseInt (1, max 1 maxLvl)
+        return $ x <<< (Nothing :: Maybe Name) <<< randomLevel
+
+    testShowClass x = (#name x, #level x, #classifier x)
+    testShowClass1 = map testShowClass
+
     in do
-        classesToAdd1 <- f [] classesToAdd0
-        return $ foldr (>>>) mlm classesToAdd1
+        print chanceToNotInherit
+
+        let a = return [head classesToAdd0 <<< maxLvl <<< (Nothing :: Maybe Name)]
+        putStrLn "a = "
+        a1 <- a
+        print $ testShowClass1 a1
+        let b = take maxLvl $ tail classesToAdd0
+        putStrLn "b = "
+        print $ testShowClass1 b
+        let c = drop (maxLvl + 1) classesToAdd0
+        putStrLn "c = "
+        print $ testShowClass1 c
+        let d = foldl (\soFarIO x -> do
+                        soFar <- soFarIO
+                        newClass <- x `concretizing` Just (last soFar)
+                        return $ soFar ++ [newClass]
+                        ) a b
+        putStrLn "d = "
+        d1 <- d
+        print $ testShowClass1 d1
+        let e = foldr (\x soFarIO -> do
+                        soFar <- soFarIO
+                        newClass <- generate (frequency [
+                            (chanceToNotConcretize,
+                                return (x `concretizing` Nothing)),
+                            (totalWeightConcretization - chanceToNotConcretize ,
+                                do
+                                    randomClass <- elements (filter ((>0) . #level) soFar)
+                                    return (x `concretizing` Just randomClass)
+                                )
+                            ])
+                        newClass' <- newClass
+                        return $ soFar ++ [newClass']
+                       ) d c
+        putStrLn "e = "
+        e1 <- e
+        print $ testShowClass1 e1
+        classesToAdd <- e
+        let classesToAdd' = normalizeClassLevels classesToAdd
+
+        return $ MLM projectName classesToAdd' [] []
+
 
 
