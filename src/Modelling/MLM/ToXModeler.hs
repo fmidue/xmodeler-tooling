@@ -211,24 +211,20 @@ toXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)
     adjust :: Double -> Int
     adjust = round . spaceOut
 
-    getRange [] = 0
-    getRange list = fromIntegral $ maximum list - minimum list
-
     extractObject (vertex, P (V2 x y)) = Object (Name vertex) (extraOffset + adjust x) (adjust y)
   in do
     g <- layoutGraph layoutCommand $ mkGraph vertices edges
     let objects = map extractObject $ toList $ fst $ getGraph g :: [Object]
-    let xs = map x objects
+    let xs = map #x objects
     putStrLn "xs="
     print xs
-    let ys = map y objects
+    let ys = map #y objects
     putStrLn "ys="
     print ys
-    let xx0 = log $ max (getRange xs) (getRange ys) * scaleFactor / 1000 :: Double
-    let xx = max xx0 0.1
+    let xx = 1 / sqrt ( sqrt ( sqrt ( fromIntegral (length classes)))) * scaleFactor
     putStrLn "xx="
     print xx
-    let txTy = round $ 50 * xx :: Int
+    let txTy = extraOffset * round xx :: Int
     putStrLn "txty="
     print txTy
     return $ get (objects, xx, txTy) mlm
