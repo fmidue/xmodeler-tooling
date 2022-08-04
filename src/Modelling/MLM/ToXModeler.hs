@@ -169,7 +169,7 @@ instance XModelerable ([Object], Double, Int) MLM where
     <Project name="Root::#{show projectName}"/>
   </Projects>
   <Diagrams>
-    <Diagram label="#{show projectName}_diagram" package_path="Root::#{show projectName}" showConstraintReports="true" showConstraints="true" showDerivedAttributes="true" showDerivedOperations="true" showGettersAndSetters="true" showMetaClassName="false" showOperationValues="true" showOperations="true" showSlots="true">
+    <Diagram label="#{show projectName}_diagram" package_path="Root::#{show projectName}" showConstraintReports="false" showConstraints="false" showDerivedAttributes="false" showDerivedOperations="false" showGettersAndSetters="false" showMetaClassName="false" showOperationValues="true" showOperations="true" showSlots="true">
       <Categories/>
       <Owners/>
       <Objects>

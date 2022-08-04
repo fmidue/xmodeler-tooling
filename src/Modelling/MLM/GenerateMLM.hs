@@ -36,9 +36,9 @@ instance Modifiable Class [Name] where
 instance Modifiable Class (Maybe Name) where
     (<<<) y x =
          y {classifier = x}
-instance Modifiable Class Attribute where
-    (<<<) y@(Class {attributes}) x =
-         y {attributes = attributes ++ [x]}
+instance Modifiable Class [Attribute] where
+    (<<<) y x =
+         y {attributes = x}
 instance Modifiable Class Operation where
     (<<<) y@(Class {operations}) x =
          y {operations = operations ++ [x]}
@@ -126,23 +126,30 @@ instance Modifiable Link (SourceOrTarget, Name) where
             Target -> y {target = x}
 
 
-getNameSpace1 :: [Char] -> [String]
-getNameSpace1 chars = map (:[]) chars ++ [letter : number | number <- map show ([1..] :: [Int]), letter <- chars]
+-- getNameSpace1 :: [Char] -> [String]
+-- getNameSpace1 chars = map (:[]) chars ++ [letter : number | number <- map show ([1..] :: [Int]), letter <- chars]
 
 -- nameSpaceSmall :: [String]
 -- nameSpaceSmall = getNameSpace1 ['a'..'z']
-nameSpaceCapital :: [String]
-nameSpaceCapital = getNameSpace1 ['A'..'Z']
+-- nameSpaceCapital :: [String]
+-- nameSpaceCapital = getNameSpace1 ['A'..'Z']
 
--- getNameSpace2 :: String -> [String]
--- getNameSpace2 prefix = map ((prefix ++) . show) ([1..] :: [Int])
+getNameSpace2 :: String -> [String]
+getNameSpace2 prefix = map ((prefix ++) . show) ([1..] :: [Int])
+
+abc :: [String]
+abc = map (:[]) ['A'..'Z']
+
+classNameSpace0 :: [String]
+classNameSpace0 = abc ++ [j ++ i | j <- classNameSpace0, i <- abc ]
 
 classNameSpace :: [Name]
-classNameSpace = map Name nameSpaceCapital
+classNameSpace = map Name classNameSpace0
+
 -- associationNameSpace :: [Name]
 -- associationNameSpace = map Name nameSpaceSmall
--- attributeNameSpace :: [Name]
--- attributeNameSpace = map Name $ getNameSpace2 "attr"
+attributeNameSpace :: [Name]
+attributeNameSpace = map Name $ getNameSpace2 "attr"
 -- operationNameSpace :: [Name]
 -- operationNameSpace = map Name $ getNameSpace2 "op"
 
@@ -170,19 +177,40 @@ normalizeClassLevels :: [Class] -> [Class]
 normalizeClassLevels classes = let lowest = minimum $ map #level classes in
     map (\x -> x <<< (#level x - lowest)) classes
 
-generateMLM :: Name -> Int -> Int -> Int -> Int -> IO MLM
-generateMLM projectName numClasses0 maxLvl0 chanceToNotConcretize chanceToNotInherit = let
+percentize :: Int -> Int
+percentize = (10 ^) . length . digits 10 . abs
 
-    numClasses = max 1 numClasses0
+distributeRandomlyOnto :: Int -> Int -> IO [Int]
+distributeRandomlyOnto value numOfParts = let
+    generateWeights :: Int -> [Int] -> IO [Int]
+    generateWeights 0 soFar = return soFar
+    generateWeights n soFar = do
+        x <- generate $ chooseInt (0,100)
+        generateWeights (n-1) (x : soFar)
+    in do
+        weights <- generateWeights numOfParts []
+        let total = fromIntegral (sum weights) :: Float
+        let proportions = map ((/total) . fromIntegral) weights :: [Float]
+        return (map (round . (* fromIntegral value)) proportions)
+
+non0Classes :: [Class] -> [Class]
+non0Classes = filter ((>0) . #level)
+
+generateMLM :: String -> Int -> Int -> Int -> Int -> Int -> Int -> IO MLM
+generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotConcretize chanceToNotInherit numAttributes0 = let
+
+    projectName = Name projectNameString
+
     maxLvl = max 0 maxLvl0
-    classesToAdd0 = [Class False 0 (classNameSpace !! i) [] Nothing [] [] [] | i <- [0..numClasses-1]] :: [Class]
+    numClasses = max 1 numClasses0
+    numAssociations = max 0 numAssociations0
+    numAttributes = max 0 numAttributes0
 
-    percentize :: Int -> Int
-    percentize = (10 ^) . length . digits 10 . abs
-    totalWeightConcretization = percentize chanceToNotConcretize
-    chanceToConcretize = totalWeightConcretization - chanceToNotConcretize
-    totalWeightInheritance = percentize chanceToNotInherit
-    chanceToInherit = totalWeightInheritance - chanceToNotInherit
+    classesToAdd0 = [Class False 0 (classNameSpace !! i) [] Nothing [] [] [] | i <- [0..numClasses-1]] :: [Class]
+    attributesToAdd0 = [Attribute 0 (attributeNameSpace !! i) (Boolean Nothing) (Multiplicity (1,1)) | i <- [0..numAttributes-1]]
+
+    chanceToConcretize = percentize chanceToNotConcretize - chanceToNotConcretize
+    chanceToInherit = percentize chanceToNotInherit - chanceToNotInherit
 
     concretizing :: Class -> Maybe Class -> IO Class
     concretizing x (Just (Class {name, level})) = return $ x <<< Just name <<< (level - 1)
@@ -192,10 +220,7 @@ generateMLM projectName numClasses0 maxLvl0 chanceToNotConcretize chanceToNotInh
         return $ x <<< (Nothing :: Maybe Name) <<< randomLevel
 
     in do
-        print chanceToNotConcretize
-        print totalWeightConcretization
-        print chanceToNotInherit
-        print totalWeightInheritance
+        -- Concretizations:
         let initial = head classesToAdd0 <<< maxLvl <<< (Nothing :: Maybe Name)
         let vertebras = take maxLvl $ tail classesToAdd0
         let meat = drop (maxLvl + 1) classesToAdd0
@@ -221,6 +246,7 @@ generateMLM projectName numClasses0 maxLvl0 chanceToNotConcretize chanceToNotInh
         torso' <- torso
         let normalized = normalizeClassLevels torso'
 
+        -- Inheritances:
         let withInheritances = foldl (\soFarIO x -> do
                         soFar <- soFarIO
                         x' <- generate (frequency [
@@ -235,7 +261,34 @@ generateMLM projectName numClasses0 maxLvl0 chanceToNotConcretize chanceToNotInh
                         return $ soFar ++ [x']
                         ) (return [head normalized]) (tail normalized)
 
-        classesToAdd <- withInheritances
+        -- Attributes:
+        withoutAttributes <- withInheritances
+        let numNon0Classes = length $ non0Classes withoutAttributes
+        numOfAttributesForEachClass0 <- numAttributes `distributeRandomlyOnto` numNon0Classes :: IO [Int]
+        if numNon0Classes == length numOfAttributesForEachClass0
+            then putStrLn "Attributes assigned!"
+            else error "ERROR : Number of attributes portions is different from number of classes!!!"
+
+        let numOfAttributesForEachClass = snd $ foldl (\(numAttrs0, soFar) class' -> if #level class' == 0 then (numAttrs0, soFar ++ [0]) else (tail numAttrs0, soFar ++ [head numAttrs0])) (numOfAttributesForEachClass0 :: [Int], [] :: [Int]) withoutAttributes :: [Int]
+        let attributesToAdd = snd $ foldl (\(attributesRemaining, soFar) n -> (drop n attributesRemaining, soFar ++ [take n attributesRemaining])) (attributesToAdd0, [] :: [[Attribute]]) numOfAttributesForEachClass
+        let withAttributesButAllLevel0 = zipWith (<<<) withoutAttributes attributesToAdd
+        let withAttributes = foldl (\soFarIO class' -> do
+                                        soFar <- soFarIO
+                                        class'' <- foldl (\x attr -> do
+                                                          classCurrently <- x
+                                                          randomLevel <- generate $ chooseInt (0, #level classCurrently - 1)
+                                                          let attr' = attr <<< randomLevel
+                                                          return $ classCurrently <<< (tail (#attributes classCurrently) ++ [attr'])
+                                                         ) (return class') (#attributes class')
+                                        return $ soFar ++ [class'']
+                                    ) (return []) withAttributesButAllLevel0
+
+        -- Slots:
+
+        -- Associations:
+        print numAssociations
+
+        classesToAdd <- withAttributes
 
         putStrLn "initial = "
         print initial

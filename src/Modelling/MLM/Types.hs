@@ -153,6 +153,15 @@ data Class = Class {
   slots :: [Slot]
 } deriving (Eq, Show)
 
+-- instance Ord Class where
+--     (<=) x y = let
+--       name1 = show (#name x)
+--       name2 = show (#name y)
+--       len1 = length name1
+--       len2 = length name2
+--       in
+--         (len1 < len2) || (len1 == len2 && name1 <= name2 )
+
 instance Validatable ([Class], [Maybe Class]) Class where
   valid (classScope, parentsClasses) (Class {name = className, level = level', attributes = attributes', operations, slots, parents}) = let
     getAttributeClass x = find (elem x . map #name . #attributes) classScope
