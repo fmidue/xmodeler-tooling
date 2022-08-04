@@ -1,7 +1,7 @@
 module Modelling.MLM.GenerateMLM (generateMLM) where
 
 import Modelling.MLM.Types
-import Test.QuickCheck (elements, generate, chooseInt, frequency)
+import Test.QuickCheck (elements, generate, chooseInt, frequency, sublistOf)
 import Data.Digits (digits)
 
 class Modifiable a b where
@@ -30,9 +30,9 @@ instance Modifiable Class Bool where
 instance Modifiable Class Level where
     (<<<) y x =
          y {level = x}
-instance Modifiable Class Name where
-    (<<<) y@(Class {parents}) x =
-         y {parents = parents ++ [x]}
+instance Modifiable Class [Name] where
+    (<<<) y x =
+         y {parents = x}
 instance Modifiable Class (Maybe Name) where
     (<<<) y x =
          y {classifier = x}
@@ -161,24 +161,17 @@ classNameSpace = map Name nameSpaceCapital
 --     (<<<) y xs =
 --         y {parents = map #name xs}
 
+testShowClass :: Class -> (Name, Level, Maybe Name)
+testShowClass x = (#name x, #level x, #classifier x)
+testShowClass1 :: [Class] -> [(Name, Level, Maybe Name)]
+testShowClass1 = map testShowClass
+
 normalizeClassLevels :: [Class] -> [Class]
 normalizeClassLevels classes = let lowest = minimum $ map #level classes in
     map (\x -> x <<< (#level x - lowest)) classes
 
 generateMLM :: Name -> Int -> Int -> Int -> Int -> IO MLM
 generateMLM projectName numClasses0 maxLvl0 chanceToNotConcretize chanceToNotInherit = let
-    -- addConcretizations :: [Class] -> Level -> [Class] -> IO [Class]
-    -- addConcretizations [] _ soFar =
-    --     return soFar
-    -- addConcretizations (x:xs) level [] =
-    --     addConcretizations xs (level - 1) [x <<< level <<< (Nothing :: Maybe Name)]
-    -- addConcretizations (x:xs) 0 soFar = do
-    --     randomClass <- generate $ elements $ filter ((>0) . #level) soFar
-    --     x' <- x `concretizing` Just randomClass
-    --     addConcretizations xs 0 (x' : soFar)
-    -- addConcretizations (x:xs) level soFar = do
-    --     x' <- x `concretizing` Just (last soFar)
-    --     addConcretizations xs (level - 1) (soFar ++ [x'])
 
     numClasses = max 1 numClasses0
     maxLvl = max 0 maxLvl0
@@ -187,44 +180,36 @@ generateMLM projectName numClasses0 maxLvl0 chanceToNotConcretize chanceToNotInh
     percentize :: Int -> Int
     percentize = (10 ^) . length . digits 10 . abs
     totalWeightConcretization = percentize chanceToNotConcretize
-    -- totalWeightInheritance = percentize chanceToNotInherit
+    chanceToConcretize = totalWeightConcretization - chanceToNotConcretize
+    totalWeightInheritance = percentize chanceToNotInherit
+    chanceToInherit = totalWeightInheritance - chanceToNotInherit
 
     concretizing :: Class -> Maybe Class -> IO Class
     concretizing x (Just (Class {name, level})) = return $ x <<< Just name <<< (level - 1)
     concretizing x Nothing = do
         randomLevel <- generate $ chooseInt (1, max 1 maxLvl)
+        -- max 1 ... because having meta classes of level zero is useless
         return $ x <<< (Nothing :: Maybe Name) <<< randomLevel
 
-    testShowClass x = (#name x, #level x, #classifier x)
-    testShowClass1 = map testShowClass
-
     in do
+        print chanceToNotConcretize
+        print totalWeightConcretization
         print chanceToNotInherit
-
-        let a = return [head classesToAdd0 <<< maxLvl <<< (Nothing :: Maybe Name)]
-        putStrLn "a = "
-        a1 <- a
-        print $ testShowClass1 a1
-        let b = take maxLvl $ tail classesToAdd0
-        putStrLn "b = "
-        print $ testShowClass1 b
-        let c = drop (maxLvl + 1) classesToAdd0
-        putStrLn "c = "
-        print $ testShowClass1 c
-        let d = foldl (\soFarIO x -> do
+        print totalWeightInheritance
+        let initial = head classesToAdd0 <<< maxLvl <<< (Nothing :: Maybe Name)
+        let vertebras = take maxLvl $ tail classesToAdd0
+        let meat = drop (maxLvl + 1) classesToAdd0
+        let spine = foldl (\soFarIO x -> do
                         soFar <- soFarIO
                         newClass <- x `concretizing` Just (last soFar)
                         return $ soFar ++ [newClass]
-                        ) a b
-        putStrLn "d = "
-        d1 <- d
-        print $ testShowClass1 d1
-        let e = foldr (\x soFarIO -> do
+                        ) (return [initial]) vertebras
+        let torso = foldr (\x soFarIO -> do
                         soFar <- soFarIO
                         newClass <- generate (frequency [
                             (chanceToNotConcretize,
                                 return (x `concretizing` Nothing)),
-                            (totalWeightConcretization - chanceToNotConcretize ,
+                            (chanceToConcretize ,
                                 do
                                     randomClass <- elements (filter ((>0) . #level) soFar)
                                     return (x `concretizing` Just randomClass)
@@ -232,14 +217,38 @@ generateMLM projectName numClasses0 maxLvl0 chanceToNotConcretize chanceToNotInh
                             ])
                         newClass' <- newClass
                         return $ soFar ++ [newClass']
-                       ) d c
-        putStrLn "e = "
-        e1 <- e
-        print $ testShowClass1 e1
-        classesToAdd <- e
-        let classesToAdd' = normalizeClassLevels classesToAdd
+                       ) spine meat
+        torso' <- torso
+        let normalized = normalizeClassLevels torso'
 
-        return $ MLM projectName classesToAdd' [] []
+        let withInheritances = foldl (\soFarIO x -> do
+                        soFar <- soFarIO
+                        x' <- generate (frequency [
+                            (chanceToNotInherit,
+                                return x),
+                            (chanceToInherit,
+                                do
+                                    randomSubset <- sublistOf
+                                        $ map #name $ filter ((== #level x) . #level) soFar
+                                    return (x <<< randomSubset))
+                            ])
+                        return $ soFar ++ [x']
+                        ) (return [head normalized]) (tail normalized)
+
+        classesToAdd <- withInheritances
+
+        putStrLn "initial = "
+        print initial
+        putStrLn "spine = "
+        print $ testShowClass1 vertebras
+        putStrLn "meat = "
+        print $ testShowClass1 meat
+        putStrLn "torso = "
+        d1 <- torso
+        print $ testShowClass1 d1
+        putStrLn "normalized = "
+        print $ testShowClass1 normalized
+        return $ MLM projectName classesToAdd [] []
 
 
 
