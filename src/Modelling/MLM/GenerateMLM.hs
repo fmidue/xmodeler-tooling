@@ -1,7 +1,7 @@
 module Modelling.MLM.GenerateMLM (generateMLM) where
 
 import Modelling.MLM.Types
-import Test.QuickCheck (elements, generate, chooseInt, frequency, sublistOf)
+import Test.QuickCheck (elements, generate, chooseInt, frequency, sublistOf, Gen)
 import Data.Digits (digits)
 
 class Modifiable a b where
@@ -180,18 +180,20 @@ normalizeClassLevels classes = let lowest = minimum $ map #level classes in
 percentize :: Int -> Int
 percentize = (10 ^) . length . digits 10 . abs
 
-distributeRandomlyOnto :: Int -> Int -> IO [Int]
+distributeRandomlyOnto :: Int -> Int -> Gen [Int]
 distributeRandomlyOnto value numOfParts = let
-    generateWeights :: Int -> [Int] -> IO [Int]
-    generateWeights 0 soFar = return soFar
-    generateWeights n soFar = do
-        x <- generate $ chooseInt (0,100)
-        generateWeights (n-1) (x : soFar)
+    genDiv :: Gen Float -> Gen Float -> Gen Float
+    genDiv x y = (/) <$> x <*> y
     in do
-        weights <- generateWeights numOfParts []
-        let total = fromIntegral (sum weights) :: Float
-        let proportions = map ((/total) . fromIntegral) weights :: [Float]
-        return (map (round . (* fromIntegral value)) proportions)
+         let weightsInt = replicate numOfParts $ chooseInt (0, 100 * value) :: [Gen Int]
+         let weightsForCalculatingTotal = sequence weightsInt :: Gen [Int]
+         -- let total = weights' >>= return . fromIntegral . sum :: Gen Float OR
+         -- let total = weights'' <&> sum :: Gen Float
+         let total = fromIntegral . sum <$> weightsForCalculatingTotal :: Gen Float
+         let weights = map (fmap fromIntegral) weightsInt :: [Gen Float]
+         let proportions = map (`genDiv` total) weights :: [Gen Float]
+         let result = map (  fmap (round . (* fromIntegral value))  ) proportions :: [Gen Int]
+         sequence result
 
 non0Classes :: [Class] -> [Class]
 non0Classes = filter ((>0) . #level)
@@ -264,7 +266,7 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
         -- Attributes:
         withoutAttributes <- withInheritances
         let numNon0Classes = length $ non0Classes withoutAttributes
-        numOfAttributesForEachClass0 <- numAttributes `distributeRandomlyOnto` numNon0Classes :: IO [Int]
+        numOfAttributesForEachClass0 <- generate $ numAttributes `distributeRandomlyOnto` numNon0Classes :: IO [Int]
         if numNon0Classes == length numOfAttributesForEachClass0
             then putStrLn "Attributes assigned!"
             else error "ERROR : Number of attributes portions is different from number of classes!!!"
