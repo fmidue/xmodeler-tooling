@@ -215,16 +215,10 @@ toXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)
   in do
     g <- layoutGraph layoutCommand $ mkGraph vertices edges
     let objects = map extractObject $ toList $ fst $ getGraph g :: [Object]
-    let xs = map #x objects
-    putStrLn "xs="
-    print xs
-    let ys = map #y objects
-    putStrLn "ys="
-    print ys
-    let xx = 1 / sqrt ( sqrt ( sqrt ( fromIntegral (length classes)))) * scaleFactor
-    putStrLn "xx="
-    print xx
+    -- let xs = map #x objects
+    -- let ys = map #y objects
+    let xx = 1 / sqrt ( sqrt ( sqrt ( fromIntegral (length classes)))) * scaleFactor :: Double
+    let xxTruncated = round (xx * 100 :: Double) :: Int
+    putStrLn $ "view scale = " ++ show xxTruncated ++ "%"
     let txTy = extraOffset * round xx :: Int
-    putStrLn "txty="
-    print txTy
     return $ get (objects, xx, txTy) mlm

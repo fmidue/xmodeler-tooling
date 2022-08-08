@@ -1,7 +1,7 @@
 module Modelling.MLM.GenerateMLM (generateMLM) where
 
 import Modelling.MLM.Types
-import Test.QuickCheck (elements, generate, chooseInt, frequency, sublistOf, Gen)
+import Test.QuickCheck (elements, chooseInt, frequency, sublistOf, Gen)
 import Data.Digits (digits)
 
 class Modifiable a b where
@@ -168,11 +168,6 @@ attributeNameSpace = map Name $ getNameSpace2 "attr"
 --     (<<<) y xs =
 --         y {parents = map #name xs}
 
-testShowClass :: Class -> (Name, Level, Maybe Name)
-testShowClass x = (#name x, #level x, #classifier x)
-testShowClass1 :: [Class] -> [(Name, Level, Maybe Name)]
-testShowClass1 = map testShowClass
-
 normalizeClassLevels :: [Class] -> [Class]
 normalizeClassLevels classes = let lowest = minimum $ map #level classes in
     map (\x -> x <<< (#level x - lowest)) classes
@@ -180,25 +175,23 @@ normalizeClassLevels classes = let lowest = minimum $ map #level classes in
 percentize :: Int -> Int
 percentize = (10 ^) . length . digits 10 . abs
 
-distributeRandomlyOnto :: Int -> Int -> Gen [Int]
-distributeRandomlyOnto value numOfParts = let
-    genDiv :: Gen Float -> Gen Float -> Gen Float
-    genDiv x y = (/) <$> x <*> y
-    in do
-         let weightsInt = replicate numOfParts $ chooseInt (0, 100 * value) :: [Gen Int]
-         let weightsForCalculatingTotal = sequence weightsInt :: Gen [Int]
-         -- let total = weights' >>= return . fromIntegral . sum :: Gen Float OR
-         -- let total = weights'' <&> sum :: Gen Float
-         let total = fromIntegral . sum <$> weightsForCalculatingTotal :: Gen Float
-         let weights = map (fmap fromIntegral) weightsInt :: [Gen Float]
-         let proportions = map (`genDiv` total) weights :: [Gen Float]
-         let result = map (  fmap (round . (* fromIntegral value))  ) proportions :: [Gen Int]
-         sequence result
+precisionFactor :: Int
+precisionFactor = 100
+
+distributedRandomlyOnto :: Int -> Int -> Gen [Int]
+distributedRandomlyOnto value numOfParts = do
+    let weightsIntGen = replicate numOfParts $ chooseInt (0, precisionFactor * value) :: [Gen Int]
+    weightsInt <- sequence weightsIntGen
+    let weights = map fromIntegral weightsInt :: [Float]
+    let total = max 1 $ sum weights :: Float
+    let proportions = map (/total) weights :: [Float]
+    let result = map (round . (* fromIntegral value)) proportions :: [Int]
+    return result
 
 non0Classes :: [Class] -> [Class]
 non0Classes = filter ((>0) . #level)
 
-generateMLM :: String -> Int -> Int -> Int -> Int -> Int -> Int -> IO MLM
+generateMLM :: String -> Int -> Int -> Int -> Int -> Int -> Int -> Gen MLM
 generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotConcretize chanceToNotInherit numAttributes0 = let
 
     projectName = Name projectNameString
@@ -214,26 +207,34 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
     chanceToConcretize = percentize chanceToNotConcretize - chanceToNotConcretize
     chanceToInherit = percentize chanceToNotInherit - chanceToNotInherit
 
-    concretizing :: Class -> Maybe Class -> IO Class
+    concretizing :: Class -> Maybe Class -> Gen Class
     concretizing x (Just (Class {name, level})) = return $ x <<< Just name <<< (level - 1)
     concretizing x Nothing = do
-        randomLevel <- generate $ chooseInt (1, max 1 maxLvl)
+        randomLevel <- chooseInt (1, max 1 maxLvl)
         -- max 1 ... because having meta classes of level zero is useless
         return $ x <<< (Nothing :: Maybe Name) <<< randomLevel
 
+    -- accumulate :: [a] -> [b] -> ([a] -> b -> Gen a) -> Gen [a]
+    -- accumulate start list f = foldl (\soFarGen x -> do
+    --                                     soFar <- soFarGen
+    --                                     new <- f soFar x
+    --                                     return (soFar ++ [new])
+    --     ) (return start) list
+
     in do
         -- Concretizations:
-        let initial = head classesToAdd0 <<< maxLvl <<< (Nothing :: Maybe Name)
-        let vertebras = take maxLvl $ tail classesToAdd0
-        let meat = drop (maxLvl + 1) classesToAdd0
-        let spine = foldl (\soFarIO x -> do
-                        soFar <- soFarIO
-                        newClass <- x `concretizing` Just (last soFar)
-                        return $ soFar ++ [newClass]
-                        ) (return [initial]) vertebras
-        let torso = foldr (\x soFarIO -> do
-                        soFar <- soFarIO
-                        newClass <- generate (frequency [
+        let initial = head classesToAdd0 <<< maxLvl <<< (Nothing :: Maybe Name) :: Class
+        let vertebras = take maxLvl $ tail classesToAdd0 :: [Class]
+        let meat = drop (maxLvl + 1) classesToAdd0 :: [Class]
+        spine <- foldl (\soFarGen x -> do
+                        soFar <- soFarGen :: Gen [Class]
+                        newClass <- x `concretizing` Just (last soFar) :: Gen Class
+                        return $ soFar ++ [newClass] :: Gen [Class]
+                        ) (return [initial] :: Gen [Class]) vertebras
+        -- spine <- accumulate [initial] vertebras (\soFar x -> x `concretizing` Just (last soFar)) :: Gen [Class]
+        let torso = foldr (\x soFarGen -> do
+                        soFar <- soFarGen
+                        newClassGen <- frequency [
                             (chanceToNotConcretize,
                                 return (x `concretizing` Nothing)),
                             (chanceToConcretize ,
@@ -241,17 +242,27 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
                                     randomClass <- elements (filter ((>0) . #level) soFar)
                                     return (x `concretizing` Just randomClass)
                                 )
-                            ])
-                        newClass' <- newClass
-                        return $ soFar ++ [newClass']
-                       ) spine meat
+                            ]
+                        newClass <- newClassGen
+                        return $ soFar ++ [newClass]
+                       ) (return spine :: Gen [Class]) meat
         torso' <- torso
+        -- let torso = accumulate spine meat (\soFar x -> do
+        --                             new0 <- frequency [
+        --                                         (chanceToNotConcretize, return Nothing),
+        --                                         (chanceToConcretize, do
+        --                                             randomClass <- elements (non0Classes soFar)
+        --                                             return (Just randomClass))
+        --                                     ]
+        --                             new <- new0
+        --                             return (x `concretizing` new)
+        --                             )
         let normalized = normalizeClassLevels torso'
 
         -- Inheritances:
         let withInheritances = foldl (\soFarIO x -> do
                         soFar <- soFarIO
-                        x' <- generate (frequency [
+                        newClass <- frequency [
                             (chanceToNotInherit,
                                 return x),
                             (chanceToInherit,
@@ -259,26 +270,26 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
                                     randomSubset <- sublistOf
                                         $ map #name $ filter ((== #level x) . #level) soFar
                                     return (x <<< randomSubset))
-                            ])
-                        return $ soFar ++ [x']
+                            ]
+                        return $ soFar ++ [newClass]
                         ) (return [head normalized]) (tail normalized)
 
         -- Attributes:
         withoutAttributes <- withInheritances
         let numNon0Classes = length $ non0Classes withoutAttributes
-        numOfAttributesForEachClass0 <- generate $ numAttributes `distributeRandomlyOnto` numNon0Classes :: IO [Int]
+        numOfAttributesForEachClass0 <- numAttributes `distributedRandomlyOnto` numNon0Classes :: Gen [Int]
         if numNon0Classes == length numOfAttributesForEachClass0
-            then putStrLn "Attributes assigned!"
+            then return ()
             else error "ERROR : Number of attributes portions is different from number of classes!!!"
 
         let numOfAttributesForEachClass = snd $ foldl (\(numAttrs0, soFar) class' -> if #level class' == 0 then (numAttrs0, soFar ++ [0]) else (tail numAttrs0, soFar ++ [head numAttrs0])) (numOfAttributesForEachClass0 :: [Int], [] :: [Int]) withoutAttributes :: [Int]
         let attributesToAdd = snd $ foldl (\(attributesRemaining, soFar) n -> (drop n attributesRemaining, soFar ++ [take n attributesRemaining])) (attributesToAdd0, [] :: [[Attribute]]) numOfAttributesForEachClass
         let withAttributesButAllLevel0 = zipWith (<<<) withoutAttributes attributesToAdd
-        let withAttributes = foldl (\soFarIO class' -> do
-                                        soFar <- soFarIO
+        let withAttributes = foldl (\soFarGen class' -> do
+                                        soFar <- soFarGen
                                         class'' <- foldl (\x attr -> do
                                                           classCurrently <- x
-                                                          randomLevel <- generate $ chooseInt (0, #level classCurrently - 1)
+                                                          randomLevel <- chooseInt (0, #level classCurrently - 1)
                                                           let attr' = attr <<< randomLevel
                                                           return $ classCurrently <<< (tail (#attributes classCurrently) ++ [attr'])
                                                          ) (return class') (#attributes class')
@@ -288,21 +299,8 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
         -- Slots:
 
         -- Associations:
-        print numAssociations
-
         classesToAdd <- withAttributes
-
-        putStrLn "initial = "
-        print initial
-        putStrLn "spine = "
-        print $ testShowClass1 vertebras
-        putStrLn "meat = "
-        print $ testShowClass1 meat
-        putStrLn "torso = "
-        d1 <- torso
-        print $ testShowClass1 d1
-        putStrLn "normalized = "
-        print $ testShowClass1 normalized
+        _ <- chooseInt(0, numAssociations)
         return $ MLM projectName classesToAdd [] []
 
 
