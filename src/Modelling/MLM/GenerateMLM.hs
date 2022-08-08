@@ -142,16 +142,8 @@ attributeNameSpace = map Name $ getNameSpace "attr"
 -- operationNameSpace :: [Name]
 -- operationNameSpace = map Name $ getNameSpace "op"
 
--- there must be at least one class of level 0.
-normalizeClassLevels :: [Class] -> [Class]
-normalizeClassLevels classes = let lowest = minimum $ map #level classes in
-    map (\x -> x <<< (#level x - lowest)) classes
-
-percentize :: Int -> Int
-percentize = (10 ^) . length . digits 10 . abs
-
 precisionFactor :: Int
-precisionFactor = 100
+precisionFactor = 1000
 
 distributedRandomlyOnto :: Int -> Int -> Gen [Int]
 distributedRandomlyOnto value numOfParts = do
@@ -180,6 +172,103 @@ accumulateSimple list f = foldl (\soFarGen x -> do
         return $ soFar ++ [new]
     ) (return []) list
 
+complement :: Int -> Int
+complement x = ((10 ^) . length . digits 10 . abs) x - x
+
+-- there must be at least one class of level 0.
+normalizeClassLevels :: [Class] -> [Class]
+normalizeClassLevels classes = let lowest = minimum $ map #level classes in
+    map (\x -> x <<< (#level x - lowest)) classes
+
+----------------------------------------------------------
+-- ADDING COMPONENTS
+----------------------------------------------------------
+
+addConcretizations :: Int -> Int -> [Class] -> Gen [Class]
+addConcretizations maxLvl chanceToNotConcretize theClasses = let
+    concretizing :: Class -> Maybe Class -> Gen Class
+    concretizing x (Just (Class {name, level})) = return $ x <<< Just name <<< (level - 1)
+    concretizing x Nothing = do
+        randomLevel <- chooseInt (1, max 1 maxLvl)
+        -- max 1 ... because having meta classes of level zero is useless
+        return $ x <<< (Nothing :: Maybe Name) <<< randomLevel
+
+    chanceToConcretize = complement chanceToNotConcretize :: Int
+
+    initial = head theClasses <<< maxLvl <<< (Nothing :: Maybe Name) :: Class
+    vertebras = take maxLvl $ tail theClasses :: [Class]
+    meat = drop (maxLvl + 1) theClasses :: [Class]
+
+    in do
+        -- if there is a class of level n, then there has to be at least a class of level n-1.
+        spine <- accumulate [initial] vertebras (\soFar x -> x `concretizing` Just (last soFar))
+            :: Gen [Class]
+        torso <- accumulate spine meat (\soFar x -> do
+                toConcretize <- frequency [
+                    (chanceToNotConcretize, return Nothing),
+                    (chanceToConcretize, do
+                        randomClass <- elements (non0Classes soFar)
+                        return (Just randomClass))
+                    ]
+                x `concretizing` toConcretize
+            ) :: Gen [Class]
+        return $ normalizeClassLevels torso
+
+
+
+addInheritances :: Int -> [Class] -> Gen [Class]
+addInheritances chanceToNotInherit theClasses = let
+    chanceToInherit = complement chanceToNotInherit :: Int
+    in accumulate [head theClasses] (tail theClasses) (\soFar x -> do
+            toInheritFrom <- frequency [
+                (chanceToNotInherit, return []),
+                (chanceToInherit, sublistOf (map #name (filter ((== #level x) . #level) soFar)))
+                ]
+            return $ x <<< (toInheritFrom :: [Name])
+            )
+
+
+
+addAttributes :: Int -> [Attribute] -> [Class] -> Gen [Class]
+addAttributes numAttributes theAttributes theClasses = let
+    numNon0Classes = length $ non0Classes theClasses :: Int
+    in do
+        numOfAttributesForEachClass0 <- numAttributes `distributedRandomlyOnto` numNon0Classes
+            :: Gen [Int]
+
+        let numOfAttributesForEachClass =
+                snd $ foldl (\(numAttrs0, soFar) class' ->
+                    if #level class' == 0
+                        then (numAttrs0, soFar ++ [0])
+                        else (tail numAttrs0, soFar ++ [head numAttrs0]))
+                    (numOfAttributesForEachClass0 :: [Int], [] :: [Int])
+                    theClasses
+                :: [Int]
+
+        if numNon0Classes == length numOfAttributesForEachClass0
+            then return ()
+            else error "ERROR : Number of attributes portions is different from number of classes!!!"
+
+        let attributesToAdd =
+                snd $ foldl (\(attributesRemaining, soFar) n ->
+                    (drop n attributesRemaining, soFar ++ [take n attributesRemaining]))
+                    (theAttributes, [] :: [[Attribute]])
+                    numOfAttributesForEachClass
+                :: [[Attribute]]
+
+        let withLevelZeroAttributes = zipWith (<<<) theClasses attributesToAdd
+                :: [Class]
+
+        accumulateSimple withLevelZeroAttributes (\x -> do
+                toAdd <- accumulateSimple (#attributes x) (\attr -> do
+                        randomLevel <- chooseInt (0, #level x - 1)
+                        return $ attr <<< randomLevel
+                    )
+                return $ x <<< toAdd
+            ) :: Gen [Class]
+
+
+
 generateMLM :: String -> Int -> Int -> Int -> Int -> Int -> Int -> Gen MLM
 generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotConcretize chanceToNotInherit numAttributes0 = let
 
@@ -195,62 +284,15 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
     emptyAttributes = [Attribute 0 (attributeNameSpace !! i) (Boolean Nothing) (Multiplicity (1,1))
         | i <- [0..numAttributes-1]] :: [Attribute]
 
-    chanceToConcretize = percentize chanceToNotConcretize - chanceToNotConcretize :: Int
-    chanceToInherit = percentize chanceToNotInherit - chanceToNotInherit :: Int
-
-    concretizing :: Class -> Maybe Class -> Gen Class
-    concretizing x (Just (Class {name, level})) = return $ x <<< Just name <<< (level - 1)
-    concretizing x Nothing = do
-        randomLevel <- chooseInt (1, max 1 maxLvl)
-        -- max 1 ... because having meta classes of level zero is useless
-        return $ x <<< (Nothing :: Maybe Name) <<< randomLevel
-
     in do
-        -- Concretizations:
-        let initial = head emptyClasses <<< maxLvl <<< (Nothing :: Maybe Name) :: Class
-        let vertebras = take maxLvl $ tail emptyClasses :: [Class]
-        let meat = drop (maxLvl + 1) emptyClasses :: [Class]
-        -- if there is a class of level n, then there has to be at least a class of level n-1.
-        spine <- accumulate [initial] vertebras (\soFar x -> x `concretizing` Just (last soFar))
+        withConcretizations <- addConcretizations maxLvl chanceToNotConcretize emptyClasses
             :: Gen [Class]
 
-        torso <- accumulate spine meat (\soFar x -> do
-                toConcretize <- frequency [
-                    (chanceToNotConcretize, return Nothing),
-                    (chanceToConcretize, do
-                        randomClass <- elements (non0Classes soFar)
-                        return (Just randomClass))
-                    ]
-                x `concretizing` toConcretize
-            )
-        let normalized = normalizeClassLevels torso
+        withInheritances <- addInheritances chanceToNotInherit withConcretizations
+            :: Gen [Class]
 
-        -- Inheritances:
-        withInheritances <- accumulate [head normalized] (tail normalized) (\soFar x -> do
-                toInheritFrom <- frequency [
-                    (chanceToNotInherit, return []),
-                    (chanceToInherit, sublistOf (map #name (filter ((== #level x) . #level) soFar)))
-                    ]
-                return $ x <<< (toInheritFrom :: [Name])
-            )
-
-        -- Attributes:
-        let numNon0Classes = length $ non0Classes withInheritances
-        numOfAttributesForEachClass0 <- numAttributes `distributedRandomlyOnto` numNon0Classes :: Gen [Int]
-        if numNon0Classes == length numOfAttributesForEachClass0
-            then return ()
-            else error "ERROR : Number of attributes portions is different from number of classes!!!"
-
-        let numOfAttributesForEachClass = snd $ foldl (\(numAttrs0, soFar) class' -> if #level class' == 0 then (numAttrs0, soFar ++ [0]) else (tail numAttrs0, soFar ++ [head numAttrs0])) (numOfAttributesForEachClass0 :: [Int], [] :: [Int]) withInheritances :: [Int]
-        let attributesToAdd = snd $ foldl (\(attributesRemaining, soFar) n -> (drop n attributesRemaining, soFar ++ [take n attributesRemaining])) (emptyAttributes, [] :: [[Attribute]]) numOfAttributesForEachClass
-        let withAttributesLevel0 = zipWith (<<<) withInheritances attributesToAdd
-        withAttributes <- accumulateSimple withAttributesLevel0 (\x -> do
-                toAdd <- accumulateSimple (#attributes x) (\attr -> do
-                        randomLevel <- chooseInt (0, #level x - 1)
-                        return $ attr <<< randomLevel
-                    )
-                return $ x <<< toAdd
-            )
+        withAttributes <- addAttributes numAttributes emptyAttributes withInheritances
+            :: Gen [Class]
 
         -- Associations:
         let classesToAdd = withAttributes
