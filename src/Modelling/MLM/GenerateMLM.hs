@@ -1,6 +1,19 @@
-module Modelling.MLM.GenerateMLM (generateMLM) where
+module Modelling.MLM.GenerateMLM (generateMLM, (<<<)) where
 
-import Modelling.MLM.Types
+import Modelling.MLM.Types (
+  MLM (..),
+  Link (..),
+  Association (..),
+  Slot (..),
+  Class (..),
+  Operation (..),
+  Attribute (..),
+  Multiplicity (..),
+  Name (..),
+  OperationBody (..),
+  Level,
+  Type (..)
+  )
 import Test.QuickCheck (elements, chooseInt, frequency, sublistOf, Gen)
 import Data.Digits (digits)
 
@@ -45,14 +58,6 @@ instance Modifiable Class Operation where
 instance Modifiable Class Slot where
     (<<<) y@(Class {slots}) x =
          y {slots = slots ++ [x]}
--- -------- let y concretize x
--- instance Modifiable Class Class where
---     (<<<) y (Class {name, level}) =
---         y <<< Just name <<< (level - 1)
--- -------- let y inherit from xs
--- instance Modifiable Class [Class] where
---     (<<<) y xs =
---         y {parents = map #name xs}
 
 -------- Attribute
 instance Modifiable Attribute Level where

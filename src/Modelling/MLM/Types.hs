@@ -28,8 +28,8 @@ import Data.List.Split (splitOn)
 import Data.List (find, sort, group)
 import Data.Ix (inRange)
 import Data.Maybe (isJust)
-import GHC.OverloadedLabels
-import GHC.Records
+import GHC.OverloadedLabels (IsLabel (..))
+import GHC.Records (HasField (..))
 
 -- IsLabel orphan instance for (->) --
 instance HasField x r a => IsLabel x (r -> a) where
