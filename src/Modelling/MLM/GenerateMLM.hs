@@ -125,49 +125,24 @@ instance Modifiable Link (SourceOrTarget, Name) where
             Source -> y {source = x}
             Target -> y {target = x}
 
-
--- getNameSpace1 :: [Char] -> [String]
--- getNameSpace1 chars = map (:[]) chars ++ [letter : number | number <- map show ([1..] :: [Int]), letter <- chars]
-
--- nameSpaceSmall :: [String]
--- nameSpaceSmall = getNameSpace1 ['a'..'z']
--- nameSpaceCapital :: [String]
--- nameSpaceCapital = getNameSpace1 ['A'..'Z']
-
-getNameSpace2 :: String -> [String]
-getNameSpace2 prefix = map ((prefix ++) . show) ([1..] :: [Int])
+getNameSpace :: String -> [String]
+getNameSpace prefix = map ((prefix ++) . show) ([1..] :: [Int])
 
 abc :: [String]
 abc = map (:[]) ['A'..'Z']
 
-classNameSpace0 :: [String]
-classNameSpace0 = abc ++ [j ++ i | j <- classNameSpace0, i <- abc ]
-
 classNameSpace :: [Name]
-classNameSpace = map Name classNameSpace0
+classNameSpace = map Name classNameSpaceString
+    where classNameSpaceString = abc ++ [j ++ i | j <- classNameSpaceString, i <- abc ] :: [String]
 
 -- associationNameSpace :: [Name]
 -- associationNameSpace = map Name nameSpaceSmall
 attributeNameSpace :: [Name]
-attributeNameSpace = map Name $ getNameSpace2 "attr"
+attributeNameSpace = map Name $ getNameSpace "attr"
 -- operationNameSpace :: [Name]
--- operationNameSpace = map Name $ getNameSpace2 "op"
+-- operationNameSpace = map Name $ getNameSpace "op"
 
--- if there is a class of level n, then there has to be at least a class of level n-1.
--- there is at least one class of level 0.
-
--- (>>>) :: Modifiable a b => b -> a -> a
--- (>>>) = flip (<<<)
-
--- -------- let y concretize x
---  Modifiable Class Class where
---     (<<<) y (Class {name, level}) =
---         y <<< Just name <<< (level - 1)
--- -------- let y inherit from xs
--- instance Modifiable Class [Class] where
---     (<<<) y xs =
---         y {parents = map #name xs}
-
+-- there must be at least one class of level 0.
 normalizeClassLevels :: [Class] -> [Class]
 normalizeClassLevels classes = let lowest = minimum $ map #level classes in
     map (\x -> x <<< (#level x - lowest)) classes
@@ -191,21 +166,37 @@ distributedRandomlyOnto value numOfParts = do
 non0Classes :: [Class] -> [Class]
 non0Classes = filter ((>0) . #level)
 
+accumulate :: [a] -> [b] -> ([a] -> b -> Gen a) -> Gen [a]
+accumulate start list f = foldl (\soFarGen x -> do
+        soFar <- soFarGen
+        new <- f soFar x
+        return $ soFar ++ [new]
+    ) (return start) list
+
+accumulateSimple :: [b] -> (b -> Gen a) -> Gen [a]
+accumulateSimple list f = foldl (\soFarGen x -> do
+        soFar <- soFarGen
+        new <- f x
+        return $ soFar ++ [new]
+    ) (return []) list
+
 generateMLM :: String -> Int -> Int -> Int -> Int -> Int -> Int -> Gen MLM
 generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotConcretize chanceToNotInherit numAttributes0 = let
 
-    projectName = Name projectNameString
+    projectName = Name projectNameString :: Name
 
-    maxLvl = max 0 maxLvl0
-    numClasses = max 1 numClasses0
-    numAssociations = max 0 numAssociations0
-    numAttributes = max 0 numAttributes0
+    maxLvl = max 0 maxLvl0 :: Level
+    numClasses = max 1 numClasses0 :: Int
+    numAssociations = max 0 numAssociations0 :: Int
+    numAttributes = max 0 numAttributes0 :: Int
 
-    classesToAdd0 = [Class False 0 (classNameSpace !! i) [] Nothing [] [] [] | i <- [0..numClasses-1]] :: [Class]
-    attributesToAdd0 = [Attribute 0 (attributeNameSpace !! i) (Boolean Nothing) (Multiplicity (1,1)) | i <- [0..numAttributes-1]]
+    emptyClasses = [Class False 0 (classNameSpace !! i) [] Nothing [] [] []
+        | i <- [0..numClasses-1]] :: [Class]
+    emptyAttributes = [Attribute 0 (attributeNameSpace !! i) (Boolean Nothing) (Multiplicity (1,1))
+        | i <- [0..numAttributes-1]] :: [Attribute]
 
-    chanceToConcretize = percentize chanceToNotConcretize - chanceToNotConcretize
-    chanceToInherit = percentize chanceToNotInherit - chanceToNotInherit
+    chanceToConcretize = percentize chanceToNotConcretize - chanceToNotConcretize :: Int
+    chanceToInherit = percentize chanceToNotInherit - chanceToNotInherit :: Int
 
     concretizing :: Class -> Maybe Class -> Gen Class
     concretizing x (Just (Class {name, level})) = return $ x <<< Just name <<< (level - 1)
@@ -214,92 +205,55 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
         -- max 1 ... because having meta classes of level zero is useless
         return $ x <<< (Nothing :: Maybe Name) <<< randomLevel
 
-    -- accumulate :: [a] -> [b] -> ([a] -> b -> Gen a) -> Gen [a]
-    -- accumulate start list f = foldl (\soFarGen x -> do
-    --                                     soFar <- soFarGen
-    --                                     new <- f soFar x
-    --                                     return (soFar ++ [new])
-    --     ) (return start) list
-
     in do
         -- Concretizations:
-        let initial = head classesToAdd0 <<< maxLvl <<< (Nothing :: Maybe Name) :: Class
-        let vertebras = take maxLvl $ tail classesToAdd0 :: [Class]
-        let meat = drop (maxLvl + 1) classesToAdd0 :: [Class]
-        spine <- foldl (\soFarGen x -> do
-                        soFar <- soFarGen :: Gen [Class]
-                        newClass <- x `concretizing` Just (last soFar) :: Gen Class
-                        return $ soFar ++ [newClass] :: Gen [Class]
-                        ) (return [initial] :: Gen [Class]) vertebras
-        -- spine <- accumulate [initial] vertebras (\soFar x -> x `concretizing` Just (last soFar)) :: Gen [Class]
-        let torso = foldr (\x soFarGen -> do
-                        soFar <- soFarGen
-                        newClassGen <- frequency [
-                            (chanceToNotConcretize,
-                                return (x `concretizing` Nothing)),
-                            (chanceToConcretize ,
-                                do
-                                    randomClass <- elements (filter ((>0) . #level) soFar)
-                                    return (x `concretizing` Just randomClass)
-                                )
-                            ]
-                        newClass <- newClassGen
-                        return $ soFar ++ [newClass]
-                       ) (return spine :: Gen [Class]) meat
-        torso' <- torso
-        -- let torso = accumulate spine meat (\soFar x -> do
-        --                             new0 <- frequency [
-        --                                         (chanceToNotConcretize, return Nothing),
-        --                                         (chanceToConcretize, do
-        --                                             randomClass <- elements (non0Classes soFar)
-        --                                             return (Just randomClass))
-        --                                     ]
-        --                             new <- new0
-        --                             return (x `concretizing` new)
-        --                             )
-        let normalized = normalizeClassLevels torso'
+        let initial = head emptyClasses <<< maxLvl <<< (Nothing :: Maybe Name) :: Class
+        let vertebras = take maxLvl $ tail emptyClasses :: [Class]
+        let meat = drop (maxLvl + 1) emptyClasses :: [Class]
+        -- if there is a class of level n, then there has to be at least a class of level n-1.
+        spine <- accumulate [initial] vertebras (\soFar x -> x `concretizing` Just (last soFar))
+            :: Gen [Class]
+
+        torso <- accumulate spine meat (\soFar x -> do
+                toConcretize <- frequency [
+                    (chanceToNotConcretize, return Nothing),
+                    (chanceToConcretize, do
+                        randomClass <- elements (non0Classes soFar)
+                        return (Just randomClass))
+                    ]
+                x `concretizing` toConcretize
+            )
+        let normalized = normalizeClassLevels torso
 
         -- Inheritances:
-        let withInheritances = foldl (\soFarIO x -> do
-                        soFar <- soFarIO
-                        newClass <- frequency [
-                            (chanceToNotInherit,
-                                return x),
-                            (chanceToInherit,
-                                do
-                                    randomSubset <- sublistOf
-                                        $ map #name $ filter ((== #level x) . #level) soFar
-                                    return (x <<< randomSubset))
-                            ]
-                        return $ soFar ++ [newClass]
-                        ) (return [head normalized]) (tail normalized)
+        withInheritances <- accumulate [head normalized] (tail normalized) (\soFar x -> do
+                toInheritFrom <- frequency [
+                    (chanceToNotInherit, return []),
+                    (chanceToInherit, sublistOf (map #name (filter ((== #level x) . #level) soFar)))
+                    ]
+                return $ x <<< (toInheritFrom :: [Name])
+            )
 
         -- Attributes:
-        withoutAttributes <- withInheritances
-        let numNon0Classes = length $ non0Classes withoutAttributes
+        let numNon0Classes = length $ non0Classes withInheritances
         numOfAttributesForEachClass0 <- numAttributes `distributedRandomlyOnto` numNon0Classes :: Gen [Int]
         if numNon0Classes == length numOfAttributesForEachClass0
             then return ()
             else error "ERROR : Number of attributes portions is different from number of classes!!!"
 
-        let numOfAttributesForEachClass = snd $ foldl (\(numAttrs0, soFar) class' -> if #level class' == 0 then (numAttrs0, soFar ++ [0]) else (tail numAttrs0, soFar ++ [head numAttrs0])) (numOfAttributesForEachClass0 :: [Int], [] :: [Int]) withoutAttributes :: [Int]
-        let attributesToAdd = snd $ foldl (\(attributesRemaining, soFar) n -> (drop n attributesRemaining, soFar ++ [take n attributesRemaining])) (attributesToAdd0, [] :: [[Attribute]]) numOfAttributesForEachClass
-        let withAttributesButAllLevel0 = zipWith (<<<) withoutAttributes attributesToAdd
-        let withAttributes = foldl (\soFarGen class' -> do
-                                        soFar <- soFarGen
-                                        class'' <- foldl (\x attr -> do
-                                                          classCurrently <- x
-                                                          randomLevel <- chooseInt (0, #level classCurrently - 1)
-                                                          let attr' = attr <<< randomLevel
-                                                          return $ classCurrently <<< (tail (#attributes classCurrently) ++ [attr'])
-                                                         ) (return class') (#attributes class')
-                                        return $ soFar ++ [class'']
-                                    ) (return []) withAttributesButAllLevel0
-
-        -- Slots:
+        let numOfAttributesForEachClass = snd $ foldl (\(numAttrs0, soFar) class' -> if #level class' == 0 then (numAttrs0, soFar ++ [0]) else (tail numAttrs0, soFar ++ [head numAttrs0])) (numOfAttributesForEachClass0 :: [Int], [] :: [Int]) withInheritances :: [Int]
+        let attributesToAdd = snd $ foldl (\(attributesRemaining, soFar) n -> (drop n attributesRemaining, soFar ++ [take n attributesRemaining])) (emptyAttributes, [] :: [[Attribute]]) numOfAttributesForEachClass
+        let withAttributesLevel0 = zipWith (<<<) withInheritances attributesToAdd
+        withAttributes <- accumulateSimple withAttributesLevel0 (\x -> do
+                toAdd <- accumulateSimple (#attributes x) (\attr -> do
+                        randomLevel <- chooseInt (0, #level x - 1)
+                        return $ attr <<< randomLevel
+                    )
+                return $ x <<< toAdd
+            )
 
         -- Associations:
-        classesToAdd <- withAttributes
+        let classesToAdd = withAttributes
         _ <- chooseInt(0, numAssociations)
         return $ MLM projectName classesToAdd [] []
 
