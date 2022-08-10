@@ -14,8 +14,9 @@ import Modelling.MLM.Types (
   Level,
   Type (..)
   )
-import Test.QuickCheck (elements, chooseInt, frequency, sublistOf, Gen)
+import Test.QuickCheck (elements, chooseInt, frequency, sublistOf, vectorOf, Gen)
 import Data.Digits (digits)
+import Data.Foldable (foldlM)
 
 class Modifiable a b where
     (<<<) :: a -> b -> a
@@ -152,8 +153,7 @@ precisionFactor = 1000
 
 distributedRandomlyOnto :: Int -> Int -> Gen [Int]
 distributedRandomlyOnto value numOfParts = do
-    let weightsIntGen = replicate numOfParts $ chooseInt (0, precisionFactor * value) :: [Gen Int]
-    weightsInt <- sequence weightsIntGen
+    weightsInt <- vectorOf numOfParts $ chooseInt (0, precisionFactor * value) :: Gen [Int]
     let weights = map fromIntegral weightsInt :: [Float]
     let total = max 1 $ sum weights :: Float
     let proportions = map (/total) weights :: [Float]
@@ -164,18 +164,16 @@ non0Classes :: [Class] -> [Class]
 non0Classes = filter ((>0) . #level)
 
 accumulate :: [a] -> [b] -> ([a] -> b -> Gen a) -> Gen [a]
-accumulate start list f = foldl (\soFarGen x -> do
-        soFar <- soFarGen
+accumulate start list f = foldlM (\soFar x -> do
         new <- f soFar x
         return $ soFar ++ [new]
-    ) (return start) list
+    ) start list
 
 accumulateSimple :: [b] -> (b -> Gen a) -> Gen [a]
-accumulateSimple list f = foldl (\soFarGen x -> do
-        soFar <- soFarGen
+accumulateSimple list f = foldlM (\soFar x -> do
         new <- f x
         return $ soFar ++ [new]
-    ) (return []) list
+    ) [] list
 
 complement :: Int -> Int
 complement x = ((10 ^) . length . digits 10 . abs) x - x
