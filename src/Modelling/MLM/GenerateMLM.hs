@@ -131,25 +131,29 @@ instance Modifiable Link (SourceOrTarget, Name) where
             Source -> y {source = x}
             Target -> y {target = x}
 
-getNameSpace :: String -> [String]
-getNameSpace prefix = map ((prefix ++) . show) ([1..] :: [Int])
+abcCapital :: [String]
+abcCapital = map (:[]) ['A'..'Z']
 
-abc :: [String]
-abc = map (:[]) ['A'..'Z']
+abcSmall :: [String]
+abcSmall = map (:[]) ['a'..'z']
+
+getNameSpaceWithPrefix :: String -> [String]
+getNameSpaceWithPrefix prefix = map ((prefix ++) . show) ([1..] :: [Int])
+
+getNameSpaceABC :: [String] -> [String]
+getNameSpaceABC abc = abc ++ [i ++ j | i <- getNameSpaceABC abc, j <- abc]
 
 classNameSpace :: [Name]
-classNameSpace = map Name classNameSpaceString
-    where classNameSpaceString = abc ++ [j ++ i | j <- classNameSpaceString, i <- abc ] :: [String]
+classNameSpace = map Name $ getNameSpaceABC abcCapital
 
--- associationNameSpace :: [Name]
--- associationNameSpace = map Name nameSpaceSmall
 attributeNameSpace :: [Name]
-attributeNameSpace = map Name $ getNameSpace "attr"
--- operationNameSpace :: [Name]
--- operationNameSpace = map Name $ getNameSpace "op"
+attributeNameSpace = map Name $ getNameSpaceWithPrefix "attr"
 
-precisionFactor :: Int
-precisionFactor = 1000
+associationNameSpace :: [Name]
+associationNameSpace = map Name $ getNameSpaceABC abcSmall
+
+-- operationNameSpace :: [Name]
+-- operationNameSpace = map Name $ getNameSpaceWithPrefix "op"
 
 distributedRandomlyOnto :: Int -> Int -> Gen [Int]
 distributedRandomlyOnto value numOfParts = do
@@ -175,6 +179,10 @@ accumulateSimple list f = foldlM (\soFar x -> do
         return $ soFar ++ [new]
     ) [] list
 
+weightedRandomXOr :: Int -> Gen a -> Gen a -> Gen a
+weightedRandomXOr chance f g =
+    frequency [(chance, f), (complement chance, g)]
+
 complement :: Int -> Int
 complement x = ((10 ^) . length . digits 10 . abs) x - x
 
@@ -196,8 +204,6 @@ addConcretizations maxLvl chanceToNotConcretize theClasses = let
         -- max 1 ... because having meta classes of level zero is useless
         return $ x <<< (Nothing :: Maybe Name) <<< randomLevel
 
-    chanceToConcretize = complement chanceToNotConcretize :: Int
-
     initial = head theClasses <<< maxLvl <<< (Nothing :: Maybe Name) :: Class
     vertebras = take maxLvl $ tail theClasses :: [Class]
     meat = drop (maxLvl + 1) theClasses :: [Class]
@@ -207,12 +213,11 @@ addConcretizations maxLvl chanceToNotConcretize theClasses = let
         spine <- accumulate [initial] vertebras (\soFar x -> x `concretizing` Just (last soFar))
             :: Gen [Class]
         torso <- accumulate spine meat (\soFar x -> do
-                toConcretize <- frequency [
-                    (chanceToNotConcretize, return Nothing),
-                    (chanceToConcretize, do
-                        randomClass <- elements (non0Classes soFar)
+                toConcretize <- weightedRandomXOr
+                    chanceToNotConcretize
+                    (return Nothing)
+                    (do randomClass <- elements (non0Classes soFar)
                         return (Just randomClass))
-                    ]
                 x `concretizing` toConcretize
             ) :: Gen [Class]
         return $ normalizeClassLevels torso
@@ -221,12 +226,11 @@ addConcretizations maxLvl chanceToNotConcretize theClasses = let
 
 addInheritances :: Int -> [Class] -> Gen [Class]
 addInheritances chanceToNotInherit theClasses = let
-    chanceToInherit = complement chanceToNotInherit :: Int
     in accumulate [head theClasses] (tail theClasses) (\soFar x -> do
-            toInheritFrom <- frequency [
-                (chanceToNotInherit, return []),
-                (chanceToInherit, sublistOf (map #name (filter ((== #level x) . #level) soFar)))
-                ]
+            toInheritFrom <- weightedRandomXOr
+                chanceToNotInherit
+                (return [])
+                (sublistOf (map #name (filter ((== #level x) . #level) soFar)))
             return $ x <<< (toInheritFrom :: [Name])
             )
 
@@ -272,8 +276,41 @@ addAttributes numAttributes theAttributes theClasses = let
 
 
 
-generateMLM :: String -> Int -> Int -> Int -> Int -> Int -> Int -> Gen MLM
-generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotConcretize chanceToNotInherit numAttributes0 = let
+addAssociations :: Int -> Int -> [Class] -> [Association] -> Gen [Association]
+addAssociations maxMultAssociations visibilityChanceAssociations theClassesIncludingLevelZero emptyAssociations = let
+    theClasses = non0Classes theClassesIncludingLevelZero
+    randomClassGen = elements theClasses
+    randomLevelGen x = chooseInt (0, #level x - 1)
+    randomMultGen = elements [(i,j) | i <- [0..maxMultAssociations], j <- (-1):[i..maxMultAssociations]]
+    randomVisibilityGen = weightedRandomXOr
+        visibilityChanceAssociations (return True) (return False)
+    in do
+        accumulateSimple emptyAssociations (\x -> do
+                sourceClass <- randomClassGen
+                targetClass <- randomClassGen
+                lvlSource' <- randomLevelGen sourceClass
+                lvlTarget' <- randomLevelGen targetClass
+                multTargetToSource' <- randomMultGen
+                multSourceToTarget' <- randomMultGen
+                sourceVisibleFromTarget' <- randomVisibilityGen
+                targetVisibleFromSource' <- randomVisibilityGen
+                return $ x
+                    <<< (Source, #name sourceClass)
+                    <<< (Target, #name targetClass)
+                    <<< (Source, lvlSource')
+                    <<< (Target, lvlTarget')
+                    <<< (Source, Multiplicity multTargetToSource')
+                    <<< (Target, Multiplicity  multSourceToTarget')
+                    <<< (Source, sourceVisibleFromTarget') <<< (Target, targetVisibleFromSource')
+            )
+
+
+
+precisionFactor :: Int
+precisionFactor = 1000
+
+generateMLM :: String -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Gen MLM
+generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotConcretize chanceToNotInherit numAttributes0 maxMultAssociations visibilityChanceAssociations= let
 
     projectName = Name projectNameString :: Name
 
@@ -286,6 +323,8 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
         | i <- [0..numClasses-1]] :: [Class]
     emptyAttributes = [Attribute 0 (attributeNameSpace !! i) (Boolean Nothing) (Multiplicity (1,1))
         | i <- [0..numAttributes-1]] :: [Attribute]
+    emptyAssociations = [Association (associationNameSpace !! i) (Name "") (Name "") 0 0 (Multiplicity (0,1)) (Multiplicity (0,1)) True True
+        | i <- [0..numAssociations-1]] :: [Association]
 
     in do
         withConcretizations <- addConcretizations maxLvl chanceToNotConcretize emptyClasses
@@ -297,10 +336,11 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
         withAttributes <- addAttributes numAttributes emptyAttributes withInheritances
             :: Gen [Class]
 
-        -- Associations:
-        let classesToAdd = withAttributes
-        _ <- chooseInt(0, numAssociations)
-        return $ MLM projectName classesToAdd [] []
+        readyAssociations <- addAssociations maxMultAssociations visibilityChanceAssociations withAttributes emptyAssociations
+            :: Gen [Association]
+
+        let readyClasses = withAttributes
+        return $ MLM projectName readyClasses readyAssociations []
 
 
 
