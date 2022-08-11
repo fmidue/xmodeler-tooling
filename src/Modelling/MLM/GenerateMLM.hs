@@ -152,18 +152,6 @@ attributeNameSpace = map Name $ getNameSpaceWithPrefix "attr"
 associationNameSpace :: [Name]
 associationNameSpace = map Name $ getNameSpaceABC abcSmall
 
--- operationNameSpace :: [Name]
--- operationNameSpace = map Name $ getNameSpaceWithPrefix "op"
-
-distributedRandomlyOnto :: Int -> Int -> Gen [Int]
-distributedRandomlyOnto value numOfParts = do
-    weightsInt <- vectorOf numOfParts $ chooseInt (0, precisionFactor * value) :: Gen [Int]
-    let weights = map fromIntegral weightsInt :: [Float]
-    let total = max 1 $ sum weights :: Float
-    let proportions = map (/total) weights :: [Float]
-    let result = map (round . (* fromIntegral value)) proportions :: [Int]
-    return result
-
 non0Classes :: [Class] -> [Class]
 non0Classes = filter ((>0) . #level)
 
@@ -190,6 +178,12 @@ complement x = ((10 ^) . length . digits 10 . abs) x - x
 normalizeClassLevels :: [Class] -> [Class]
 normalizeClassLevels classes = let lowest = minimum $ map #level classes in
     map (\x -> x <<< (#level x - lowest)) classes
+
+randomMultGen :: (Int, Int, Int) -> Gen Multiplicity
+randomMultGen (min', max', chance) = do
+    a <- chooseInt (min', max') :: Gen Int
+    b <- weightedRandomXOr chance (return Nothing) (Just <$> chooseInt (a+1, max'))
+    return $ Multiplicity (a, b)
 
 ----------------------------------------------------------
 -- ADDING COMPONENTS
@@ -236,9 +230,19 @@ addInheritances chanceToNotInherit theClasses = let
 
 
 
-addAttributes :: Int -> [Attribute] -> [Class] -> Gen [Class]
-addAttributes numAttributes theAttributes theClasses = let
+addAttributes :: (Int, Int, Int) -> Int -> Int -> [Attribute] -> [Class] -> Gen [Class]
+addAttributes multSpecs precisionFactor numAttributes theAttributes theClasses = let
+    distributedRandomlyOnto :: Int -> Int -> Gen [Int]
+    distributedRandomlyOnto value numOfParts = do
+        weightsInt <- vectorOf numOfParts $ chooseInt (0, precisionFactor * value) :: Gen [Int]
+        let weights = map fromIntegral weightsInt :: [Float]
+        let total = max 1 $ sum weights :: Float
+        let proportions = map (/total) weights :: [Float]
+        let result = map (round . (* fromIntegral value)) proportions :: [Int]
+        return result
+
     numNon0Classes = length $ non0Classes theClasses :: Int
+    randomMultGen' = randomMultGen multSpecs
     in do
         numOfAttributesForEachClass0 <- numAttributes `distributedRandomlyOnto` numNon0Classes
             :: Gen [Int]
@@ -269,29 +273,42 @@ addAttributes numAttributes theAttributes theClasses = let
         accumulateSimple withLevelZeroAttributes (\x -> do
                 toAdd <- accumulateSimple (#attributes x) (\attr -> do
                         randomLevel <- chooseInt (0, #level x - 1)
-                        return $ attr <<< randomLevel
+                        randomMult <- randomMultGen'
+                        randomType <- elements [
+                            Boolean Nothing,
+                            Integer Nothing,
+                            Float Nothing,
+                            String Nothing,
+                            Element Nothing,
+                            MonetaryValue Nothing,
+                            Date Nothing,
+                            Currency Nothing,
+                            Complex Nothing,
+                            AuxiliaryClass Nothing
+                            ]
+                        return $ attr <<< randomLevel <<< randomMult <<< randomType
                     )
                 return $ x <<< toAdd
             ) :: Gen [Class]
 
 
 
-addAssociations :: Int -> Int -> [Class] -> [Association] -> Gen [Association]
-addAssociations maxMultAssociations visibilityChanceAssociations theClassesIncludingLevelZero emptyAssociations = let
-    theClasses = non0Classes theClassesIncludingLevelZero
-    randomClassGen = elements theClasses
-    randomLevelGen x = chooseInt (0, #level x - 1)
-    randomMultGen = elements [(i,j) | i <- [0..maxMultAssociations], j <- (-1):[i..maxMultAssociations]]
+addAssociations :: (Int, Int, Int) -> Int -> [Class] -> [Association] -> Gen [Association]
+addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAssociations = let
+    theClasses = non0Classes theClassesIncludingLevelZero :: [Class]
+    randomClassGen = elements theClasses :: Gen Class
+    randomLevelGen x = chooseInt (0, #level x - 1) :: Gen Level
+    randomMultGen' = randomMultGen multSpecs
     randomVisibilityGen = weightedRandomXOr
-        visibilityChanceAssociations (return True) (return False)
+        visibilityChance (return True) (return False) :: Gen Bool
     in do
         accumulateSimple emptyAssociations (\x -> do
                 sourceClass <- randomClassGen
                 targetClass <- randomClassGen
                 lvlSource' <- randomLevelGen sourceClass
                 lvlTarget' <- randomLevelGen targetClass
-                multTargetToSource' <- randomMultGen
-                multSourceToTarget' <- randomMultGen
+                multTargetToSource' <- randomMultGen'
+                multSourceToTarget' <- randomMultGen'
                 sourceVisibleFromTarget' <- randomVisibilityGen
                 targetVisibleFromSource' <- randomVisibilityGen
                 return $ x
@@ -299,18 +316,16 @@ addAssociations maxMultAssociations visibilityChanceAssociations theClassesInclu
                     <<< (Target, #name targetClass)
                     <<< (Source, lvlSource')
                     <<< (Target, lvlTarget')
-                    <<< (Source, Multiplicity multTargetToSource')
-                    <<< (Target, Multiplicity  multSourceToTarget')
+                    <<< (Source, multTargetToSource')
+                    <<< (Target, multSourceToTarget')
                     <<< (Source, sourceVisibleFromTarget') <<< (Target, targetVisibleFromSource')
             )
 
 
 
-precisionFactor :: Int
-precisionFactor = 1000
-
-generateMLM :: String -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Gen MLM
-generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotConcretize chanceToNotInherit numAttributes0 maxMultAssociations visibilityChanceAssociations= let
+generateMLM :: String -> Int -> Int -> Int -> Int -> Int -> Int -> (Int, Int, Int) -> Int -> (Int, Int, Int) -> Int -> Gen MLM
+generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotConcretize chanceToNotInherit
+    numAttributes0 multSpecsAttributes0 precisionFactorAttributes0 multSpecsAssociations0 visibilityChanceAssociations = let
 
     projectName = Name projectNameString :: Name
 
@@ -318,12 +333,16 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
     numClasses = max 1 numClasses0 :: Int
     numAssociations = max 0 numAssociations0 :: Int
     numAttributes = max 0 numAttributes0 :: Int
+    secureMultSpecs (a, b, c) = (max 0 a, max a b, c)
+    multSpecsAttributes = secureMultSpecs multSpecsAttributes0 :: (Int, Int, Int)
+    multSpecsAssociations = secureMultSpecs multSpecsAssociations0 :: (Int, Int, Int)
+    precisionFactorAttributes = max 1 precisionFactorAttributes0
 
     emptyClasses = [Class False 0 (classNameSpace !! i) [] Nothing [] [] []
         | i <- [0..numClasses-1]] :: [Class]
-    emptyAttributes = [Attribute 0 (attributeNameSpace !! i) (Boolean Nothing) (Multiplicity (1,1))
+    emptyAttributes = [Attribute 0 (attributeNameSpace !! i) (Boolean Nothing) (Multiplicity (1,Nothing))
         | i <- [0..numAttributes-1]] :: [Attribute]
-    emptyAssociations = [Association (associationNameSpace !! i) (Name "") (Name "") 0 0 (Multiplicity (0,1)) (Multiplicity (0,1)) True True
+    emptyAssociations = [Association (associationNameSpace !! i) (Name "") (Name "") 0 0 (Multiplicity (0,Nothing)) (Multiplicity (0,Nothing)) True True
         | i <- [0..numAssociations-1]] :: [Association]
 
     in do
@@ -333,10 +352,10 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
         withInheritances <- addInheritances chanceToNotInherit withConcretizations
             :: Gen [Class]
 
-        withAttributes <- addAttributes numAttributes emptyAttributes withInheritances
+        withAttributes <- addAttributes multSpecsAttributes precisionFactorAttributes numAttributes emptyAttributes withInheritances
             :: Gen [Class]
 
-        readyAssociations <- addAssociations maxMultAssociations visibilityChanceAssociations withAttributes emptyAssociations
+        readyAssociations <- addAssociations multSpecsAssociations visibilityChanceAssociations withAttributes emptyAssociations
             :: Gen [Association]
 
         let readyClasses = withAttributes

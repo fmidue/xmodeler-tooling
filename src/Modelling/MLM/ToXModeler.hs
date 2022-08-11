@@ -6,7 +6,7 @@ import Data.Char (ord)
 import Data.Map.Strict (toList)
 import Data.String.Interpolate (i)
 import Data.GraphViz (GraphvizCommand)
-import Data.Maybe (isJust, isNothing)
+import Data.Maybe (isJust, isNothing, fromMaybe)
 import Diagrams.Points (Point (P))
 import Diagrams.TwoD.Types (V2 (V2))
 import Diagrams.TwoD.GraphViz (layoutGraph, mkGraph, getGraph)
@@ -97,7 +97,7 @@ instance XModelerable Name AsChild where
 -- Multiplicity
 instance XModelerable () Multiplicity where
   get () (Multiplicity (lower, upper)) =
-    [i|Seq{#{lower},#{upper},#{show (upper /= -1)},false}|]
+    [i|Seq{#{lower},#{fromMaybe (-1) upper},#{show (isJust upper)},false}|]
 
 -- Attribute
 instance XModelerable (Name, Name) Attribute where

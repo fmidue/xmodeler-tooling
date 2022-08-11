@@ -72,7 +72,7 @@ instance Validatable () MLM where
       maybe [] (\classX ->
         maybe (#parents classX) (\classifierMentioned ->
           maybe (#parents classX) (\classifierExisting ->
-            (#name classifierExisting) : (#parents classX)
+            #name classifierExisting : (#parents classX)
           ) (getClass classifierMentioned)
         ) (#classifier classX)
       ) (getClass x)
@@ -96,14 +96,22 @@ instance Validatable () MLM where
     (\/) x z = maybe False (\y -> y==z || y \/ z) $ lookup x dict
 
     -- whether an association multiplicity is violated:
+    linksOf :: Association -> [Link]
     linksOf x = filter ((#name x ==) . #association) links
+    sourcesOf :: Association -> [Name]
     sourcesOf = map #source . linksOf
+    targetsOf :: Association -> [Name]
     targetsOf = map #target . linksOf
-    allInRange (Multiplicity (a,-1)) = allInRange (Multiplicity (a,maxBound))
-    allInRange (Multiplicity (a,b)) = all (inRange (a,b) . length) . group . sort
+    inRangeOfMult :: Multiplicity -> Int -> Bool
+    inRangeOfMult (Multiplicity (a, Nothing)) x = x >= a
+    inRangeOfMult (Multiplicity (a, Just b)) x = inRange (a, b) x
+    allInRangeOfMult :: Multiplicity -> [Name] -> Bool
+    allInRangeOfMult mult = all (inRangeOfMult mult . length) . group . sort
+
+    multNotViolated :: Association -> Bool
     multNotViolated x =
-      allInRange (multSourceToTarget x) (sourcesOf x) &&
-      allInRange (multTargetToSource x) (targetsOf x)
+      allInRangeOfMult (#multSourceToTarget x) (sourcesOf x) &&
+      allInRangeOfMult (#multTargetToSource x) (targetsOf x)
 
     -- whether a class concretizes a class whose level is not higher by 1
     lvlIsClassifierLvlMinusOne class' =
@@ -152,15 +160,6 @@ data Class = Class {
   operations :: [Operation],
   slots :: [Slot]
 } deriving (Eq, Show)
-
--- instance Ord Class where
---     (<=) x y = let
---       name1 = show (#name x)
---       name2 = show (#name y)
---       len1 = length name1
---       len2 = length name2
---       in
---         (len1 < len2) || (len1 == len2 && name1 <= name2 )
 
 instance Validatable ([Class], [Maybe Class]) Class where
   valid (classScope, parentsClasses) (Class {name = className, level = level', attributes = attributes', operations, slots, parents}) = let
@@ -266,12 +265,11 @@ instance Validatable (Maybe Class, Maybe Class) (Maybe Association) where
       ) linkSource0
     )
 
-newtype Multiplicity = Multiplicity (Int, Int) deriving (Eq, Show)
+newtype Multiplicity = Multiplicity (Int, Maybe Int) deriving (Eq, Show)
 
 instance Validatable () Multiplicity where
-  valid () (Multiplicity (lower, upper)) =
-    lower >= 0 &&
-    lower <= upper || upper == -1
+  valid () (Multiplicity (lower, Nothing)) = lower >= 0
+  valid () (Multiplicity (lower, Just upper)) = lower >= 0 && lower <= upper
 
 type Level = Int
 
