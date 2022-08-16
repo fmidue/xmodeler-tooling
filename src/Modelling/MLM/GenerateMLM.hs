@@ -179,10 +179,10 @@ normalizeClassLevels :: [Class] -> [Class]
 normalizeClassLevels classes = let lowest = minimum $ map #level classes in
     map (\x -> x <<< (#level x - lowest)) classes
 
-randomMultGen :: (Int, Int, Int) -> Gen Multiplicity
-randomMultGen (min', max', chance) = do
-    a <- chooseInt (min', max') :: Gen Int
-    b <- weightedRandomXOr chance (return Nothing) (Just <$> chooseInt (a+1, max'))
+randomMultGen :: (Int, Int) -> Gen Multiplicity
+randomMultGen (max', chance) = do
+    a <- chooseInt (0, max') :: Gen Int
+    b <- weightedRandomXOr chance (return Nothing) (Just <$> chooseInt (max 1 a, max'))
     return $ Multiplicity (a, b)
 
 ----------------------------------------------------------
@@ -230,7 +230,7 @@ addInheritances chanceToNotInherit theClasses = let
 
 
 
-addAttributes :: (Int, Int, Int) -> Int -> Int -> [Attribute] -> [Class] -> Gen [Class]
+addAttributes :: (Int, Int) -> Int -> Int -> [Attribute] -> [Class] -> Gen [Class]
 addAttributes multSpecs precisionFactor numAttributes theAttributes theClasses = let
     distributedRandomlyOnto :: Int -> Int -> Gen [Int]
     distributedRandomlyOnto value numOfParts = do
@@ -293,7 +293,7 @@ addAttributes multSpecs precisionFactor numAttributes theAttributes theClasses =
 
 
 
-addAssociations :: (Int, Int, Int) -> Int -> [Class] -> [Association] -> Gen [Association]
+addAssociations :: (Int, Int) -> Int -> [Class] -> [Association] -> Gen [Association]
 addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAssociations = let
     theClasses = non0Classes theClassesIncludingLevelZero :: [Class]
     randomClassGen = elements theClasses :: Gen Class
@@ -318,12 +318,21 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
                     <<< (Target, lvlTarget')
                     <<< (Source, multTargetToSource')
                     <<< (Target, multSourceToTarget')
-                    <<< (Source, sourceVisibleFromTarget') <<< (Target, targetVisibleFromSource')
+                    <<< (Source, sourceVisibleFromTarget')
+                    <<< (Target, targetVisibleFromSource')
             )
 
 
 
-generateMLM :: String -> Int -> Int -> Int -> Int -> Int -> Int -> (Int, Int, Int) -> Int -> (Int, Int, Int) -> Int -> Gen MLM
+addLinks :: [Class] -> [Association] -> Gen [Link]
+addLinks _ _ = return []
+
+
+
+
+
+
+generateMLM :: String -> Int -> Int -> Int -> Int -> Int -> Int -> (Int, Int) -> Int -> (Int, Int) -> Int -> Gen MLM
 generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotConcretize chanceToNotInherit
     numAttributes0 multSpecsAttributes0 precisionFactorAttributes0 multSpecsAssociations0 visibilityChanceAssociations = let
 
@@ -333,9 +342,9 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
     numClasses = max 1 numClasses0 :: Int
     numAssociations = max 0 numAssociations0 :: Int
     numAttributes = max 0 numAttributes0 :: Int
-    secureMultSpecs (a, b, c) = (max 0 a, max a b, c)
-    multSpecsAttributes = secureMultSpecs multSpecsAttributes0 :: (Int, Int, Int)
-    multSpecsAssociations = secureMultSpecs multSpecsAssociations0 :: (Int, Int, Int)
+    secureMultSpecs (a, b) = (max 0 a, b)
+    multSpecsAttributes = secureMultSpecs multSpecsAttributes0 :: (Int, Int)
+    multSpecsAssociations = secureMultSpecs multSpecsAssociations0 :: (Int, Int)
     precisionFactorAttributes = max 1 precisionFactorAttributes0
 
     emptyClasses = [Class False 0 (classNameSpace !! i) [] Nothing [] [] []
@@ -359,7 +368,10 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
             :: Gen [Association]
 
         let readyClasses = withAttributes
-        return $ MLM projectName readyClasses readyAssociations []
+
+        readyLinks <- addLinks readyClasses readyAssociations
+
+        return $ MLM projectName readyClasses readyAssociations readyLinks
 
 
 
