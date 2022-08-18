@@ -1,135 +1,20 @@
-module Modelling.MLM.GenerateMLM (generateMLM, (<<<)) where
+module Modelling.MLM.GenerateMLM (generateMLM) where
 
 import Modelling.MLM.Types (
   MLM (..),
   Link (..),
   Association (..),
-  Slot (..),
   Class (..),
-  Operation (..),
   Attribute (..),
   Multiplicity (..),
   Name (..),
-  OperationBody (..),
   Level,
   Type (..)
   )
+import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, chooseInt, frequency, sublistOf, vectorOf, Gen)
 import Data.Digits (digits)
 import Data.Foldable (foldlM)
-
-class Modifiable a b where
-    (<<<) :: a -> b -> a
-
-data SourceOrTarget = Source | Target
-
--------- MLM
-instance Modifiable MLM Name where
-    (<<<) y x =
-         y {name = x}
-instance Modifiable MLM Class where
-    (<<<) y@(MLM {classes}) x =
-         y {classes = classes ++ [x]}
-instance Modifiable MLM Association where
-    (<<<) y@(MLM {associations}) x =
-         y {associations = associations ++ [x]}
-instance Modifiable MLM Link where
-    (<<<) y@(MLM {links}) x =
-         y {links = links ++ [x]}
-
--------- Class
-instance Modifiable Class Bool where
-    (<<<) y x =
-         y {isAbstract = x}
-instance Modifiable Class Level where
-    (<<<) y x =
-         y {level = x}
-instance Modifiable Class [Name] where
-    (<<<) y x =
-         y {parents = x}
-instance Modifiable Class (Maybe Name) where
-    (<<<) y x =
-         y {classifier = x}
-instance Modifiable Class [Attribute] where
-    (<<<) y x =
-         y {attributes = x}
-instance Modifiable Class Operation where
-    (<<<) y@(Class {operations}) x =
-         y {operations = operations ++ [x]}
-instance Modifiable Class Slot where
-    (<<<) y@(Class {slots}) x =
-         y {slots = slots ++ [x]}
-
--------- Attribute
-instance Modifiable Attribute Level where
-    (<<<) y x =
-         y {level = x}
-instance Modifiable Attribute Name where
-    (<<<) y x =
-         y {name = x}
-instance Modifiable Attribute Type where
-    (<<<) y x =
-         y {dataType = x}
-instance Modifiable Attribute Multiplicity where
-    (<<<) y x =
-         y {multiplicity = x}
-
--------- Slot
-instance Modifiable Slot Name where
-    (<<<) y x =
-         y {attribute = x}
-instance Modifiable Slot Type where
-    (<<<) y x =
-         y {value = x}
-
--------- Operation
-instance Modifiable Operation Int where
-    (<<<) y x =
-         y {level = x}
-instance Modifiable Operation Name where
-    (<<<) y x =
-         y {name = x}
-instance Modifiable Operation Type where
-    (<<<) y x =
-         y {dataType = x}
-instance Modifiable Operation Bool where
-    (<<<) y x =
-         y {isMonitored = x}
-instance Modifiable Operation OperationBody where
-    (<<<) y x =
-         y {body = x}
-
--------- Association
-instance Modifiable Association (SourceOrTarget, Name) where
-    (<<<) y (direction, x) =
-         case direction of
-            Source -> y {source = x}
-            Target -> y {target = x}
-instance Modifiable Association (SourceOrTarget, Level) where
-    (<<<) y (direction, x) =
-         case direction of
-            Source -> y {lvlSource = x}
-            Target -> y {lvlTarget = x}
-instance Modifiable Association (SourceOrTarget, Multiplicity) where
-    (<<<) y (direction, x) =
-        case direction of
-            Source -> y {multTargetToSource = x}
-            Target -> y {multSourceToTarget = x}
-instance Modifiable Association (SourceOrTarget, Bool) where
-    (<<<) y (direction, x) =
-        case direction of
-            Source -> y {sourceVisibleFromTarget = x}
-            Target -> y {targetVisibleFromSource = x}
-
--------- Link
-instance Modifiable Link Name where
-    (<<<) y x =
-         y {association = x}
-instance Modifiable Link (SourceOrTarget, Name) where
-    (<<<) y (direction, x) =
-        case direction of
-            Source -> y {source = x}
-            Target -> y {target = x}
 
 abcCapital :: [String]
 abcCapital = map (:[]) ['A'..'Z']
@@ -181,9 +66,8 @@ normalizeClassLevels classes = let lowest = minimum $ map #level classes in
 
 randomMultGen :: (Int, Int) -> Gen Multiplicity
 randomMultGen (max', chance) = do
-    a <- chooseInt (0, max') :: Gen Int
-    b <- weightedRandomXOr chance (return Nothing) (Just <$> chooseInt (max 1 a, max'))
-    return $ Multiplicity (a, b)
+    b <- weightedRandomXOr chance (return Nothing) (Just <$> chooseInt (1, max'))
+    return $ Multiplicity (0, b)
 
 ----------------------------------------------------------
 -- ADDING COMPONENTS
@@ -349,6 +233,8 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
 
     emptyClasses = [Class False 0 (classNameSpace !! i) [] Nothing [] [] []
         | i <- [0..numClasses-1]] :: [Class]
+    -- emptyClasses = zipWith (<<<) (replicate numClasses emptyClass)  ???
+
     emptyAttributes = [Attribute 0 (attributeNameSpace !! i) (Boolean Nothing) (Multiplicity (1,Nothing))
         | i <- [0..numAttributes-1]] :: [Attribute]
     emptyAssociations = [Association (associationNameSpace !! i) (Name "") (Name "") 0 0 (Multiplicity (0,Nothing)) (Multiplicity (0,Nothing)) True True

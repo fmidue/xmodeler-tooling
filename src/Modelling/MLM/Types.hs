@@ -14,12 +14,24 @@ module Modelling.MLM.Types(
   Level,
   Validatable,
   Type (..),
+  XModelerCurrency (..),
   valid,
   getTypeName,
   sameTypeAs,
   isUnassigned,
   relativeToEur,
-  currencySymbol
+  currencySymbol,
+  emptyName,
+  emptyMLM,
+  emptyClass,
+  emptyAssociation,
+  emptyLink,
+  emptyAttribute,
+  emptySlot,
+  emptyOperation,
+  emptyOperationBody,
+  emptyMultiplicity,
+  emptyType
 ) where
 
 import Data.List.UniqueStrict (allUnique, sortUniq)
@@ -40,6 +52,9 @@ class Validatable context a where
 
 newtype Name = Name String deriving (Eq, Ord)
 
+emptyName :: Name
+emptyName = Name ""
+
 instance Validatable () Name where
   valid () (Name name) = let
     validChar1 = flip elem (['a'..'z'] ++ ['A'..'Z'])
@@ -57,6 +72,9 @@ data MLM = MLM {
   associations :: [Association],
   links :: [Link]
 } deriving Show
+
+emptyMLM :: MLM
+emptyMLM = MLM emptyName [] [] []
 
 instance Validatable () MLM where
   valid () (MLM {name = projectName, classes, associations, links}) = let
@@ -109,9 +127,9 @@ instance Validatable () MLM where
     allInRangeOfMult mult = all (inRangeOfMult mult . length) . group . sort
 
     multNotViolated :: Association -> Bool
-    multNotViolated x =
-      allInRangeOfMult (#multSourceToTarget x) (sourcesOf x) &&
-      allInRangeOfMult (#multTargetToSource x) (targetsOf x)
+    multNotViolated x@(Association {multSourceToTarget, multTargetToSource}) =
+      allInRangeOfMult multSourceToTarget (sourcesOf x) &&
+      allInRangeOfMult multTargetToSource (targetsOf x)
 
     -- whether a class concretizes a class whose level is not higher by 1
     lvlIsClassifierLvlMinusOne class' =
@@ -137,7 +155,6 @@ instance Validatable () MLM where
       valid () projectName,
       allUnique allClassesNames,
       allUnique (map #name associations),
-      all multNotViolated associations,
       noCycles dict,
       all lvlIsClassifierLvlMinusOne classes,
       all (\x -> valid (scope x, map getClass (#parents x)) x) classes,
@@ -161,10 +178,12 @@ data Class = Class {
   slots :: [Slot]
 } deriving (Eq, Show)
 
+emptyClass :: Class
+emptyClass = Class False 0 emptyName [] Nothing [] [] []
+
 instance Validatable ([Class], [Maybe Class]) Class where
   valid (classScope, parentsClasses) (Class {name = className, level = level', attributes = attributes', operations, slots, parents}) = let
     getAttributeClass x = find (elem x . map #name . #attributes) classScope
-    -- getAttribute x = maybe Nothing (find ((== attribute) . name) . attributes) (getAttributeClass x)
     getAttribute x = ((find ((== x) . #name) . #attributes) =<< getAttributeClass x)
     in
     and [
@@ -185,6 +204,9 @@ data Attribute = Attribute {
   multiplicity :: Multiplicity
 } deriving (Eq, Show)
 
+emptyAttribute :: Attribute
+emptyAttribute = Attribute 0 emptyName emptyType emptyMultiplicity
+
 instance Validatable Level Attribute where
   valid classLevel (Attribute {multiplicity, level = attributeLevel, dataType, name}) = and [
       valid () attributeLevel,
@@ -199,9 +221,11 @@ data Slot = Slot {
   value :: Type
 } deriving (Eq, Show)
 
+emptySlot :: Slot
+emptySlot = Slot emptyName emptyType
+
 instance Validatable (Maybe Attribute, Level) Slot where
-  valid (slotAttribute, slotClassLvl) (Slot {value}) = let
-    in
+  valid (slotAttribute, slotClassLvl) (Slot {value}) =
       maybe False ((slotClassLvl ==) . #level) slotAttribute
       &&
       not (isUnassigned value)
@@ -214,6 +238,9 @@ data Operation = Operation {
   body :: OperationBody
 } deriving (Eq, Show)
 
+emptyOperation :: Operation
+emptyOperation = Operation 0 emptyName emptyType False emptyOperationBody
+
 instance Validatable Level Operation where
   valid operationClassLvl (Operation {level , dataType}) =
     operationClassLvl > level && isUnassigned dataType
@@ -222,6 +249,9 @@ data OperationBody = OperationBody {
   placeholder1 :: String,
   placeholder2 :: String
 } deriving (Eq, Show)
+
+emptyOperationBody :: OperationBody
+emptyOperationBody = OperationBody "" ""
 
 instance Validatable mlm OperationBody where
   valid _ _ = True --placeholder
@@ -237,6 +267,9 @@ data Association = Association {
   sourceVisibleFromTarget :: Bool,
   targetVisibleFromSource :: Bool
 } deriving (Eq, Show)
+
+emptyAssociation :: Association
+emptyAssociation = Association emptyName emptyName emptyName 0 0 emptyMultiplicity emptyMultiplicity False False
 
 instance Validatable (Maybe Class, Maybe Class) Association where
   valid (sourceClass, targetClass) (Association {lvlSource, lvlTarget, multTargetToSource, multSourceToTarget, name}) =
@@ -254,6 +287,9 @@ data Link = Link {
   target :: Name
 } deriving (Eq, Show)
 
+emptyLink :: Link
+emptyLink = Link emptyName emptyName emptyName
+
 instance Validatable (Maybe Class, Maybe Class) (Maybe Association) where
   valid (linkSource0, linkTarget0) =
     maybe False (\linkAssociation ->
@@ -266,6 +302,9 @@ instance Validatable (Maybe Class, Maybe Class) (Maybe Association) where
     )
 
 newtype Multiplicity = Multiplicity (Int, Maybe Int) deriving (Eq, Show)
+
+emptyMultiplicity :: Multiplicity
+emptyMultiplicity = Multiplicity (0, Nothing)
 
 instance Validatable () Multiplicity where
   valid () (Multiplicity (lower, Nothing)) = lower >= 0
@@ -282,12 +321,16 @@ data Type =
   Float (Maybe Float) |
   String (Maybe String) |
   Element (Maybe ()) |
-  MonetaryValue (Maybe (String, String)) |
+  MonetaryValue (Maybe (Float, String)) |
   Date (Maybe (Int, Int, Int)) |
   Currency (Maybe XModelerCurrency) |
   Complex (Maybe String) |
-  AuxiliaryClass (Maybe String)
-  deriving (Eq, Show)
+  AuxiliaryClass (Maybe String) |
+  Null
+  deriving (Eq, Show, Read)
+
+emptyType :: Type
+emptyType = Boolean Nothing
 
 isUnassigned :: Type -> Bool
 isUnassigned = flip elem [
@@ -300,16 +343,19 @@ isUnassigned = flip elem [
     Date Nothing,
     Currency Nothing,
     Complex Nothing,
-    AuxiliaryClass Nothing
+    AuxiliaryClass Nothing,
+    Null
     ]
 
 getTypeName :: Type -> String
 getTypeName = head . splitOn " " . show
 
 sameTypeAs :: Type -> Type -> Bool
+sameTypeAs Null _ = True
+sameTypeAs _ Null = True
 sameTypeAs x y = getTypeName x == getTypeName y
 
-data XModelerCurrency = USD | EUR | GBP | AUD | NZD deriving (Eq, Show)
+data XModelerCurrency = USD | EUR | GBP | AUD | NZD deriving (Eq, Show, Read)
 
 relativeToEur :: XModelerCurrency -> Float
 relativeToEur USD = 0.9502091
