@@ -34,14 +34,19 @@ module Modelling.MLM.Types(
   emptyType
 ) where
 
-import Data.List.UniqueStrict (allUnique, sortUniq)
+import Data.List.UniqueStrict (allUnique)
 import Data.Char (isDigit)
 import Data.List.Split (splitOn)
 import Data.List (find, sort, group)
 import Data.Ix (inRange)
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, maybeToList)
 import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
+
+noCycles :: Eq a => [(a, a)] -> Bool
+noCycles [] = True
+noCycles list = let peeled = filter (isJust . flip lookup list . snd) list in
+  (length peeled < length list) && noCycles peeled
 
 -- IsLabel orphan instance for (->) --
 instance HasField x r a => IsLabel x (r -> a) where
@@ -84,30 +89,31 @@ instance Validatable () MLM where
     getClass className = find ((== className) . #name) classes
     getAssociation link' = find ((== #association link') . #name) associations
 
-    -- get all parents and the classifier of a class
-    parentsAndClassifier :: Name -> [Name]
-    parentsAndClassifier x =
-      maybe [] (\classX ->
-        maybe (#parents classX) (\classifierMentioned ->
-          maybe (#parents classX) (\classifierExisting ->
-            #name classifierExisting : (#parents classX)
-          ) (getClass classifierMentioned)
-        ) (#classifier classX)
-      ) (getClass x)
+    parentDictList :: [(Name, [Name])]
+    parentDictList = map (\(Class {name, parents}) -> (name, parents)) classes
 
-    -- pair a class with all of its parents and classifier
-    dict1 :: Name -> [(Name, Name)]
-    dict1 x = map (x,) (parentsAndClassifier x)
+    classifierDictList :: [(Name, [Name])]
+    classifierDictList = filter (not . null . snd) $
+      map (\(Class {name, classifier}) -> (name, maybeToList classifier))
+      classes
 
-    -- pair all classes, each with its parents and classifier
+    unlistDict :: [(a, [b])] -> [(a, b)]
+    unlistDict = concatMap (\(x, xs) -> map (x, ) xs)
+
+    parentDict :: [(Name, Name)]
+    parentDict = unlistDict parentDictList
+
+    classifierDict :: [(Name, Name)]
+    classifierDict = unlistDict classifierDictList
+
     dict :: [(Name, Name)]
-    dict = sortUniq $ concatMap dict1 allClassesNames
+    dict = parentDict ++ classifierDict
 
-    -- check if there are no cycles in the MLM
-    noCycles :: [(Name, Name)] -> Bool
-    noCycles [] = True
-    noCycles list = let peeled = filter (isJust . flip lookup list . snd) list in
-      (length peeled < length list) && noCycles peeled
+    getMetaClass :: Name -> Maybe Name
+    getMetaClass x = getMetaClass =<< lookup x classifierDict
+
+    sameMetaClass :: (Name, Name) -> Bool
+    sameMetaClass (x, y) = getMetaClass x == getMetaClass y
 
     -- whether x concretizes or inherits from z
     (\/) :: Name -> Name -> Bool
@@ -157,6 +163,7 @@ instance Validatable () MLM where
       allUnique (map #name associations),
       noCycles dict,
       all lvlIsClassifierLvlMinusOne classes,
+      all sameMetaClass parentDict,
       all (\x -> valid (scope x, map getClass (#parents x)) x) classes,
       all (\x -> valid (getClass (#source x), getClass (#target x)) x) associations,
       all multNotViolated associations,

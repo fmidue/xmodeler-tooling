@@ -15,6 +15,8 @@ import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, chooseInt, frequency, sublistOf, vectorOf, Gen)
 import Data.Digits (digits)
 import Data.Foldable (foldlM)
+import Data.Tuple.Extra (first)
+import Control.Applicative ((<|>))
 
 abcCapital :: [String]
 abcCapital = map (:[]) ['A'..'Z']
@@ -60,9 +62,9 @@ complement :: Int -> Int
 complement x = ((10 ^) . length . digits 10 . abs) x - x
 
 -- there must be at least one class of level 0.
-normalizeClassLevels :: [Class] -> [Class]
-normalizeClassLevels classes = let lowest = minimum $ map #level classes in
-    map (\x -> x <<< (#level x - lowest)) classes
+normalizeClassLevels :: [(Class, Maybe Name)] -> [(Class, Maybe Name)]
+normalizeClassLevels classes = let lowest = minimum $ map (#level . fst) classes in
+    map (first (\x -> x <<< (#level x - lowest))) classes
 
 randomMultGen :: (Int, Int) -> Gen Multiplicity
 randomMultGen (max', chance) = do
@@ -73,45 +75,43 @@ randomMultGen (max', chance) = do
 -- ADDING COMPONENTS
 ----------------------------------------------------------
 
-addConcretizations :: Int -> Int -> [Class] -> Gen [Class]
+addConcretizations :: Int -> Int -> [Class] -> Gen [(Class, Maybe Name)]
 addConcretizations maxLvl chanceToNotConcretize theClasses = let
-    concretizing :: Class -> Maybe Class -> Gen Class
-    concretizing x (Just (Class {name, level})) = return $ x <<< Just name <<< (level - 1)
-    concretizing x Nothing = do
+    concretizing :: Class -> (Maybe Class, Maybe Name) -> Gen (Class, Maybe Name)
+    concretizing x (Just (Class {name, level}), metaClass) = return (x <<< Just name <<< (level - 1), metaClass <|> Just name)
+    concretizing x (Nothing, _) = do
         randomLevel <- chooseInt (1, max 1 maxLvl)
         -- max 1 ... because having meta classes of level zero is useless
-        return $ x <<< (Nothing :: Maybe Name) <<< randomLevel
+        return (x <<< (Nothing :: Maybe Name) <<< randomLevel, Nothing)
 
-    initial = head theClasses <<< maxLvl <<< (Nothing :: Maybe Name) :: Class
+    initial = (head theClasses <<< maxLvl <<< (Nothing :: Maybe Name), Nothing) :: (Class, Maybe Name)
     vertebras = take maxLvl $ tail theClasses :: [Class]
     meat = drop (maxLvl + 1) theClasses :: [Class]
 
     in do
         -- if there is a class of level n, then there has to be at least a class of level n-1.
-        spine <- accumulate [initial] vertebras (\soFar x -> x `concretizing` Just (last soFar))
-            :: Gen [Class]
+        spine <- accumulate [initial] vertebras (\soFar x -> x `concretizing` first Just (last soFar))
+            :: Gen [(Class, Maybe Name)]
         torso <- accumulate spine meat (\soFar x -> do
                 toConcretize <- weightedRandomXOr
                     chanceToNotConcretize
-                    (return Nothing)
-                    (do randomClass <- elements (non0Classes soFar)
-                        return (Just randomClass))
+                    (return (Nothing, Nothing))
+                    (do randomClass <- elements (filter ((>0) . #level . fst) soFar)
+                        return (first Just randomClass))
                 x `concretizing` toConcretize
-            ) :: Gen [Class]
+            ) :: Gen [(Class, Maybe Name)]
         return $ normalizeClassLevels torso
 
 
 
-addInheritances :: Int -> [Class] -> Gen [Class]
-addInheritances chanceToNotInherit theClasses = let
-    in accumulate [head theClasses] (tail theClasses) (\soFar x -> do
+addInheritances :: Int -> [(Class, Maybe Name)] -> Gen [Class]
+addInheritances chanceToNotInherit theClasses = map fst <$> accumulate [head theClasses] (tail theClasses) (\soFar (theClass, theMetaClass) -> do
             toInheritFrom <- weightedRandomXOr
                 chanceToNotInherit
                 (return [])
-                (sublistOf (map #name (filter ((== #level x) . #level) soFar)))
-            return $ x <<< (toInheritFrom :: [Name])
+                (sublistOf (map (#name . fst) (filter (\(Class {level = itsLevel}, itsMetaClass) -> itsLevel == #level theClass && itsMetaClass == theMetaClass) soFar)))
+            return (theClass <<< (toInheritFrom :: [Name]), theMetaClass)
             )
-
 
 
 addAttributes :: (Int, Int) -> Int -> Int -> [Attribute] -> [Class] -> Gen [Class]
@@ -241,10 +241,10 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
         | i <- [0..numAssociations-1]] :: [Association]
 
     in do
-        withConcretizations <- addConcretizations maxLvl chanceToNotConcretize emptyClasses
-            :: Gen [Class]
+        withConcretizationsAndMetaClassesDict <- addConcretizations maxLvl chanceToNotConcretize emptyClasses
+            :: Gen [(Class, Maybe Name)]
 
-        withInheritances <- addInheritances chanceToNotInherit withConcretizations
+        withInheritances <- addInheritances chanceToNotInherit withConcretizationsAndMetaClassesDict
             :: Gen [Class]
 
         withAttributes <- addAttributes multSpecsAttributes precisionFactorAttributes numAttributes emptyAttributes withInheritances
