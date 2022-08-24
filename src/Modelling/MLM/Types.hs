@@ -139,12 +139,14 @@ instance Validatable () MLM where
 
     -- whether a class concretizes a class whose level is not higher by 1
     lvlIsClassifierLvlMinusOne class' =
-      maybe True (\classifierMentioned ->
-        maybe False (\classifierExisting ->
-          (#level classifierExisting ==
-          #level class' + 1)
-        ) (getClass classifierMentioned)
+      maybe True
+        (maybe False
+          (\classifierExisting -> #level classifierExisting == #level class' + 1)
+          . getClass
       ) (#classifier class')
+
+    isLinked :: Name -> Bool
+    isLinked className = any (\(Link {source, target}) -> source == className || target == className) links
 
     -- whether source of link concretizes or inherits from source of association of that link and
     -- whether target of link concretizes or inherits from target of association of that link
@@ -163,6 +165,9 @@ instance Validatable () MLM where
       allUnique (map #name associations),
       noCycles dict,
       all lvlIsClassifierLvlMinusOne classes,
+      all (\Class {name, operations, attributes} ->
+        not (null attributes) || not (null operations) || isLinked name)
+        (filter (isJust . #classifier) classes),
       all sameMetaClass parentDict,
       all (\x -> valid (scope x, map getClass (#parents x)) x) classes,
       all (\x -> valid (getClass (#source x), getClass (#target x)) x) associations,

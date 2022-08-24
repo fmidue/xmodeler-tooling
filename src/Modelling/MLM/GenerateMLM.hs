@@ -9,7 +9,10 @@ import Modelling.MLM.Types (
   Multiplicity (..),
   Name (..),
   Level,
-  Type (..)
+  Type (..),
+  emptyClass,
+  emptyAssociation,
+  emptyAttribute
   )
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, chooseInt, frequency, sublistOf, vectorOf, Gen)
@@ -70,6 +73,24 @@ randomMultGen :: (Int, Int) -> Gen Multiplicity
 randomMultGen (max', chance) = do
     b <- weightedRandomXOr chance (return Nothing) (Just <$> chooseInt (1, max'))
     return $ Multiplicity (0, b)
+
+-- randomSlotValue :: Type -> Gen Type
+-- randomSlotValue t = let
+--     anyFloat :: Gen Float
+--     anyFloat = (/100) . fromIntegral . round . (*100) <$> choose (0.0,10.0)
+--     in case t of
+--     Boolean Nothing -> Just <$> chooseAny :: Bool
+--     Integer Nothing -> Just <$> chooseInt (0,10)
+--     Float Nothing -> Just <$> anyFloat
+--     String Nothing -> Just <$> return "some String value"
+--     Element Nothing -> Just <$> return $ Maybe ()
+--     MonetaryValue Nothing -> Just <$> return $ (( , ) =<< anyFloat ) =<< chooseInt (0,10)
+--     Date Nothing -> return (2000,01,01)
+--     Currency Nothing -> Just <$> elements [USD, EUR, GBP, AUD, NZD]
+--     Complex Nothing -> Just <$> return "some String value"
+--     AuxiliaryClass Nothing -> Just <$> return "some String value"
+--     Null -> Just <$> return "null"
+--     _ -> error "Cannot assign value. A value is already assigned!!!"
 
 ----------------------------------------------------------
 -- ADDING COMPONENTS
@@ -132,10 +153,11 @@ addAttributes multSpecs precisionFactor numAttributes theAttributes theClasses =
             :: Gen [Int]
 
         let numOfAttributesForEachClass =
-                snd $ foldl (\(numAttrs0, soFar) class' ->
+                snd $ foldl (\(remainingNums, soFar) class' ->
                     if #level class' == 0
-                        then (numAttrs0, soFar ++ [0])
-                        else (tail numAttrs0, soFar ++ [head numAttrs0]))
+                        then (remainingNums, soFar ++ [0])
+                        -- at least one attribute for each class
+                        else (tail remainingNums, soFar ++ [max 1 (head remainingNums)]))
                     (numOfAttributesForEachClass0 :: [Int], [] :: [Int])
                     theClasses
                 :: [Int]
@@ -174,6 +196,21 @@ addAttributes multSpecs precisionFactor numAttributes theAttributes theClasses =
                     )
                 return $ x <<< toAdd
             ) :: Gen [Class]
+
+
+-- addSlotValues :: [Attribute] -> [Class] -> Gen [Class]
+-- addSlotValues endlessAttributes theClasses = let
+
+--     getClassifier :: Class -> Maybe Class
+--     getClassifier (Class {classifier}) = fromMaybe Nothing $ find ((== classifier) . #name) theClasses
+
+--     merge :: [Class] -> Class
+--     merge [] = error "There are no classes to merge!!!"
+--     merge (x:xs) = foldl x (\soFar y -> soFar <<< #slots y) xs
+
+--     addSlotValue :: Int -> Class -> Class
+--     addSlotValue n c =
+
 
 
 
@@ -231,14 +268,13 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
     multSpecsAssociations = secureMultSpecs multSpecsAssociations0 :: (Int, Int)
     precisionFactorAttributes = max 1 precisionFactorAttributes0
 
-    emptyClasses = [Class False 0 (classNameSpace !! i) [] Nothing [] [] []
-        | i <- [0..numClasses-1]] :: [Class]
-    -- emptyClasses = zipWith (<<<) (replicate numClasses emptyClass)  ???
+    endlessEmptyClasses = zipWith (<<<) (repeat emptyClass) classNameSpace :: [Class]
+    endlessEmptyAttributes = zipWith (<<<) (repeat emptyAttribute) attributeNameSpace :: [Attribute]
+    endlessEmptyAssociations = zipWith (<<<) (repeat emptyAssociation) associationNameSpace :: [Association]
 
-    emptyAttributes = [Attribute 0 (attributeNameSpace !! i) (Boolean Nothing) (Multiplicity (1,Nothing))
-        | i <- [0..numAttributes-1]] :: [Attribute]
-    emptyAssociations = [Association (associationNameSpace !! i) (Name "") (Name "") 0 0 (Multiplicity (0,Nothing)) (Multiplicity (0,Nothing)) True True
-        | i <- [0..numAssociations-1]] :: [Association]
+    emptyClasses = take numClasses endlessEmptyClasses :: [Class]
+    emptyAttributes = take numAttributes endlessEmptyAttributes :: [Attribute]
+    emptyAssociations = take numAssociations endlessEmptyAssociations:: [Association]
 
     in do
         withConcretizationsAndMetaClassesDict <- addConcretizations maxLvl chanceToNotConcretize emptyClasses
@@ -249,6 +285,9 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
 
         withAttributes <- addAttributes multSpecsAttributes precisionFactorAttributes numAttributes emptyAttributes withInheritances
             :: Gen [Class]
+
+        -- withSlotValues <- addSlotValues (drop numAttributes endlessEmptyAttributes) withAttributes
+        --     :: Gen [Class]
 
         readyAssociations <- addAssociations multSpecsAssociations visibilityChanceAssociations withAttributes emptyAssociations
             :: Gen [Association]
