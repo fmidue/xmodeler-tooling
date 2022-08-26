@@ -39,7 +39,7 @@ import Data.Char (isDigit)
 import Data.List.Split (splitOn)
 import Data.List (find, sort, group)
 import Data.Ix (inRange)
-import Data.Maybe (isJust, maybeToList)
+import Data.Maybe (isJust, isNothing, maybeToList)
 import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
 
@@ -109,11 +109,8 @@ instance Validatable () MLM where
     dict :: [(Name, Name)]
     dict = parentDict ++ classifierDict
 
-    getMetaClass :: Name -> Maybe Name
-    getMetaClass x = getMetaClass =<< lookup x classifierDict
-
-    sameMetaClass :: (Name, Name) -> Bool
-    sameMetaClass (x, y) = getMetaClass x == getMetaClass y
+    getClassifier :: Name -> Maybe Name
+    getClassifier x = lookup x classifierDict
 
     -- whether x concretizes or inherits from z
     (\/) :: Name -> Name -> Bool
@@ -148,6 +145,14 @@ instance Validatable () MLM where
     isLinked :: Name -> Bool
     isLinked className = any (\(Link {source, target}) -> source == className || target == className) links
 
+    instantiatesSomethingOrIsMetaClass :: Class -> Bool
+    instantiatesSomethingOrIsMetaClass (Class {slots, classifier, operations, name}) = or [
+      isNothing classifier,
+      isLinked name ,
+      not (null operations),
+      not (null slots)
+      ]
+
     -- whether source of link concretizes or inherits from source of association of that link and
     -- whether target of link concretizes or inherits from target of association of that link
     checkSourceAndTarget x = maybe False (\asso ->
@@ -165,10 +170,8 @@ instance Validatable () MLM where
       allUnique (map #name associations),
       noCycles dict,
       all lvlIsClassifierLvlMinusOne classes,
-      all (\Class {name, operations, attributes} ->
-        not (null attributes) || not (null operations) || isLinked name)
-        (filter (isJust . #classifier) classes),
-      all sameMetaClass parentDict,
+      all instantiatesSomethingOrIsMetaClass classes,
+      all (\(x, y) -> getClassifier x == getClassifier y) parentDict,
       all (\x -> valid (scope x, map getClass (#parents x)) x) classes,
       all (\x -> valid (getClass (#source x), getClass (#target x)) x) associations,
       all multNotViolated associations,
@@ -329,7 +332,7 @@ instance Validatable () Level where
 
 data Type =
   Boolean (Maybe Bool) |
-  Integer (Maybe Integer) |
+  Integer (Maybe Int) |
   Float (Maybe Float) |
   String (Maybe String) |
   Element (Maybe ()) |

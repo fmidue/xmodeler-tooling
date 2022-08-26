@@ -10,16 +10,20 @@ import Modelling.MLM.Types (
   Name (..),
   Level,
   Type (..),
+  Slot (..),
+  XModelerCurrency (..),
   emptyClass,
   emptyAssociation,
   emptyAttribute
   )
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
-import Test.QuickCheck (elements, chooseInt, frequency, sublistOf, vectorOf, Gen)
+import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, vectorOf, Gen)
 import Data.Digits (digits)
 import Data.Foldable (foldlM)
-import Data.Tuple.Extra (first)
-import Control.Applicative ((<|>))
+import Data.Maybe (fromMaybe)
+import Data.List (find)
+import Control.Monad (foldM)
+
 
 abcCapital :: [String]
 abcCapital = map (:[]) ['A'..'Z']
@@ -65,74 +69,85 @@ complement :: Int -> Int
 complement x = ((10 ^) . length . digits 10 . abs) x - x
 
 -- there must be at least one class of level 0.
-normalizeClassLevels :: [(Class, Maybe Name)] -> [(Class, Maybe Name)]
-normalizeClassLevels classes = let lowest = minimum $ map (#level . fst) classes in
-    map (first (\x -> x <<< (#level x - lowest))) classes
+normalizeClassLevels :: [Class] -> [Class]
+normalizeClassLevels classes = let lowest = minimum $ map #level classes in
+    map (\x -> x <<< (#level x - lowest)) classes
 
 randomMultGen :: (Int, Int) -> Gen Multiplicity
 randomMultGen (max', chance) = do
     b <- weightedRandomXOr chance (return Nothing) (Just <$> chooseInt (1, max'))
     return $ Multiplicity (0, b)
 
--- randomSlotValue :: Type -> Gen Type
--- randomSlotValue t = let
---     anyFloat :: Gen Float
---     anyFloat = (/100) . fromIntegral . round . (*100) <$> choose (0.0,10.0)
---     in case t of
---     Boolean Nothing -> Just <$> chooseAny :: Bool
---     Integer Nothing -> Just <$> chooseInt (0,10)
---     Float Nothing -> Just <$> anyFloat
---     String Nothing -> Just <$> return "some String value"
---     Element Nothing -> Just <$> return $ Maybe ()
---     MonetaryValue Nothing -> Just <$> return $ (( , ) =<< anyFloat ) =<< chooseInt (0,10)
---     Date Nothing -> return (2000,01,01)
---     Currency Nothing -> Just <$> elements [USD, EUR, GBP, AUD, NZD]
---     Complex Nothing -> Just <$> return "some String value"
---     AuxiliaryClass Nothing -> Just <$> return "some String value"
---     Null -> Just <$> return "null"
---     _ -> error "Cannot assign value. A value is already assigned!!!"
+randomSlotValue :: Attribute -> Gen Slot
+randomSlotValue (Attribute {name, dataType})= let
+    anyFloat :: Gen Float
+    anyFloat = (/100) . (fromIntegral :: Int -> Float) . round . (*100) <$> (choose (0.0,10.0) :: Gen Float)
+    in do
+        slotValue <- case dataType of
+            Boolean Nothing -> Boolean . Just <$> chooseAny
+            Integer Nothing -> Integer . Just <$> chooseInt (0,10)
+            Float Nothing -> Float . Just <$> anyFloat
+            String Nothing -> return $ String $ Just "some String value"
+            Element Nothing -> return $ Element $ Just ()
+            MonetaryValue Nothing -> do
+                a <- anyFloat :: Gen Float
+                let b = "some String value"
+                return $ MonetaryValue $ Just (a,b)
+            Date Nothing -> return $ Date $ Just (2000,01,01)
+            Currency Nothing -> Currency . Just <$> elements [USD, EUR, GBP, AUD, NZD]
+            Complex Nothing -> return $ Complex $ Just "some String value"
+            AuxiliaryClass Nothing -> return $ AuxiliaryClass $ Just "some String value"
+            Null -> return Null
+            _ -> error "Cannot assign value. A value is already assigned!!!"
+        return $ Slot name slotValue
+
 
 ----------------------------------------------------------
 -- ADDING COMPONENTS
 ----------------------------------------------------------
 
-addConcretizations :: Int -> Int -> [Class] -> Gen [(Class, Maybe Name)]
+addConcretizations :: Int -> Int -> [Class] -> Gen [Class]
 addConcretizations maxLvl chanceToNotConcretize theClasses = let
-    concretizing :: Class -> (Maybe Class, Maybe Name) -> Gen (Class, Maybe Name)
-    concretizing x (Just (Class {name, level}), metaClass) = return (x <<< Just name <<< (level - 1), metaClass <|> Just name)
-    concretizing x (Nothing, _) = do
+    concretizing :: Class -> Maybe Class -> Gen Class
+    concretizing x (Just (Class {name, level})) = return (x <<< Just name <<< (level - 1))
+    concretizing x Nothing = do
         randomLevel <- chooseInt (1, max 1 maxLvl)
         -- max 1 ... because having meta classes of level zero is useless
-        return (x <<< (Nothing :: Maybe Name) <<< randomLevel, Nothing)
+        return $ x <<< (Nothing :: Maybe Name) <<< randomLevel
 
-    initial = (head theClasses <<< maxLvl <<< (Nothing :: Maybe Name), Nothing) :: (Class, Maybe Name)
+    initial = head theClasses <<< maxLvl <<< (Nothing :: Maybe Name) :: Class
     vertebras = take maxLvl $ tail theClasses :: [Class]
     meat = drop (maxLvl + 1) theClasses :: [Class]
 
     in do
         -- if there is a class of level n, then there has to be at least a class of level n-1.
-        spine <- accumulate [initial] vertebras (\soFar x -> x `concretizing` first Just (last soFar))
-            :: Gen [(Class, Maybe Name)]
+        spine <- accumulate [initial] vertebras (\soFar x -> x `concretizing` Just (last soFar))
+            :: Gen [Class]
         torso <- accumulate spine meat (\soFar x -> do
                 toConcretize <- weightedRandomXOr
                     chanceToNotConcretize
-                    (return (Nothing, Nothing))
-                    (do randomClass <- elements (filter ((>0) . #level . fst) soFar)
-                        return (first Just randomClass))
+                    (return Nothing)
+                    (Just <$> elements (non0Classes soFar))
                 x `concretizing` toConcretize
-            ) :: Gen [(Class, Maybe Name)]
+            ) :: Gen [Class]
         return $ normalizeClassLevels torso
 
 
 
-addInheritances :: Int -> [(Class, Maybe Name)] -> Gen [Class]
-addInheritances chanceToNotInherit theClasses = map fst <$> accumulate [head theClasses] (tail theClasses) (\soFar (theClass, theMetaClass) -> do
-            toInheritFrom <- weightedRandomXOr
-                chanceToNotInherit
-                (return [])
-                (sublistOf (map (#name . fst) (filter (\(Class {level = itsLevel}, itsMetaClass) -> itsLevel == #level theClass && itsMetaClass == theMetaClass) soFar)))
-            return (theClass <<< (toInheritFrom :: [Name]), theMetaClass)
-            )
+addInheritances :: Int -> [Class] -> Gen [Class]
+addInheritances chanceToNotInherit theClasses = let
+
+    sameAs :: Class -> Class -> Bool
+    sameAs (Class {level = l1, classifier = c1})
+         (Class {level = l2, classifier = c2}) = l1 == l2 && c1 == c2
+    in
+    accumulate [head theClasses] (tail theClasses) (\soFar x -> do
+        toInheritFrom <- weightedRandomXOr
+            chanceToNotInherit
+            (return [])
+            (sublistOf (map #name (filter (sameAs x) soFar)))
+        return $ x <<< (toInheritFrom :: [Name])
+        )
 
 
 addAttributes :: (Int, Int) -> Int -> Int -> [Attribute] -> [Class] -> Gen [Class]
@@ -198,18 +213,73 @@ addAttributes multSpecs precisionFactor numAttributes theAttributes theClasses =
             ) :: Gen [Class]
 
 
--- addSlotValues :: [Attribute] -> [Class] -> Gen [Class]
--- addSlotValues endlessAttributes theClasses = let
+addSlotValues :: [Attribute] -> [Class] -> Gen [Class]
+addSlotValues emptyAttributes theClasses = let
 
---     getClassifier :: Class -> Maybe Class
---     getClassifier (Class {classifier}) = fromMaybe Nothing $ find ((== classifier) . #name) theClasses
+    attributeDict :: [(Name, [Attribute])]
+    attributeDict = map (\(Class {name, attributes}) -> (name, attributes)) theClasses
 
---     merge :: [Class] -> Class
---     merge [] = error "There are no classes to merge!!!"
---     merge (x:xs) = foldl x (\soFar y -> soFar <<< #slots y) xs
+    classifierDict :: [(Name, Maybe Name)]
+    classifierDict = map (\(Class {name, classifier}) -> (name, classifier)) theClasses
 
---     addSlotValue :: Int -> Class -> Class
---     addSlotValue n c =
+    instantiatable :: Class -> [Attribute]
+    instantiatable (Class {level = classLevel, classifier}) = let
+        f :: Maybe Name -> [Attribute]
+        f Nothing = []
+        f (Just x) =
+            filter ((== classLevel) . #level) (fromMaybe [] (lookup x attributeDict))
+                ++ maybe [] f (lookup x classifierDict)
+        in
+            f classifier
+
+    getClass :: Maybe Name -> Maybe Class
+    getClass = maybe Nothing (\x -> find ((== x) . #name) theClasses)
+
+    toIncorporateGen :: Gen [Class]
+    toIncorporateGen = snd <$> foldM (\(emptyAttrs, newClasses) x@(Class {classifier, level}) -> do
+            let toInstantiate = instantiatable x :: [Attribute]
+            instantiated <- mapM randomSlotValue toInstantiate :: Gen [Slot]
+            let x' = x <<< instantiated :: Class
+            let newAttr = head emptyAttrs <<< level :: Attribute
+            let remains = tail emptyAttrs :: [Attribute]
+            newSlot <- randomSlotValue newAttr :: Gen Slot
+            return $ maybe (remains, x' : newClasses) (\c -> if null toInstantiate then (remains, x' : newClasses) else (remains, (x' <<< newSlot) : (c <<< newAttr) : newClasses)) (getClass classifier)
+        ) (emptyAttributes, []) theClasses
+    -- merge :: [Class] -> Class
+    -- merge [] = error "There are no classes to merge!!!"
+    -- merge = foldl1 (\soFar y -> soFar <<< #slots y)
+
+    in do
+        toIncorporate <- toIncorporateGen :: Gen [Class]
+        return $ map (\x@(Class {name}) -> foldl (\xSofar class' -> if #name class' == name then xSofar <<< #attributes class' <<< #slots class' else xSofar) x toIncorporate) theClasses
+
+
+
+    -- instantiatableAttributes :: Class -> [Attribute]
+    -- instantiatableAttributes (Class {level = classLevel, classifier}) = let
+    --     f :: Maybe Name -> [Attribute]
+    --     f Nothing = []
+    --     f (Just x) =
+    --         filter ((== classLevel) . #level) (fromMaybe [] (lookup x attributeDict))
+    --             ++ maybe [] f (lookup x classifierDict)
+    --     in
+    --         f classifier
+
+    -- addSlotValue :: Class -> Gen (Class, Class
+    -- addSlotValue class' = do
+    --     let toInstantiate = instantiatableAttributes class' :: [Attribute]
+    --     instantiated <- mapM randomSlotValue () :: Gen [Slot]
+    --     return $ class' <<< instantiated
+
+    -- merge :: [Class] -> Class
+    -- merge [] = error "There are no classes to merge!!!"
+    -- merge = foldl1 (\soFar y -> soFar <<< #slots y)
+
+    -- groupedByName :: [Class] -> [[Class]]
+    -- groupedByName = groupBy (\x y -> #name x == #name y)
+
+    -- in do
+    --     mapM addSlotValue theClasses
 
 
 
@@ -268,31 +338,31 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
     multSpecsAssociations = secureMultSpecs multSpecsAssociations0 :: (Int, Int)
     precisionFactorAttributes = max 1 precisionFactorAttributes0
 
-    endlessEmptyClasses = zipWith (<<<) (repeat emptyClass) classNameSpace :: [Class]
-    endlessEmptyAttributes = zipWith (<<<) (repeat emptyAttribute) attributeNameSpace :: [Attribute]
-    endlessEmptyAssociations = zipWith (<<<) (repeat emptyAssociation) associationNameSpace :: [Association]
+    endlessEmptyClasses = map (emptyClass <<<) classNameSpace :: [Class]
+    endlessEmptyAttributes = map (emptyAttribute <<<) attributeNameSpace :: [Attribute]
+    endlessEmptyAssociations = map (emptyAssociation <<<) associationNameSpace :: [Association]
 
     emptyClasses = take numClasses endlessEmptyClasses :: [Class]
     emptyAttributes = take numAttributes endlessEmptyAttributes :: [Attribute]
     emptyAssociations = take numAssociations endlessEmptyAssociations:: [Association]
 
     in do
-        withConcretizationsAndMetaClassesDict <- addConcretizations maxLvl chanceToNotConcretize emptyClasses
-            :: Gen [(Class, Maybe Name)]
+        withConcretizations <- addConcretizations maxLvl chanceToNotConcretize emptyClasses
+            :: Gen [Class]
 
-        withInheritances <- addInheritances chanceToNotInherit withConcretizationsAndMetaClassesDict
+        withInheritances <- addInheritances chanceToNotInherit withConcretizations
             :: Gen [Class]
 
         withAttributes <- addAttributes multSpecsAttributes precisionFactorAttributes numAttributes emptyAttributes withInheritances
             :: Gen [Class]
 
-        -- withSlotValues <- addSlotValues (drop numAttributes endlessEmptyAttributes) withAttributes
-        --     :: Gen [Class]
+        withSlotValues <- addSlotValues (drop numAttributes endlessEmptyAttributes) withAttributes
+            :: Gen [Class]
 
         readyAssociations <- addAssociations multSpecsAssociations visibilityChanceAssociations withAttributes emptyAssociations
             :: Gen [Association]
 
-        let readyClasses = withAttributes
+        let readyClasses = withSlotValues
 
         readyLinks <- addLinks readyClasses readyAssociations
 

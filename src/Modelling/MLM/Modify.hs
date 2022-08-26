@@ -53,15 +53,21 @@ instance Modifiable Class [Name] where
 instance Modifiable Class (Maybe Name) where
     (<<<) y x =
          y {classifier = x}
+instance Modifiable Class Attribute where
+    (<<<) y@(Class {attributes}) x =
+         y {attributes = attributes ++ [x]}
 instance Modifiable Class [Attribute] where
-    (<<<) y x =
-         y {attributes = x}
+    (<<<) y@(Class {attributes}) x =
+         y {attributes = attributes ++ x}
 instance Modifiable Class [Operation] where
     (<<<) y x =
          y {operations = x}
+instance Modifiable Class Slot where
+    (<<<) y@(Class {slots}) x =
+        y {slots = slots ++ [x]}
 instance Modifiable Class [Slot] where
-    (<<<) y x =
-         y {slots = x}
+    (<<<) y@(Class {slots}) x =
+         y {slots = slots ++ x}
 
 -------- Attribute
 instance Modifiable Attribute Level where

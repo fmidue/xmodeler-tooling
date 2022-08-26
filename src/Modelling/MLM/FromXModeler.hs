@@ -104,7 +104,8 @@ getType :: String -> Type
 getType x = fromMaybe (Boolean Nothing) $ readMaybe $ (++ " Nothing") $ last $ splitOn "::" x
 
 primt :: Show a => [a] -> IO ()
-primt = mapM_ print
+primt _ = putStr ""
+-- primt = mapM_ print
 
 fromXModeler :: String -> IO MLM
 fromXModeler inputXML = let
@@ -203,7 +204,7 @@ fromXModeler inputXML = let
 
     let readyAssociations = repeat emptyAssociation |<<<| zip (repeat Source) assoSources |<<<| zip (repeat Target) assoTargets |<<<| assoNames |<<<| zip (repeat Source) assoSourceLvls |<<<| zip (repeat Target) assoTargetLvls |<<<| zip (repeat Source) assoMultSourceToTarget |<<<| zip (repeat Target) assoMultTargetToSource |<<<| zip (repeat Source) assoVisibilitySource |<<<| zip (repeat Target) assoVisibilityTarget
     primt readyAssociations
-    print "Got associations"
+    putStrLn "Got associations"
     -------------------
     linkNames <- map getName <$> extract "addLink" "name" :: IO [Name]
     linkSources <- map getName <$> extract "addLink" "classSource" :: IO [Name]
