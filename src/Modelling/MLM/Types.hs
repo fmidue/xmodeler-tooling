@@ -213,6 +213,7 @@ instance Validatable () MLM where
 
     -- whether source of link concretizes or inherits from source of association of that link and
     -- whether target of link concretizes or inherits from target of association of that link
+    checkSourceAndTarget :: Link -> Bool
     checkSourceAndTarget x = maybe False (\asso ->
         #source x \/ #source asso && #target x \/ #target asso
       ) (getAssociation x)
@@ -266,9 +267,14 @@ emptyClass :: Class
 emptyClass = Class False 0 emptyName [] Nothing [] [] []
 
 instance Validatable ([Class], [Maybe Class]) Class where
-  valid (classScope, parentsClasses) (Class {name = className, level = level', attributes = attributes', operations, slots, parents}) = let
-    getAttributeClass x = find (elem x . map #name . #attributes) classScope
+  valid (classinScope, parentsClasses) (Class {name = className, level = level', attributes = attributes', slots, operations, parents}) = let
+
+    getAttributeClass :: Name -> Maybe Class
+    getAttributeClass x = find (elem x . map #name . #attributes) classinScope
+
+    getAttribute :: Name -> Maybe Attribute
     getAttribute x = ((find ((== x) . #name) . #attributes) =<< getAttributeClass x)
+
     in
     and [
         valid () className,
@@ -298,11 +304,10 @@ emptyAttribute :: Attribute
 emptyAttribute = Attribute 0 emptyName Boolean emptyMultiplicity
 
 instance Validatable Level Attribute where
-  valid classLevel (Attribute {multiplicity, level = attributeLevel, dataType, name}) = and [
+  valid classLevel Attribute{multiplicity, level = attributeLevel, name} = and [
       valid () attributeLevel,
       valid () name,
       valid () multiplicity,
-      isUnassigned dataType,
       classLevel > attributeLevel
     ]
 
@@ -327,9 +332,7 @@ emptySlot = Slot emptyName emptyValue
 
 instance Validatable (Maybe Attribute, Level) Slot where
   valid (slotAttribute, slotClassLvl) (Slot {value}) =
-      maybe False ((slotClassLvl ==) . #level) slotAttribute
-      &&
-      not (isUnassigned value)
+      maybe False (\x -> slotClassLvl == #level x && equalType (#dataType x) value) slotAttribute
 
 data Operation = Operation {
   level :: Int,
@@ -349,8 +352,8 @@ emptyOperation :: Operation
 emptyOperation = Operation 0 emptyName Boolean False emptyOperationBody
 
 instance Validatable Level Operation where
-  valid operationClassLvl (Operation {level , dataType}) =
-    operationClassLvl > level && isUnassigned dataType
+  valid operationClassLvl Operation{level} =
+    operationClassLvl > level
 
 data OperationBody = OperationBody {
   placeholder1 :: String,
@@ -363,7 +366,7 @@ instance Eq OperationBody where
 emptyOperationBody :: OperationBody
 emptyOperationBody = OperationBody "" ""
 
-instance Validatable mlm OperationBody where
+instance Validatable () OperationBody where
   valid _ _ = True --placeholder
 
 data Association = Association {
