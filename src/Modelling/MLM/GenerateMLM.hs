@@ -6,23 +6,26 @@ import Modelling.MLM.Types (
   Association (..),
   Class (..),
   Attribute (..),
+  Slot (..),
   Multiplicity (..),
   Name (..),
   Level,
   Type (..),
-  Slot (..),
+  Value (..),
   XModelerCurrency (..),
   emptyClass,
   emptyAssociation,
-  emptyAttribute
+  attributeTypeSpace,
+  generateClassDict,
+  generateScopeFinder,
+  generateClassFinder
   )
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
-import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, vectorOf, Gen)
+import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, Gen)
 import Data.Digits (digits)
-import Data.Foldable (foldlM)
 import Data.Maybe (fromMaybe)
-import Data.List (find)
-import Control.Monad (foldM)
+-- import Control.Monad (foldM)
+import Data.Foldable (foldlM)
 
 
 abcCapital :: [String]
@@ -84,21 +87,16 @@ randomSlotValue (Attribute {name, dataType})= let
     anyFloat = (/100) . (fromIntegral :: Int -> Float) . round . (*100) <$> (choose (0.0,10.0) :: Gen Float)
     in do
         slotValue <- case dataType of
-            Boolean Nothing -> Boolean . Just <$> chooseAny
-            Integer Nothing -> Integer . Just <$> chooseInt (0,10)
-            Float Nothing -> Float . Just <$> anyFloat
-            String Nothing -> return $ String $ Just "some String value"
-            Element Nothing -> return $ Element $ Just ()
-            MonetaryValue Nothing -> do
-                a <- anyFloat :: Gen Float
-                let b = "some String value"
-                return $ MonetaryValue $ Just (a,b)
-            Date Nothing -> return $ Date $ Just (2000,01,01)
-            Currency Nothing -> Currency . Just <$> elements [USD, EUR, GBP, AUD, NZD]
-            Complex Nothing -> return $ Complex $ Just "some String value"
-            AuxiliaryClass Nothing -> return $ AuxiliaryClass $ Just "some String value"
-            Null -> return Null
-            _ -> error "Cannot assign value. A value is already assigned!!!"
+            Boolean -> VBoolean <$> chooseAny
+            Integer -> VInteger <$> chooseInt (0,10)
+            Float -> VFloat <$> anyFloat
+            String -> return $ VString "some String value"
+            Element -> return $ VElement "null"
+            MonetaryValue -> do return $ VMonetaryValue ("9.99 ","apples")
+            Date -> return $ VDate (2000,01,01)
+            Currency -> VCurrency <$> elements [USD, EUR, GBP, AUD, NZD]
+            Complex -> return $ VComplex "null"
+            AuxiliaryClass -> return $ VAuxiliaryClass "null"
         return $ Slot name slotValue
 
 
@@ -213,45 +211,129 @@ addAttributes multSpecs precisionFactor numAttributes theAttributes theClasses =
             ) :: Gen [Class]
 
 
-addSlotValues :: [Attribute] -> [Class] -> Gen [Class]
-addSlotValues emptyAttributes theClasses = let
+
+    -- distributedRandomlyOnto :: Int -> Int -> Gen [Int]
+    -- distributedRandomlyOnto value numOfParts = do
+    --     weightsInt <- vectorOf numOfParts $ chooseInt (0, precisionFactor * value) :: Gen [Int]
+    --     let weights = map fromIntegral weightsInt :: [Float]
+    --     let total = max 1 $ sum weights :: Float
+    --     let proportions = map (/total) weights :: [Float]
+    --     let result = map (round . (* fromIntegral value)) proportions :: [Int]
+    --     return result
+
+    -- numNon0Classes = length $ non0Classes theClasses :: Int
+    -- randomMultGen' = randomMultGen multSpecs
+    -- in do
+    --     numOfAttributesForEachClass0 <- numAttributes `distributedRandomlyOnto` numNon0Classes
+    --         :: Gen [Int]
+
+    --     let numOfAttributesForEachClass =
+    --             snd $ foldl (\(remainingNums, soFar) class' ->
+    --                 if #level class' == 0
+    --                     then (remainingNums, soFar ++ [0])
+    --                     -- at least one attribute for each class
+    --                     else (tail remainingNums, soFar ++ [max 1 (head remainingNums)]))
+    --                 (numOfAttributesForEachClass0 :: [Int], [] :: [Int])
+    --                 theClasses
+    --             :: [Int]
+
+    --     if numNon0Classes == length numOfAttributesForEachClass0
+    --         then return ()
+    --         else error "ERROR : Number of attributes portions is different from number of classes!!!"
+
+    --     let attributesToAdd =
+    --             snd $ foldl (\(attributesRemaining, soFar) n ->
+    --                 (drop n attributesRemaining, soFar ++ [take n attributesRemaining]))
+    --                 (theAttributes, [] :: [[Attribute]])
+    --                 numOfAttributesForEachClass
+    --             :: [[Attribute]]
+
+    --     let withLevelZeroAttributes = zipWith (<<<) theClasses attributesToAdd
+    --             :: [Class]
+
+    --     accumulateSimple withLevelZeroAttributes (\x -> do
+    --             toAdd <- accumulateSimple (#attributes x) (\attr -> do
+    --                     randomLevel <- chooseInt (0, #level x - 1)
+    --                     randomMult <- randomMultGen'
+    --                     randomType <- elements [
+    --                         Boolean Nothing,
+    --                         Integer Nothing,
+    --                         Float Nothing,
+    --                         String Nothing,
+    --                         Element Nothing,
+    --                         MonetaryValue Nothing,
+    --                         Date Nothing,
+    --                         Currency Nothing,
+    --                         Complex Nothing,
+    --                         AuxiliaryClass Nothing
+    --                         ]
+    --                     return $ attr <<< randomLevel <<< randomMult <<< randomType
+    --                 )
+    --             return $ x <<< toAdd
+    --         ) :: Gen [Class]
+
+
+addSlotValues :: [Class] -> Gen [Class]
+addSlotValues theClasses = let
 
     attributeDict :: [(Name, [Attribute])]
     attributeDict = map (\(Class {name, attributes}) -> (name, attributes)) theClasses
 
-    classifierDict :: [(Name, Maybe Name)]
-    classifierDict = map (\(Class {name, classifier}) -> (name, classifier)) theClasses
+    classDict :: [(Name, Name)]
+    classDict = generateClassDict theClasses
+
+    -- (\/) :: Name -> Name -> Bool
+    -- (\/) = (\?/) classDict
+
+    -- instantiatable :: Class -> [Attribute]
+    -- instantiatable Class{name = className, level = classLevel, classifier} =
+    --     concatMap (\x -> maybeToList (lookup x attributeDict)) $
+    --         filter (className \/) (map #name theClasses)
 
     instantiatable :: Class -> [Attribute]
     instantiatable (Class {level = classLevel, classifier}) = let
-        f :: Maybe Name -> [Attribute]
-        f Nothing = []
-        f (Just x) =
-            filter ((== classLevel) . #level) (fromMaybe [] (lookup x attributeDict))
-                ++ maybe [] f (lookup x classifierDict)
+        f :: Name -> [Attribute]
+        f x = maybe [] f (lookup x classDict) ++
+            filter
+            ((== classLevel) . #level)
+            (fromMaybe [] (lookup x attributeDict))
         in
-            f classifier
+            maybe [] f classifier
 
-    getClass :: Maybe Name -> Maybe Class
-    getClass = maybe Nothing (\x -> find ((== x) . #name) theClasses)
+    addSlotValue :: Class -> Gen Class
+    addSlotValue c =
+        (c <<<) <$> mapM randomSlotValue (instantiatable c)
 
-    toIncorporateGen :: Gen [Class]
-    toIncorporateGen = snd <$> foldM (\(emptyAttrs, newClasses) x@(Class {classifier, level}) -> do
-            let toInstantiate = instantiatable x :: [Attribute]
-            instantiated <- mapM randomSlotValue toInstantiate :: Gen [Slot]
-            let x' = x <<< instantiated :: Class
-            let newAttr = head emptyAttrs <<< level :: Attribute
-            let remains = tail emptyAttrs :: [Attribute]
-            newSlot <- randomSlotValue newAttr :: Gen Slot
-            return $ maybe (remains, x' : newClasses) (\c -> if null toInstantiate then (remains, x' : newClasses) else (remains, (x' <<< newSlot) : (c <<< newAttr) : newClasses)) (getClass classifier)
-        ) (emptyAttributes, []) theClasses
-    -- merge :: [Class] -> Class
-    -- merge [] = error "There are no classes to merge!!!"
-    -- merge = foldl1 (\soFar y -> soFar <<< #slots y)
+    in mapM addSlotValue theClasses
 
-    in do
-        toIncorporate <- toIncorporateGen :: Gen [Class]
-        return $ map (\x@(Class {name}) -> foldl (\xSofar class' -> if #name class' == name then xSofar <<< #attributes class' <<< #slots class' else xSofar) x toIncorporate) theClasses
+
+
+
+
+--     getClass :: Maybe Name -> Maybe Class
+--     getClass = maybe Nothing (\x -> find ((== x) . #name) theClasses)
+
+--     toIncorporateGen :: Gen [Class]
+--     toIncorporateGen = snd <$> foldM (\(emptyAttrs, newClasses) x@(Class {classifier, level}) -> do
+--             let toInstantiate = instantiatable x :: [Attribute]
+--             instantiated <- mapM randomSlotValue toInstantiate :: Gen [Slot]
+--             let x' = x <<< instantiated :: Class
+--             let newAttr = head emptyAttrs <<< level :: Attribute
+--             let remains = tail emptyAttrs :: [Attribute]
+--             newSlot <- randomSlotValue newAttr :: Gen Slot
+--             return $ maybe (remains, x' : newClasses) (\c -> if null toInstantiate then (remains, x' : newClasses) else (remains, (x' <<< newSlot) : (c <<< newAttr) : newClasses)) (getClass classifier)
+--         ) (emptyAttributes, []) theClasses
+--     -- merge :: [Class] -> Class
+--     -- merge [] = error "There are no classes to merge!!!"
+--     -- merge = foldl1 (\soFar y -> soFar <<< #slots y)
+
+--     in do
+--         toIncorporate <- toIncorporateGen :: Gen [Class]
+--         return $ map (\x@(Class {name}) -> foldl (\xSofar class' -> if #name class' == name then xSofar <<< #attributes class' <<< #slots class' else xSofar) x toIncorporate) theClasses
+
+
+
+
 
 
 
@@ -323,9 +405,8 @@ addLinks _ _ = return []
 
 
 
-generateMLM :: String -> Int -> Int -> Int -> Int -> Int -> Int -> (Int, Int) -> Int -> (Int, Int) -> Int -> Gen MLM
-generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotConcretize chanceToNotInherit
-    numAttributes0 multSpecsAttributes0 precisionFactorAttributes0 multSpecsAssociations0 visibilityChanceAssociations = let
+generateMLM :: String -> Int -> Int -> Int -> Int -> Int -> (Int, Int) -> (Int, Int) -> Int -> Gen MLM
+generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotConcretize chanceToNotInherit multSpecsAttributes0 multSpecsAssociations0 visibilityChanceAssociations = let
 
     projectName = Name projectNameString :: Name
 
@@ -356,7 +437,7 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
         withAttributes <- addAttributes multSpecsAttributes precisionFactorAttributes numAttributes emptyAttributes withInheritances
             :: Gen [Class]
 
-        withSlotValues <- addSlotValues (drop numAttributes endlessEmptyAttributes) withAttributes
+        withSlotValues <- addSlotValues withAttributes
             :: Gen [Class]
 
         readyAssociations <- addAssociations multSpecsAssociations visibilityChanceAssociations withAttributes emptyAssociations
