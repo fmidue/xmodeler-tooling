@@ -16,9 +16,6 @@ module Modelling.MLM.Types(
   Type (..),
   XModelerCurrency (..),
   valid,
-  getTypeName,
-  sameTypeAs,
-  isUnassigned,
   relativeToEur,
   currencySymbol,
   emptyName,
@@ -31,12 +28,10 @@ module Modelling.MLM.Types(
   emptyOperation,
   emptyOperationBody,
   emptyMultiplicity,
-  emptyType
 ) where
 
 import Data.List.UniqueStrict (allUnique)
 import Data.Char (isDigit)
-import Data.List.Split (splitOn)
 import Data.List (find, sort, group)
 import Data.Ix (inRange)
 import Data.Maybe (isJust, isNothing, maybeToList)
@@ -330,45 +325,39 @@ type Level = Int
 instance Validatable () Level where
   valid () level = level >= 0
 
-data Type =
-  Boolean (Maybe Bool) |
-  Integer (Maybe Int) |
-  Float (Maybe Float) |
-  String (Maybe String) |
-  Element (Maybe ()) |
-  MonetaryValue (Maybe (Float, String)) |
-  Date (Maybe (Int, Int, Int)) |
-  Currency (Maybe XModelerCurrency) |
-  Complex (Maybe String) |
-  AuxiliaryClass (Maybe String) |
-  Null
+data Type = Boolean | Integer | Float | String | Element | MonetaryValue | Date | Currency | Complex | AuxiliaryClass deriving (Eq, Show, Read)
+
+data Value =
+  VBoolean Bool |
+  VInteger Int |
+  VFloat Float |
+  VString String |
+  VElement String |
+  VMonetaryValue (String, String) |
+  VDate (Int, Int, Int) |
+  VCurrency XModelerCurrency |
+  VComplex String |
+  VAuxiliaryClass String
   deriving (Eq, Show, Read)
 
-emptyType :: Type
-emptyType = Boolean Nothing
+emptyValue :: Value
+emptyValue = VBoolean False
 
-isUnassigned :: Type -> Bool
-isUnassigned = flip elem [
-    Boolean Nothing,
-    Integer Nothing,
-    Float Nothing,
-    String Nothing,
-    Element Nothing,
-    MonetaryValue Nothing,
-    Date Nothing,
-    Currency Nothing,
-    Complex Nothing,
-    AuxiliaryClass Nothing,
-    Null
-    ]
+attributeTypeSpace :: [Type]
+attributeTypeSpace = [Boolean,Integer,Float,String,Element,MonetaryValue,Date,Currency,Complex,AuxiliaryClass]
 
-getTypeName :: Type -> String
-getTypeName = head . splitOn " " . show
-
-sameTypeAs :: Type -> Type -> Bool
-sameTypeAs Null _ = True
-sameTypeAs _ Null = True
-sameTypeAs x y = getTypeName x == getTypeName y
+equalType :: Type -> Value -> Bool
+equalType Boolean (VBoolean _) = True
+equalType Integer (VInteger _) = True
+equalType Float (VFloat _) = True
+equalType String (VString _) = True
+equalType Element (VElement _) = True
+equalType MonetaryValue (VMonetaryValue _) = True
+equalType Date (VDate _) = True
+equalType Currency (VCurrency _) = True
+equalType Complex (VComplex _) = True
+equalType AuxiliaryClass (VAuxiliaryClass _) = True
+equalType _ _ = False
 
 data XModelerCurrency = USD | EUR | GBP | AUD | NZD deriving (Eq, Show, Read)
 
