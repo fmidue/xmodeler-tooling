@@ -148,68 +148,33 @@ addInheritances chanceToNotInherit theClasses = let
         )
 
 
-addAttributes :: (Int, Int) -> Int -> Int -> [Attribute] -> [Class] -> Gen [Class]
-addAttributes multSpecs precisionFactor numAttributes theAttributes theClasses = let
-    distributedRandomlyOnto :: Int -> Int -> Gen [Int]
-    distributedRandomlyOnto value numOfParts = do
-        weightsInt <- vectorOf numOfParts $ chooseInt (0, precisionFactor * value) :: Gen [Int]
-        let weights = map fromIntegral weightsInt :: [Float]
-        let total = max 1 $ sum weights :: Float
-        let proportions = map (/total) weights :: [Float]
-        let result = map (round . (* fromIntegral value)) proportions :: [Int]
-        return result
+addAttributes :: (Int, Int) -> [Class] -> Gen [Class]
+addAttributes multSpecs theClasses = let
 
-    numNon0Classes = length $ non0Classes theClasses :: Int
-    randomMultGen' = randomMultGen multSpecs
-    in do
-        numOfAttributesForEachClass0 <- numAttributes `distributedRandomlyOnto` numNon0Classes
-            :: Gen [Int]
+    addAttribute :: (Class, Int) -> Gen Class
+    addAttribute (c@Class {level}, i) =
+        (c <<<) <$>
+        mapM (\lvl -> do
+                randomType <- elements attributeTypeSpace
+                randomMult <- randomMultGen multSpecs
+                return $ Attribute
+                    lvl
+                    (attributeNameSpace !! (i + lvl))
+                    randomType
+                    randomMult
+            ) [0..level - 1]
 
-        let numOfAttributesForEachClass =
-                snd $ foldl (\(remainingNums, soFar) class' ->
-                    if #level class' == 0
-                        then (remainingNums, soFar ++ [0])
-                        -- at least one attribute for each class
-                        else (tail remainingNums, soFar ++ [max 1 (head remainingNums)]))
-                    (numOfAttributesForEachClass0 :: [Int], [] :: [Int])
-                    theClasses
-                :: [Int]
+    classLvls :: [Level]
+    classLvls = map #level theClasses
 
-        if numNon0Classes == length numOfAttributesForEachClass0
-            then return ()
-            else error "ERROR : Number of attributes portions is different from number of classes!!!"
+    startIndices :: [Int]
+    startIndices = foldl (\soFar x -> soFar ++ [last soFar + x]) [0] classLvls
 
-        let attributesToAdd =
-                snd $ foldl (\(attributesRemaining, soFar) n ->
-                    (drop n attributesRemaining, soFar ++ [take n attributesRemaining]))
-                    (theAttributes, [] :: [[Attribute]])
-                    numOfAttributesForEachClass
-                :: [[Attribute]]
+    theClasses' :: [(Class, Int)]
+    theClasses' = zip theClasses startIndices
 
-        let withLevelZeroAttributes = zipWith (<<<) theClasses attributesToAdd
-                :: [Class]
-
-        accumulateSimple withLevelZeroAttributes (\x -> do
-                toAdd <- accumulateSimple (#attributes x) (\attr -> do
-                        randomLevel <- chooseInt (0, #level x - 1)
-                        randomMult <- randomMultGen'
-                        randomType <- elements [
-                            Boolean Nothing,
-                            Integer Nothing,
-                            Float Nothing,
-                            String Nothing,
-                            Element Nothing,
-                            MonetaryValue Nothing,
-                            Date Nothing,
-                            Currency Nothing,
-                            Complex Nothing,
-                            AuxiliaryClass Nothing
-                            ]
-                        return $ attr <<< randomLevel <<< randomMult <<< randomType
-                    )
-                return $ x <<< toAdd
-            ) :: Gen [Class]
-
+    in if null theClasses then error "Cannot add attributes. You have no classes!!!" else
+        mapM addAttribute theClasses'
 
 
     -- distributedRandomlyOnto :: Int -> Int -> Gen [Int]
@@ -413,18 +378,17 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
     maxLvl = max 0 maxLvl0 :: Level
     numClasses = max 1 numClasses0 :: Int
     numAssociations = max 0 numAssociations0 :: Int
-    numAttributes = max 0 numAttributes0 :: Int
+    -- numAttributes = max 0 numAttributes0 :: Int
     secureMultSpecs (a, b) = (max 0 a, b)
     multSpecsAttributes = secureMultSpecs multSpecsAttributes0 :: (Int, Int)
     multSpecsAssociations = secureMultSpecs multSpecsAssociations0 :: (Int, Int)
-    precisionFactorAttributes = max 1 precisionFactorAttributes0
+    -- precisionFactorAttributes = max 1 precisionFactorAttributes0
 
     endlessEmptyClasses = map (emptyClass <<<) classNameSpace :: [Class]
-    endlessEmptyAttributes = map (emptyAttribute <<<) attributeNameSpace :: [Attribute]
     endlessEmptyAssociations = map (emptyAssociation <<<) associationNameSpace :: [Association]
 
     emptyClasses = take numClasses endlessEmptyClasses :: [Class]
-    emptyAttributes = take numAttributes endlessEmptyAttributes :: [Attribute]
+    -- emptyAttributes = take numAttributes endlessEmptyAttributes :: [Attribute]
     emptyAssociations = take numAssociations endlessEmptyAssociations:: [Association]
 
     in do
@@ -434,7 +398,7 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
         withInheritances <- addInheritances chanceToNotInherit withConcretizations
             :: Gen [Class]
 
-        withAttributes <- addAttributes multSpecsAttributes precisionFactorAttributes numAttributes emptyAttributes withInheritances
+        withAttributes <- addAttributes multSpecsAttributes withInheritances
             :: Gen [Class]
 
         withSlotValues <- addSlotValues withAttributes
