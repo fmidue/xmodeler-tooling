@@ -14,6 +14,7 @@ module Modelling.MLM.Types(
   Level,
   Validatable,
   Type (..),
+  Value (..),
   XModelerCurrency (..),
   valid,
   relativeToEur,
@@ -26,8 +27,7 @@ module Modelling.MLM.Types(
   emptyAttribute,
   emptySlot,
   emptyOperation,
-  emptyOperationBody,
-  emptyMultiplicity,
+  attributeTypeSpace,
 ) where
 
 import Data.List.UniqueStrict (allUnique)
@@ -42,6 +42,9 @@ noCycles :: Eq a => [(a, a)] -> Bool
 noCycles [] = True
 noCycles list = let peeled = filter (isJust . flip lookup list . snd) list in
   (length peeled < length list) && noCycles peeled
+
+eqBy :: Eq b => a -> a -> (a -> b) -> Bool
+eqBy x y f = f x == f y
 
 -- IsLabel orphan instance for (->) --
 instance HasField x r a => IsLabel x (r -> a) where
@@ -72,6 +75,12 @@ data MLM = MLM {
   associations :: [Association],
   links :: [Link]
 } deriving Show
+
+instance Eq MLM where
+  (==) MLM{classes = c1, associations = a1, links = l1} MLM{classes = c2, associations = a2, links = l2} = let
+    f :: (Eq a, Ord a) => ([a],[a]) -> Bool
+    f = uncurry (==) . both nubSort
+    in f (c1,c2) && f (a1,a2) && f (l1,l2)
 
 emptyMLM :: MLM
 emptyMLM = MLM emptyName [] [] []
@@ -186,7 +195,22 @@ data Class = Class {
   attributes :: [Attribute],
   operations :: [Operation],
   slots :: [Slot]
-} deriving (Eq, Show)
+} deriving Show
+
+instance Ord Class where
+  compare x y = compare (#name x) (#name y)
+
+instance Eq Class where
+  (==) x y = and [
+      eqBy x y #isAbstract,
+      eqBy x y #level,
+      eqBy x y #name,
+      eqBy (#parents x) (#parents y) nubSort,
+      eqBy x y #classifier,
+      eqBy (#attributes x) (#attributes y) nubSort,
+      eqBy (#operations x) (#operations y) nubSort,
+      eqBy (#slots x) (#slots y) nubSort
+    ]
 
 emptyClass :: Class
 emptyClass = Class False 0 emptyName [] Nothing [] [] []
@@ -212,10 +236,16 @@ data Attribute = Attribute {
   name :: Name,
   dataType :: Type,
   multiplicity :: Multiplicity
-} deriving (Eq, Show)
+} deriving Show
+
+instance Ord Attribute where
+  compare x y = compare (#name x) (#name y)
+
+instance Eq Attribute where
+  (==) x y = and [eqBy x y #level, eqBy x y #name, eqBy x y #dataType, eqBy x y #multiplicity]
 
 emptyAttribute :: Attribute
-emptyAttribute = Attribute 0 emptyName emptyType emptyMultiplicity
+emptyAttribute = Attribute 0 emptyName Boolean emptyMultiplicity
 
 instance Validatable Level Attribute where
   valid classLevel (Attribute {multiplicity, level = attributeLevel, dataType, name}) = and [
@@ -227,12 +257,23 @@ instance Validatable Level Attribute where
     ]
 
 data Slot = Slot {
-  attribute :: Name,
-  value :: Type
-} deriving (Eq, Show)
+  name :: Name,
+  value :: Value
+} deriving Show
+
+instance Ord Slot where
+  compare x y = let
+    f = #name :: Slot -> Name
+    in compare (f x) (f y)
+
+instance Eq Slot where
+  (==) x y = let
+    f = #name :: Slot -> Name
+    g = #value :: Slot -> Value
+    in eqBy x y f && eqBy x y g
 
 emptySlot :: Slot
-emptySlot = Slot emptyName emptyType
+emptySlot = Slot emptyName emptyValue
 
 instance Validatable (Maybe Attribute, Level) Slot where
   valid (slotAttribute, slotClassLvl) (Slot {value}) =
@@ -246,10 +287,16 @@ data Operation = Operation {
   dataType :: Type,
   isMonitored :: Bool,
   body :: OperationBody
-} deriving (Eq, Show)
+} deriving Show
+
+instance Ord Operation where
+  compare x y = compare (#name x) (#name y)
+
+instance Eq Operation where
+  (==) x y = and [eqBy x y #level, eqBy x y #name, eqBy x y #dataType, eqBy x y #isMonitored, eqBy x y #body]
 
 emptyOperation :: Operation
-emptyOperation = Operation 0 emptyName emptyType False emptyOperationBody
+emptyOperation = Operation 0 emptyName Boolean False emptyOperationBody
 
 instance Validatable Level Operation where
   valid operationClassLvl (Operation {level , dataType}) =
@@ -258,7 +305,10 @@ instance Validatable Level Operation where
 data OperationBody = OperationBody {
   placeholder1 :: String,
   placeholder2 :: String
-} deriving (Eq, Show)
+} deriving Show
+
+instance Eq OperationBody where
+  (==) x y = all (eqBy x y) [#placeholder1, #placeholder2]
 
 emptyOperationBody :: OperationBody
 emptyOperationBody = OperationBody "" ""
@@ -276,7 +326,22 @@ data Association = Association {
   multSourceToTarget :: Multiplicity,
   sourceVisibleFromTarget :: Bool,
   targetVisibleFromSource :: Bool
-} deriving (Eq, Show)
+} deriving Show
+
+instance Ord Association where
+  compare x y = compare (#name x) (#name y)
+
+instance Eq Association where
+  (==) x y = and [
+    eqBy x y #name,
+    eqBy x y #source,
+    eqBy x y #target,
+    eqBy x y #lvlSource,
+    eqBy x y #lvlTarget,
+    eqBy x y #multTargetToSource,
+    eqBy x y #multSourceToTarget,
+    eqBy x y #sourceVisibleFromTarget,
+    eqBy x y #targetVisibleFromSource]
 
 emptyAssociation :: Association
 emptyAssociation = Association emptyName emptyName emptyName 0 0 emptyMultiplicity emptyMultiplicity False False
@@ -292,10 +357,18 @@ instance Validatable (Maybe Class, Maybe Class) Association where
       ]
 
 data Link = Link {
-  association :: Name,
+  name :: Name,
   source :: Name,
   target :: Name
-} deriving (Eq, Show)
+} deriving Show
+
+instance Ord Link where
+  compare x y = let
+    f = #name :: Link -> Name
+    in compare (f x) (f y)
+
+instance Eq Link where
+  (==) x y = all (eqBy x y) [#name, #source, #target]
 
 emptyLink :: Link
 emptyLink = Link emptyName emptyName emptyName
