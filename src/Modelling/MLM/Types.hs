@@ -28,15 +28,23 @@ module Modelling.MLM.Types(
   emptySlot,
   emptyOperation,
   attributeTypeSpace,
+  generateClassDict,
+  generateClassifierDict,
+  generateParentDict,
+  (\?/),
+  generateScopeFinder,
+  generateClassFinder
 ) where
 
 import Data.List.UniqueStrict (allUnique)
 import Data.Char (isDigit)
 import Data.List (find, sort, group)
+import Data.List.Ordered (nubSort)
 import Data.Ix (inRange)
 import Data.Maybe (isJust, isNothing, maybeToList)
 import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
+import Data.Tuple.Extra (both)
 
 noCycles :: Eq a => [(a, a)] -> Bool
 noCycles [] = True
@@ -85,30 +93,74 @@ instance Eq MLM where
 emptyMLM :: MLM
 emptyMLM = MLM emptyName [] [] []
 
+loosenUp :: [(a, [b])] -> [(a, b)]
+loosenUp = concatMap (\(x, xs) -> map (x, ) xs)
+
+generateParentDict :: [Class] -> [(Name, Name)]
+generateParentDict theClasses = let
+  listDict = map (\(Class {name, parents}) -> (name, parents)) theClasses
+  in loosenUp listDict
+
+generateClassifierDict :: [Class] -> [(Name, Name)]
+generateClassifierDict theClasses = let
+  listDict = filter (not . null . snd) $
+      map (\(Class {name, classifier}) -> (name, maybeToList classifier))
+      theClasses
+    in loosenUp listDict
+
+generateClassDict :: [Class] -> [(Name, Name)]
+generateClassDict theClasses = generateParentDict theClasses ++ generateClassifierDict theClasses
+
+-- whether x concretizes or inherits from z
+(\?/) :: [(Name, Name)] -> (Name -> Name -> Bool)
+(\?/) dict x z = maybe False (\y -> y==z || (\?/) dict y z) $ lookup x dict
+
+-- generateInScopeFinder :: (Name -> Name -> Bool) -> [Class] -> (Class -> [Class])
+-- generateInScopeFinder (\/) theClasses x = filter ((#name x \/) . #name)  theClasses
+
+generateInScopeFinder :: [Class] -> (Class -> [Class])
+generateInScopeFinder theClasses x = let
+
+  dict :: [(Name, Name)]
+  dict = generateClassDict theClasses
+
+  (\/) :: Name -> Name -> Bool
+  (\/) = (\?/) dict
+
+  in filter ((#name x \/) . #name) theClasses
+
+
+generateScopeFinder :: [Class] -> (Class -> [Class])
+generateScopeFinder theClasses x = let
+
+  dict :: [(Name, Name)]
+  dict = generateClassDict theClasses
+
+  (\/) :: Name -> Name -> Bool
+  (\/) = (\?/) dict
+
+  in filter ((\/ #name x) . #name) theClasses
+
+
+generateClassFinder :: [Class] -> (Name -> Maybe Class)
+generateClassFinder theClasses x = find ((== x) . #name) theClasses
+
 instance Validatable () MLM where
   valid () (MLM {name = projectName, classes, associations, links}) = let
     allClassesNames = map #name classes :: [Name]
 
     -- navigation
-    getClass className = find ((== className) . #name) classes
-    getAssociation link' = find ((== #association link') . #name) associations
+    getClass :: Name -> Maybe Class
+    getClass = generateClassFinder classes
 
-    parentDictList :: [(Name, [Name])]
-    parentDictList = map (\(Class {name, parents}) -> (name, parents)) classes
-
-    classifierDictList :: [(Name, [Name])]
-    classifierDictList = filter (not . null . snd) $
-      map (\(Class {name, classifier}) -> (name, maybeToList classifier))
-      classes
-
-    unlistDict :: [(a, [b])] -> [(a, b)]
-    unlistDict = concatMap (\(x, xs) -> map (x, ) xs)
+    getAssociation :: Link -> Maybe Association
+    getAssociation Link{name = linkName} = find ((== linkName) . #name) associations
 
     parentDict :: [(Name, Name)]
-    parentDict = unlistDict parentDictList
+    parentDict = generateParentDict classes
 
     classifierDict :: [(Name, Name)]
-    classifierDict = unlistDict classifierDictList
+    classifierDict = generateClassifierDict classes
 
     dict :: [(Name, Name)]
     dict = parentDict ++ classifierDict
@@ -116,13 +168,15 @@ instance Validatable () MLM where
     getClassifier :: Name -> Maybe Name
     getClassifier x = lookup x classifierDict
 
-    -- whether x concretizes or inherits from z
     (\/) :: Name -> Name -> Bool
-    (\/) x z = maybe False (\y -> y==z || y \/ z) $ lookup x dict
+    (\/) = (\?/) dict
+
+    inScope :: Class -> [Class]
+    inScope = generateInScopeFinder classes
 
     -- whether an association multiplicity is violated:
     linksOf :: Association -> [Link]
-    linksOf x = filter ((#name x ==) . #association) links
+    linksOf x = filter ((#name x ==) . #name) links
     sourcesOf :: Association -> [Name]
     sourcesOf = map #source . linksOf
     targetsOf :: Association -> [Name]
@@ -163,10 +217,6 @@ instance Validatable () MLM where
         #source x \/ #source asso && #target x \/ #target asso
       ) (getAssociation x)
 
-    -- determine scope:
-    scope :: Class -> [Class]
-    scope x = filter ((#name x \/) . #name) classes
-
     in and [
       not (null classes),
       valid () projectName,
@@ -176,7 +226,7 @@ instance Validatable () MLM where
       all lvlIsClassifierLvlMinusOne classes,
       all instantiatesSomethingOrIsMetaClass classes,
       all (\(x, y) -> getClassifier x == getClassifier y) parentDict,
-      all (\x -> valid (scope x, map getClass (#parents x)) x) classes,
+      all (\x -> valid (inScope x, map getClass (#parents x)) x) classes,
       all (\x -> valid (getClass (#source x), getClass (#target x)) x) associations,
       all multNotViolated associations,
       all checkSourceAndTarget links,
@@ -228,7 +278,7 @@ instance Validatable ([Class], [Maybe Class]) Class where
         level' > 0 || (null attributes' && null operations),
         all (valid level') attributes',
         all (valid level') operations,
-        all (\x -> valid (getAttribute (#attribute x) , level') x) slots
+        all (\x -> valid (getAttribute (#name x) , level') x) slots
         ]
 
 data Attribute = Attribute {
