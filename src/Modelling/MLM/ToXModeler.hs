@@ -20,10 +20,9 @@ import Modelling.MLM.Types (
   Attribute (..),
   Multiplicity (..),
   Type (..),
+  Value (..),
   Name (..),
   OperationBody (..),
-  getTypeName,
-  isUnassigned,
   relativeToEur,
   currencySymbol
   )
@@ -43,33 +42,40 @@ class XModelerable context a where
 
 -- Name : no need, because `get () Name` would be just `show Name`
 
+-- Bool
+instance XModelerable () Bool where
+  get () True = "true"
+  get () False = "false"
+
 -- Type
 instance XModelerable () Type where
   get () t = let
-    cor = "XCore::" ++ getTypeName t
-    aux = "Auxiliary::" ++ getTypeName t
-    in
-    if isUnassigned t then
-      case t of
-        Boolean _ -> cor
-        Integer _ -> cor
-        Float _ -> cor
-        String _ -> cor
-        Element _ -> cor
-        _ -> aux
-    else
-      case t of
-        Boolean (Just b) -> show b
-        Integer (Just i') -> show i'
-        Float (Just f) -> show f
-        String (Just s)-> [i|#{map ord s}.asString()|]
-        MonetaryValue (Just (amount, currency)) ->
-          [i|Auxiliary::MonetaryValue(#{amount}, Auxiliary::Currency(&quot;#{currency}&quot;, &quot;#{currency}&quot;, 1.0))|]
-        Date (Just (year, month, day)) ->
-          [i|Auxiliary::Date::createDate(#{year}, #{month}, #{day})|]
-        Currency (Just c) ->
-          [i|Auxiliary::Currency(&quot;#{currencySymbol c}&quot;, &quot;#{c}&quot;, #{relativeToEur c})|]
-        _ -> "null"
+    cor = "XCore::" ++ show t
+    aux = "Auxiliary::" ++ show t
+    in case t of
+      Boolean -> cor
+      Integer -> cor
+      Float -> cor
+      String -> cor
+      Element -> cor
+      _ -> aux
+
+-- Value
+instance XModelerable () Value where
+  get () v = case v of
+    VBoolean b -> get () b
+    VInteger i' -> show i'
+    VFloat f -> show f
+    VString s -> [i|#{map ord s}.asString()|]
+    VMonetaryValue (amount, currency) ->
+      [i|Auxiliary::MonetaryValue(#{amount}, Auxiliary::Currency(&quot;#{currency}&quot;, &quot;#{currency}&quot;, 1.0))|]
+    VDate (year, month, day) ->
+      [i|Auxiliary::Date::createDate(#{year}, #{month}, #{day})|]
+    VCurrency c ->
+      [i|Auxiliary::Currency(&quot;#{currencySymbol c}&quot;, &quot;#{c}&quot;, #{relativeToEur c})|]
+    VElement e -> e
+    VAuxiliaryClass c -> c
+    VComplex x -> x
 
 -- Object
 instance XModelerable Name Object where
@@ -79,13 +85,13 @@ instance XModelerable Name Object where
 -- Class
 instance XModelerable Name AsUnclassified where
   get projectName (AsUnclassified (Class {isAbstract, level, name, classifier = Nothing})) =
-    [i|    <addMetaClass abstract="#{isAbstract}" level="#{level}" name="#{name}" package="Root::#{projectName}" parents=""/>\n|]
+    [i|    <addMetaClass abstract="#{get () isAbstract}" level="#{level}" name="#{name}" package="Root::#{projectName}" parents=""/>\n|]
   get _ _ = error "ERROR! This class is supposed to have no classifier, but it seems to have one!"
 
 --  Class : Instance
 instance XModelerable Name AsInstance where
   get projectName (AsInstance (Class {isAbstract, name, classifier = Just classifierName})) =
-    [i|    <addInstance abstract="#{isAbstract}" name="#{name}" of="Root::#{projectName}::#{classifierName}" package="Root::#{projectName}" parents=""/>\n|]
+    [i|    <addInstance abstract="#{get () isAbstract}" name="#{name}" of="Root::#{projectName}::#{classifierName}" package="Root::#{projectName}" parents=""/>\n|]
   get _ _ = error "ERROR! This class is supposed to have a classifier, but it seems to have none!"
 
 -- Class : ChangeParents (Child)
@@ -97,7 +103,7 @@ instance XModelerable Name AsChild where
 -- Multiplicity
 instance XModelerable () Multiplicity where
   get () (Multiplicity (lower, upper)) =
-    [i|Seq{#{lower},#{fromMaybe (-1) upper},#{show (isJust upper)},false}|]
+    [i|Seq{#{lower},#{fromMaybe (-1) upper},#{get () (isJust upper)},false}|]
 
 -- Attribute
 instance XModelerable (Name, Name) Attribute where
@@ -111,25 +117,25 @@ instance XModelerable Name OperationBody where
 -- Operation
 instance XModelerable (Name, Name) Operation where
   get (projectName, attributeClass) (Operation {body, level, isMonitored, name, dataType}) =
-    [i|    <addOperation body="#{get projectName body}" class="Root::${projectName}::#{attributeClass}" level="#{level}" monitored="#{isMonitored}" name="#{name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () dataType}"/>\n|]
+    [i|    <addOperation body="#{get projectName body}" class="Root::${projectName}::#{attributeClass}" level="#{level}" monitored="#{get () isMonitored}" name="#{name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () dataType}"/>\n|]
 
 -- Slot
 instance XModelerable (Name, Name) Slot where
-  get (projectName, slotClass) (Slot {attribute, value}) =
-    [i|    <changeSlotValue class="Root::#{projectName}::#{slotClass}" package="Root::#{projectName}" slotName="#{attribute}" valueToBeParsed="#{get () value}"/>\n|]
+  get (projectName, slotClass) (Slot {name, value}) =
+    [i|    <changeSlotValue class="Root::#{projectName}::#{slotClass}" package="Root::#{projectName}" slotName="#{name}" valueToBeParsed="#{get () value}"/>\n|]
 
 -- Association
 instance XModelerable Name Association where
   get projectName (Association {name, source, target, lvlSource, lvlTarget, multSourceToTarget, multTargetToSource, sourceVisibleFromTarget, targetVisibleFromSource}) =
-    [i|    <addAssociation accessSourceFromTargetName="#{name}_#{from}" accessTargetFromSourceName="#{name}_#{to}" classSource="Root::#{projectName}::#{from}" classTarget="Root::#{projectName}::#{to}" fwName="#{name}" instLevelSource="#{lvlSource}" instLevelTarget="#{lvlTarget}" isSymmetric="false" isTransitive="false" multSourceToTarget="#{get () multSourceToTarget}" multTargetToSource="#{get () multTargetToSource}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="#{sourceVisibleFromTarget}" targetVisibleFromSource="#{targetVisibleFromSource}"/>\n|]
+    [i|    <addAssociation accessSourceFromTargetName="#{name}_#{from}" accessTargetFromSourceName="#{name}_#{to}" classSource="Root::#{projectName}::#{from}" classTarget="Root::#{projectName}::#{to}" fwName="#{name}" instLevelSource="#{lvlSource}" instLevelTarget="#{lvlTarget}" isSymmetric="false" isTransitive="false" multSourceToTarget="#{get () multSourceToTarget}" multTargetToSource="#{get () multTargetToSource}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="#{get () sourceVisibleFromTarget}" targetVisibleFromSource="#{get () targetVisibleFromSource}"/>\n|]
    where
      from = show source
      to = show target
 
 -- Link
 instance XModelerable Name Link where
-  get projectName (Link {source, target, association}) =
-    [i|    <addLink classSource="Root::#{projectName}::#{source}" classTarget="Root::#{projectName}::#{target}" name="#{association}" package="Root::#{projectName}"/>\n|]
+  get projectName (Link {source, target, name}) =
+    [i|    <addLink classSource="Root::#{projectName}::#{source}" classTarget="Root::#{projectName}::#{target}" name="#{name}" package="Root::#{projectName}"/>\n|]
 
 -- MLM
 instance XModelerable ([Object], Double, Int) MLM where
