@@ -362,9 +362,41 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
 
 
 
-addLinks :: [Class] -> [Association] -> Gen [Link]
-addLinks _ _ = return []
+-- addLinks :: [Class] -> [Association] -> Gen [Link]
+-- addLinks _ _ = return []
 
+addLinks :: [Class] -> [Association] -> Gen [Link]
+addLinks theClasses theAssociations = let
+
+    scope :: Class -> [Class]
+    scope = generateScopeFinder theClasses
+
+    getClass :: Name -> Maybe Class
+    getClass = generateClassFinder theClasses
+
+    candidateSources :: Association -> [Class]
+    candidateSources Association{source, lvlSource} =
+        maybe []
+            (filter ((== lvlSource) . #level) . scope)
+            (getClass source)
+
+    candidateTargets :: Association -> [Class]
+    candidateTargets Association{target, lvlTarget} =
+        maybe []
+            (filter ((== lvlTarget) . #level) . scope)
+            (getClass target)
+
+    -- participationAsSource :: Class -> Association -> Int
+    -- participationAsSource Class{name} Association{source} =
+
+
+    in do
+        _ <- return theAssociations
+        _ <- return $ scope $ head theClasses
+        _ <- return $ getClass $ Name ""
+        _ <- return $ candidateSources $ head theAssociations
+        _ <- return $ candidateTargets $ head theAssociations
+        return []
 
 
 
