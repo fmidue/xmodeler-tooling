@@ -9,18 +9,17 @@ import Modelling.MLM.GenerateMLM (generateMLM)
 import Modelling.MLM.Types (valid)
 
 spec :: Spec
-spec = do
-    describe "generateMLM" $ do
-        it "creates valid MLMs" $
-          forAll reasonableConfigs $ \Config{..} ->
-          forAll (generateMLM
-                  projectNameString
-                  maxLvl0
-                  numClasses0
-                  numAssociations0
-                  chanceToNotConcretize
-                  chanceToNotInherit
-                  multSpecsAttributes0
-                  multSpecsAssociations0
-                  visibilityChanceAssociations) $
-          valid ()
+spec = describe "generateMLM" $
+          it "creates valid MLMs" $
+            forAll reasonableConfigs $ \Config{..} ->
+            forAll (generateMLM
+                    projectNameString
+                    maxLvl0
+                    numClasses0
+                    numAssociations0
+                    chanceToNotConcretize
+                    chanceToNotInherit
+                    multSpecsAttributes0
+                    multSpecsAssociations0
+                    visibilityChanceAssociations) $
+            valid ()

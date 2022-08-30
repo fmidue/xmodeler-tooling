@@ -12,19 +12,19 @@ spec :: Spec
 spec = do
 
   forM_ ["aaaaa.xml"] $ \file ->
-      describe "valid" $ do
+      describe "valid" $
         it ("correctly judges " ++ file) $
           ioProperty $ do
             input <- fromXModeler file
             return $ input `shouldSatisfy` valid ()
   forM_ ([1..71] ++ [73..100] :: [Int]) $ \i ->
       let file = "UML_examples/testing_" ++ show i ++ ".xml" in
-      describe "valid" $ do
+      describe "valid" $
         it ("correctly judges " ++ file) $
           ioProperty $ do
             input <- fromXModeler file
             return $ input `shouldSatisfy` valid ()
-  describe "invalid" $ do
+  describe "invalid" $
     it ("correctly judges " ++ "UML_examples/testing_72.xml") $
       ioProperty $ do
         input <- fromXModeler "UML_examples/testing_72.xml"
