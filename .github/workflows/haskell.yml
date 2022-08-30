@@ -12,16 +12,17 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          # - macOS-latest
         plan:
           - { build: stack }
-          # - { build: cabal, ghc: "8.8.4", cabal-install: "latest" }
+        include:
+          - os: ubuntu-latest
+            apt-get: graphviz
 
     runs-on: ${{ matrix.os }}
 
     steps:
     - name: Install ${{ matrix.os }} Packages
-      uses: mstksg/get-package@v1
+      uses: mstksg/get-package@2a4b48d55d72d43ca89ae58ec9ca1397d34a1c35
       with:
         apt-get: ${{ matrix.apt-get }}
         brew: ${{ matrix.brew }}
@@ -34,41 +35,16 @@ jobs:
         path: ~/.stack
         key: ${{ matrix.os }}-${{ matrix.plan.build }}-stack-home-${{ hashFiles('stack.yaml') }}-${{ hashFiles('package.yaml') }}
 
-    - name: Cache Cabal
-      id: cache-cabal-unix
-      uses: actions/cache@v1
-      with:
-        path: ~/.cabal
-        key: ${{ matrix.os }}-${{ matrix.plan.build }}-${{ matrix.plan.ghc }}-${{ matrix.plan.cabal-install }}-cabal-home-${{ hashFiles('**/*.cabal')}}-${{ hashFiles('package.yaml') }}
-      if: matrix.plan.build == 'cabal'
-
     - name: Setup stack
       uses: haskell/actions/setup@v1
       with:
         enable-stack: true
         stack-no-global: true
 
-    - name: Setup ghc ${{ matrix.plan.ghc }} and cabal-install ${{ matrix.plan.cabal-install }}
-      uses: actions/setup-haskell@81544724478d8ba4d4e38eddea0351a215d25291
-      with:
-        ghc-version: ${{ matrix.plan.ghc }}
-        cabal-version: ${{ matrix.plan.cabal-install }}
-      if: matrix.plan.build == 'cabal'
-
     - name: Install dependencies
       run: |
         set -ex
-        case "$BUILD" in
-          stack)
-            stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies
-            ;;
-          cabal)
-            cabal --version
-            cabal update
-            PACKAGES=$(stack --install-ghc query locals | grep '^ *path' | sed 's@^ *path:@@')
-            cabal install --only-dependencies --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
-            ;;
-        esac
+        stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies
         set +ex
       env:
         ARGS: ${{ matrix.plan.resolver }}
@@ -77,23 +53,7 @@ jobs:
     - name: Build and test
       run: |
         set -ex
-        case "$BUILD" in
-          stack)
-            stack --no-terminal $ARGS test --coverage --bench --no-run-benchmarks --haddock --no-haddock-deps
-            ;;
-          cabal)
-            PACKAGES=$(stack --install-ghc query locals | grep '^ *path' | sed 's@^ *path:@@')
-            cabal install --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
-            ORIGDIR=$(pwd)
-            for dir in $PACKAGES
-            do
-              cd $dir
-              cabal configure --ghc-options -O0
-              cabal build
-              cd $ORIGDIR
-            done
-            ;;
-        esac
+        stack --no-terminal $ARGS test --coverage --bench --no-run-benchmarks --haddock --no-haddock-deps
         set +ex
       env:
         ARGS: ${{ matrix.plan.resolver }}
