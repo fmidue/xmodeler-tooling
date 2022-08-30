@@ -1,3 +1,4 @@
+{- HLINT ignore -}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Modelling.MLM.Types(
