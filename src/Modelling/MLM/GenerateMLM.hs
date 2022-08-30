@@ -82,7 +82,7 @@ randomMultGen (max', chance) = do
     return $ Multiplicity (0, b)
 
 randomSlotValue :: Attribute -> Gen Slot
-randomSlotValue (Attribute {name, dataType})= let
+randomSlotValue Attribute{name, dataType} = let
     anyFloat :: Gen Float
     anyFloat = (/100) . (fromIntegral :: Int -> Float) . round . (*100) <$> (choose (0.0,10.0) :: Gen Float)
     in do
@@ -92,7 +92,7 @@ randomSlotValue (Attribute {name, dataType})= let
             Float -> VFloat <$> anyFloat
             String -> return $ VString "some String value"
             Element -> return $ VElement "null"
-            MonetaryValue -> do return $ VMonetaryValue ("9.99 ","apples")
+            MonetaryValue -> return $ VMonetaryValue ("9.99 ","apples")
             Date -> return $ VDate (2000,01,01)
             Currency -> VCurrency <$> elements [USD, EUR, GBP, AUD, NZD]
             Complex -> return $ VComplex "null"
@@ -107,7 +107,7 @@ randomSlotValue (Attribute {name, dataType})= let
 addConcretizations :: Int -> Int -> [Class] -> Gen [Class]
 addConcretizations maxLvl chanceToNotConcretize theClasses = let
     concretizing :: Class -> Maybe Class -> Gen Class
-    concretizing x (Just (Class {name, level})) = return (x <<< Just name <<< (level - 1))
+    concretizing x (Just Class{name, level}) = return (x <<< Just name <<< (level - 1))
     concretizing x Nothing = do
         randomLevel <- chooseInt (1, max 1 maxLvl)
         -- max 1 ... because having meta classes of level zero is useless
@@ -136,8 +136,8 @@ addInheritances :: Int -> [Class] -> Gen [Class]
 addInheritances chanceToNotInherit theClasses = let
 
     sameAs :: Class -> Class -> Bool
-    sameAs (Class {level = l1, classifier = c1})
-         (Class {level = l2, classifier = c2}) = l1 == l2 && c1 == c2
+    sameAs Class{level = l1, classifier = c1}
+         Class {level = l2, classifier = c2} = l1 == l2 && c1 == c2
     in
     accumulate [head theClasses] (tail theClasses) (\soFar x -> do
         toInheritFrom <- weightedRandomXOr
@@ -242,7 +242,7 @@ addSlotValues :: [Class] -> Gen [Class]
 addSlotValues theClasses = let
 
     attributeDict :: [(Name, [Attribute])]
-    attributeDict = map (\(Class {name, attributes}) -> (name, attributes)) theClasses
+    attributeDict = map (\Class{name, attributes} -> (name, attributes)) theClasses
 
     classDict :: [(Name, Name)]
     classDict = generateClassDict theClasses
@@ -256,7 +256,7 @@ addSlotValues theClasses = let
     --         filter (className \/) (map #name theClasses)
 
     instantiatable :: Class -> [Attribute]
-    instantiatable (Class {level = classLevel, classifier}) = let
+    instantiatable Class{level = classLevel, classifier} = let
         f :: Name -> [Attribute]
         f x = maybe [] f (lookup x classDict) ++
             filter
@@ -339,8 +339,7 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
     randomMultGen' = randomMultGen multSpecs
     randomVisibilityGen = weightedRandomXOr
         visibilityChance (return True) (return False) :: Gen Bool
-    in do
-        accumulateSimple emptyAssociations (\x -> do
+    in accumulateSimple emptyAssociations (\x -> do
                 sourceClass <- randomClassGen
                 targetClass <- randomClassGen
                 lvlSource' <- randomLevelGen sourceClass
