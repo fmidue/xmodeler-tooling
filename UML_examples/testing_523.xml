@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<XModeler>
+  <Version>2</Version>
+  <Categories/>
+  <Projects>
+    <Project name="Root::projectName"/>
+  </Projects>
+  <Diagrams>
+    <Diagram label="diagramName" package_path="Root::projectName" showDerivedAttributes="true" showDerivedOperations="true" showGettersAndSetters="false" showOperationValues="true" showOperations="true" showSlots="true">
+      <Categories/>
+      <Owners/>
+      <Objects>
+        <Object hidden="false" ref="Root::projectName::A" x="147" y="697"/>
+        <Object hidden="false" ref="Root::projectName::B" x="136" y="32"/>
+        <Object hidden="false" ref="Root::projectName::C" x="32" y="448"/>
+        <Object hidden="false" ref="Root::projectName::D" x="136" y="221"/>
+        <Object hidden="false" ref="Root::projectName::a0" x="401" y="72"/>
+        <Object hidden="false" ref="Root::projectName::b0" x="342" y="266"/>
+        <Object hidden="false" ref="Root::projectName::b1" x="607" y="32"/>
+        <Object hidden="false" ref="Root::projectName::d0" x="531" y="214"/>
+
+      </Objects>
+      <Edges/>
+      <Labels/>
+      <Preferences/>
+      <View name="Main View" tx="60" ty="60" xx="1.2014696741078175"/>
+    </Diagram>
+  </Diagrams>
+  <Logs>
+    <addMetaClass abstract="false" level="1" name="C" package="Root::projectName" parents=""/>
+    <addMetaClass abstract="false" level="1" name="D" package="Root::projectName" parents=""/>
+    <addMetaClass abstract="false" level="1" name="A" package="Root::projectName" parents=""/>
+    <addMetaClass abstract="false" level="1" name="B" package="Root::projectName" parents=""/>
+
+    <addInstance abstract="false" name="a0" of="Root::projectName::A" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="d0" of="Root::projectName::D" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="b0" of="Root::projectName::B" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="b1" of="Root::projectName::B" package="Root::projectName" parents=""/>
+
+    <changeParent class="Root::projectName::B" new="Root::projectName::C" old="" package="Root::projectName"/>
+
+    <addAssociation accessSourceFromTargetName="d_b" accessTargetFromSourceName="d_a" classSource="Root::projectName::B" classTarget="Root::projectName::A" fwName="d" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{1,1,True,false}" multTargetToSource="Seq{2,-1,False,false}" package="Root::projectName" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>
+    <addAssociation accessSourceFromTargetName="e_d" accessTargetFromSourceName="e_b" classSource="Root::projectName::D" classTarget="Root::projectName::B" fwName="e" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{2,-1,False,false}" multTargetToSource="Seq{1,1,True,false}" package="Root::projectName" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>
+    <addAssociation accessSourceFromTargetName="c_a" accessTargetFromSourceName="c_c" classSource="Root::projectName::A" classTarget="Root::projectName::C" fwName="c" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{0,-1,False,false}" multTargetToSource="Seq{0,1,True,false}" package="Root::projectName" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>
+    <addAssociation accessSourceFromTargetName="b_a" accessTargetFromSourceName="b_d" classSource="Root::projectName::A" classTarget="Root::projectName::D" fwName="b" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{1,1,True,false}" multTargetToSource="Seq{1,-1,False,false}" package="Root::projectName" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>
+    <addAssociation accessSourceFromTargetName="a_c" accessTargetFromSourceName="a_d" classSource="Root::projectName::C" classTarget="Root::projectName::D" fwName="a" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{1,1,True,false}" multTargetToSource="Seq{2,-1,False,false}" package="Root::projectName" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>
+
+    <addLink classSource="Root::projectName::b0" classTarget="Root::projectName::a0" name="d" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::b1" classTarget="Root::projectName::a0" name="d" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::b0" classTarget="Root::projectName::d0" name="a" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::b1" classTarget="Root::projectName::d0" name="a" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::a0" classTarget="Root::projectName::d0" name="b" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::a0" classTarget="Root::projectName::b0" name="c" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::d0" classTarget="Root::projectName::b0" name="e" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::a0" classTarget="Root::projectName::b1" name="c" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::d0" classTarget="Root::projectName::b1" name="e" package="Root::projectName"/>
+
+  </Logs>
+</XModeler>

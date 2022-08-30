@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<XModeler>
+  <Version>2</Version>
+  <Categories/>
+  <Projects>
+    <Project name="Root::projectName"/>
+  </Projects>
+  <Diagrams>
+    <Diagram label="diagramName" package_path="Root::projectName" showDerivedAttributes="true" showDerivedOperations="true" showGettersAndSetters="false" showOperationValues="true" showOperations="true" showSlots="true">
+      <Categories/>
+      <Owners/>
+      <Objects>
+        <Object hidden="false" ref="Root::projectName::A" x="66" y="32"/>
+        <Object hidden="false" ref="Root::projectName::B" x="86" y="448"/>
+        <Object hidden="false" ref="Root::projectName::C" x="32" y="697"/>
+        <Object hidden="false" ref="Root::projectName::D" x="189" y="221"/>
+        <Object hidden="false" ref="Root::projectName::a02" x="631" y="32"/>
+        <Object hidden="false" ref="Root::projectName::a03" x="925" y="503"/>
+        <Object hidden="false" ref="Root::projectName::b00" x="437" y="62"/>
+        <Object hidden="false" ref="Root::projectName::b01" x="505" y="445"/>
+        <Object hidden="false" ref="Root::projectName::b02" x="884" y="33"/>
+        <Object hidden="false" ref="Root::projectName::b03" x="840" y="747"/>
+        <Object hidden="false" ref="Root::projectName::b10" x="384" y="249"/>
+        <Object hidden="false" ref="Root::projectName::b11" x="480" y="788"/>
+        <Object hidden="false" ref="Root::projectName::b12" x="1006" y="195"/>
+        <Object hidden="false" ref="Root::projectName::b13" x="1183" y="445"/>
+        <Object hidden="false" ref="Root::projectName::c00" x="571" y="206"/>
+        <Object hidden="false" ref="Root::projectName::c01" x="658" y="542"/>
+        <Object hidden="false" ref="Root::projectName::c02" x="1140" y="35"/>
+        <Object hidden="false" ref="Root::projectName::c03" x="1091" y="684"/>
+        <Object hidden="false" ref="Root::projectName::d00" x="789" y="279"/>
+        <Object hidden="false" ref="Root::projectName::d01" x="643" y="719"/>
+
+      </Objects>
+      <Edges/>
+      <Labels/>
+      <Preferences/>
+      <View name="Main View" tx="88" ty="88" xx="1.7500690421738458"/>
+    </Diagram>
+  </Diagrams>
+  <Logs>
+    <addMetaClass abstract="false" level="1" name="B" package="Root::projectName" parents=""/>
+    <addMetaClass abstract="false" level="1" name="C" package="Root::projectName" parents=""/>
+    <addMetaClass abstract="false" level="1" name="A" package="Root::projectName" parents=""/>
+    <addMetaClass abstract="false" level="1" name="D" package="Root::projectName" parents=""/>
+
+    <addInstance abstract="false" name="d00" of="Root::projectName::D" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="c00" of="Root::projectName::C" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="b00" of="Root::projectName::B" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="b10" of="Root::projectName::B" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="d01" of="Root::projectName::D" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="c01" of="Root::projectName::C" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="b01" of="Root::projectName::B" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="b11" of="Root::projectName::B" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="c02" of="Root::projectName::C" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="b02" of="Root::projectName::B" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="b12" of="Root::projectName::B" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="a02" of="Root::projectName::A" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="c03" of="Root::projectName::C" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="b03" of="Root::projectName::B" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="b13" of="Root::projectName::B" package="Root::projectName" parents=""/>
+    <addInstance abstract="false" name="a03" of="Root::projectName::A" package="Root::projectName" parents=""/>
+
+    <changeParent class="Root::projectName::B" new="Root::projectName::D" old="" package="Root::projectName"/>
+    <changeParent class="Root::projectName::D" new="Root::projectName::A" old="" package="Root::projectName"/>
+
+    <addAssociation accessSourceFromTargetName="y_c" accessTargetFromSourceName="y_b" classSource="Root::projectName::C" classTarget="Root::projectName::B" fwName="y" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{2,2,True,false}" multTargetToSource="Seq{1,-1,False,false}" package="Root::projectName" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>
+    <addAssociation accessSourceFromTargetName="z_c" accessTargetFromSourceName="z_a" classSource="Root::projectName::C" classTarget="Root::projectName::A" fwName="z" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{0,1,True,false}" multTargetToSource="Seq{0,-1,False,false}" package="Root::projectName" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>
+    <addAssociation accessSourceFromTargetName="x_b" accessTargetFromSourceName="x_a" classSource="Root::projectName::B" classTarget="Root::projectName::A" fwName="x" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{1,1,True,false}" multTargetToSource="Seq{0,2,True,false}" package="Root::projectName" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>
+
+    <addLink classSource="Root::projectName::c00" classTarget="Root::projectName::d00" name="z" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::b00" classTarget="Root::projectName::b10" name="x" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::c00" classTarget="Root::projectName::b00" name="y" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::b10" classTarget="Root::projectName::b00" name="x" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::c00" classTarget="Root::projectName::b10" name="y" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::c01" classTarget="Root::projectName::d01" name="z" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::b01" classTarget="Root::projectName::d01" name="x" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::c01" classTarget="Root::projectName::b01" name="y" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::b11" classTarget="Root::projectName::d01" name="x" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::c01" classTarget="Root::projectName::b11" name="y" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::c02" classTarget="Root::projectName::b12" name="z" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::b02" classTarget="Root::projectName::b12" name="x" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::c02" classTarget="Root::projectName::b02" name="y" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::b12" classTarget="Root::projectName::b02" name="x" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::c02" classTarget="Root::projectName::b12" name="y" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::c03" classTarget="Root::projectName::a03" name="z" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::b03" classTarget="Root::projectName::a03" name="x" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::c03" classTarget="Root::projectName::b03" name="y" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::b13" classTarget="Root::projectName::a03" name="x" package="Root::projectName"/>
+    <addLink classSource="Root::projectName::c03" classTarget="Root::projectName::b13" name="y" package="Root::projectName"/>
+
+  </Logs>
+</XModeler>
