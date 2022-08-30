@@ -125,7 +125,7 @@ fromXModeler inputXML = let
     let extract tag att = runX $ doc //> hasName tag >>> getAttrValue att :: IO [String]
     -----------------------------------------------------------------------------------------------
     -- projectName <- getName . head <$> extract "Project" "name" :: IO Name
-    let projectName = Name $ "imported_from_" ++ takeWhile (/='.') inputXML
+    let projectName = Name $ "imported_from_" ++ takeWhile (/= '.') (last $ splitOn "/" inputXML)
     putStrLn "Got projectName"
     -----------------------------------------------------------------------------------------------
     isAbstractMetaClass <- map getBool <$> extract "addMetaClass" "abstract" :: IO [Bool]

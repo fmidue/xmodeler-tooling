@@ -23,9 +23,7 @@ spec = do
                   numAssociations0
                   chanceToNotConcretize
                   chanceToNotInherit
-                  numAttributes0
                   multSpecsAttributes0
-                  precisionFactorAttributes0
                   multSpecsAssociations0
                   visibilityChanceAssociations) $
           \mlm -> ioProperty $ do
