@@ -31,7 +31,7 @@
 
     <changeParent class="Root::projectName::C" new="Root::projectName::D" old="" package="Root::projectName"/>
 
-    <addAssociation accessSourceFromTargetName="y_c" accessTargetFromSourceName="y_d" classSource="Root::projectName::C" classTarget="Root::projectName::D" fwName="y" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{1,1,True,false}" multTargetToSource="Seq{1,-1,False,false}" package="Root::projectName" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>
+    <addAssociation accessSourceFromTargetName="y_c" accessTargetFromSourceName="y_d" classSource="Root::projectName::C" classTarget="Root::projectName::D" fwName="y" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{0,-1,False,false}" multTargetToSource="Seq{0,-1,False,false}" package="Root::projectName" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>
 
     <addLink classSource="Root::projectName::c00" classTarget="Root::projectName::c10" name="y" package="Root::projectName"/>
     <addLink classSource="Root::projectName::c10" classTarget="Root::projectName::c00" name="y" package="Root::projectName"/>
