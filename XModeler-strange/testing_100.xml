@@ -10,7 +10,6 @@
       <Categories/>
       <Owners/>
       <Objects>
-        <Object hidden="false" ref="Root::projectName::A" x="32" y="221"/>
         <Object hidden="false" ref="Root::projectName::C" x="125" y="448"/>
         <Object hidden="false" ref="Root::projectName::D" x="147" y="32"/>
         <Object hidden="false" ref="Root::projectName::c00" x="469" y="194"/>
@@ -26,13 +25,11 @@
   <Logs>
     <addMetaClass abstract="false" level="1" name="D" package="Root::projectName" parents=""/>
     <addMetaClass abstract="false" level="1" name="C" package="Root::projectName" parents=""/>
-    <addMetaClass abstract="false" level="1" name="A" package="Root::projectName" parents=""/>
 
     <addInstance abstract="false" name="c00" of="Root::projectName::C" package="Root::projectName" parents=""/>
     <addInstance abstract="false" name="c10" of="Root::projectName::C" package="Root::projectName" parents=""/>
 
-    <changeParent class="Root::projectName::C" new="Root::projectName::A" old="" package="Root::projectName"/>
-    <changeParent class="Root::projectName::A" new="Root::projectName::D" old="" package="Root::projectName"/>
+    <changeParent class="Root::projectName::C" new="Root::projectName::D" old="" package="Root::projectName"/>
 
     <addAssociation accessSourceFromTargetName="y_c" accessTargetFromSourceName="y_d" classSource="Root::projectName::C" classTarget="Root::projectName::D" fwName="y" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{1,1,True,false}" multTargetToSource="Seq{1,-1,False,false}" package="Root::projectName" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>
 
