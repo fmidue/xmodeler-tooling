@@ -11,10 +11,8 @@
       <Owners/>
       <Objects>
         <Object hidden="false" ref="Root::projectName::A" x="32" y="221"/>
-        <Object hidden="false" ref="Root::projectName::B" x="189" y="697"/>
         <Object hidden="false" ref="Root::projectName::C" x="125" y="448"/>
         <Object hidden="false" ref="Root::projectName::D" x="147" y="32"/>
-        <Object hidden="false" ref="Root::projectName::b00" x="384" y="32"/>
         <Object hidden="false" ref="Root::projectName::c00" x="469" y="194"/>
         <Object hidden="false" ref="Root::projectName::c10" x="574" y="35"/>
 
@@ -29,9 +27,7 @@
     <addMetaClass abstract="false" level="1" name="D" package="Root::projectName" parents=""/>
     <addMetaClass abstract="false" level="1" name="C" package="Root::projectName" parents=""/>
     <addMetaClass abstract="false" level="1" name="A" package="Root::projectName" parents=""/>
-    <addMetaClass abstract="false" level="1" name="B" package="Root::projectName" parents=""/>
 
-    <addInstance abstract="false" name="b00" of="Root::projectName::B" package="Root::projectName" parents=""/>
     <addInstance abstract="false" name="c00" of="Root::projectName::C" package="Root::projectName" parents=""/>
     <addInstance abstract="false" name="c10" of="Root::projectName::C" package="Root::projectName" parents=""/>
 
