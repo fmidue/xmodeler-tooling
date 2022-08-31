@@ -38,15 +38,10 @@
     <changeParent class="Root::projectName::C" new="Root::projectName::A" old="" package="Root::projectName"/>
     <changeParent class="Root::projectName::A" new="Root::projectName::D" old="" package="Root::projectName"/>
 
-    <addAssociation accessSourceFromTargetName="x_b" accessTargetFromSourceName="x_d" classSource="Root::projectName::B" classTarget="Root::projectName::D" fwName="x" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{1,2,True,false}" multTargetToSource="Seq{1,2,True,false}" package="Root::projectName" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>
-    <addAssociation accessSourceFromTargetName="z_b" accessTargetFromSourceName="z_c" classSource="Root::projectName::B" classTarget="Root::projectName::C" fwName="z" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{1,1,True,false}" multTargetToSource="Seq{0,2,True,false}" package="Root::projectName" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>
     <addAssociation accessSourceFromTargetName="y_c" accessTargetFromSourceName="y_d" classSource="Root::projectName::C" classTarget="Root::projectName::D" fwName="y" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{1,1,True,false}" multTargetToSource="Seq{1,-1,False,false}" package="Root::projectName" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>
 
     <addLink classSource="Root::projectName::c00" classTarget="Root::projectName::c10" name="y" package="Root::projectName"/>
-    <addLink classSource="Root::projectName::b00" classTarget="Root::projectName::c00" name="x" package="Root::projectName"/>
     <addLink classSource="Root::projectName::c10" classTarget="Root::projectName::c00" name="y" package="Root::projectName"/>
-    <addLink classSource="Root::projectName::b00" classTarget="Root::projectName::c10" name="z" package="Root::projectName"/>
-    <addLink classSource="Root::projectName::b00" classTarget="Root::projectName::c10" name="x" package="Root::projectName"/>
 
   </Logs>
 </XModeler>
