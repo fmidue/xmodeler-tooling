@@ -40,7 +40,9 @@ data Object = Object {
 class XModelerable context a where
   get :: context -> a -> String
 
--- Name : no need, because `get () Name` would be just `show Name`
+-- Name : instead of an XModelerable () instance,
+nameString :: Name -> String
+nameString (Name name) = name
 
 -- Bool
 instance XModelerable () Bool where
@@ -79,26 +81,26 @@ instance XModelerable () Value where
 
 -- Object
 instance XModelerable Name Object where
-  get projectName Object{name, x, y} =
-    [i|        <Object hidden="false" ref="Root::#{projectName}::#{name}" x="#{x}" y="#{y}"/>\n|]
+  get (Name projectName) Object{name, x, y} =
+    [i|        <Object hidden="false" ref="Root::#{projectName}::#{nameString name}" x="#{x}" y="#{y}"/>\n|]
 
 -- Class
 instance XModelerable Name AsUnclassified where
-  get projectName (AsUnclassified Class{isAbstract, level, name, classifier = Nothing}) =
-    [i|    <addMetaClass abstract="#{get () isAbstract}" level="#{level}" name="#{name}" package="Root::#{projectName}" parents=""/>\n|]
+  get (Name projectName) (AsUnclassified Class{isAbstract, level, name, classifier = Nothing}) =
+    [i|    <addMetaClass abstract="#{get () isAbstract}" level="#{level}" name="#{nameString name}" package="Root::#{projectName}" parents=""/>\n|]
   get _ _ = error "ERROR! This class is supposed to have no classifier, but it seems to have one!"
 
 --  Class : Instance
 instance XModelerable Name AsInstance where
-  get projectName (AsInstance Class{isAbstract, name, classifier = Just classifierName}) =
-    [i|    <addInstance abstract="#{get () isAbstract}" name="#{name}" of="Root::#{projectName}::#{classifierName}" package="Root::#{projectName}" parents=""/>\n|]
+  get (Name projectName) (AsInstance Class{isAbstract, name, classifier = Just (Name classifierName)}) =
+    [i|    <addInstance abstract="#{get () isAbstract}" name="#{nameString name}" of="Root::#{projectName}::#{classifierName}" package="Root::#{projectName}" parents=""/>\n|]
   get _ _ = error "ERROR! This class is supposed to have a classifier, but it seems to have none!"
 
 -- Class : ChangeParents (Child)
 instance XModelerable Name AsChild where
-  get projectName (AsChild Class{name, parents}) =
-    [i|    <changeParent class="Root::#{projectName}::#{name}" new="#{doParents}" old="" package="Root::#{projectName}"/>\n|]
-      where doParents = init (concatMap (\p -> [i|Root::#{projectName}::#{p},|]) parents)
+  get (Name projectName) (AsChild Class{name, parents}) =
+    [i|    <changeParent class="Root::#{projectName}::#{nameString name}" new="#{doParents}" old="" package="Root::#{projectName}"/>\n|]
+      where doParents = init (concatMap (\p -> [i|Root::#{projectName}::#{nameString p},|]) parents)
 
 -- Multiplicity
 instance XModelerable () Multiplicity where
@@ -107,8 +109,8 @@ instance XModelerable () Multiplicity where
 
 -- Attribute
 instance XModelerable (Name, Name) Attribute where
-  get (projectName, className) Attribute{level, name, dataType, multiplicity} =
-    [i|    <addAttribute class="Root::#{projectName}::#{className}" level="#{level}" multiplicity="#{get () multiplicity}" name="#{name}" package="Root::#{projectName}" type="Root::#{get () dataType}"/>\n|]
+  get (Name projectName, Name className) Attribute{level, name, dataType, multiplicity} =
+    [i|    <addAttribute class="Root::#{projectName}::#{className}" level="#{level}" multiplicity="#{get () multiplicity}" name="#{nameString name}" package="Root::#{projectName}" type="Root::#{get () dataType}"/>\n|]
 
 -- OperationBody
 instance XModelerable Name OperationBody where
@@ -116,26 +118,26 @@ instance XModelerable Name OperationBody where
 
 -- Operation
 instance XModelerable (Name, Name) Operation where
-  get (projectName, attributeClass) Operation{body, level, isMonitored, name, dataType} =
-    [i|    <addOperation body="#{get projectName body}" class="Root::${projectName}::#{attributeClass}" level="#{level}" monitored="#{get () isMonitored}" name="#{name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () dataType}"/>\n|]
+  get (Name projectName, Name attributeClass) Operation{body, level, isMonitored, name, dataType} =
+    [i|    <addOperation body="#{get (Name projectName) body}" class="Root::${projectName}::#{attributeClass}" level="#{level}" monitored="#{get () isMonitored}" name="#{nameString name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () dataType}"/>\n|]
 
 -- Slot
 instance XModelerable (Name, Name) Slot where
-  get (projectName, slotClass) Slot{name, value} =
-    [i|    <changeSlotValue class="Root::#{projectName}::#{slotClass}" package="Root::#{projectName}" slotName="#{name}" valueToBeParsed="#{get () value}"/>\n|]
+  get (Name projectName, Name slotClass) Slot{name, value} =
+    [i|    <changeSlotValue class="Root::#{projectName}::#{slotClass}" package="Root::#{projectName}" slotName="#{nameString name}" valueToBeParsed="#{get () value}"/>\n|]
 
 -- Association
 instance XModelerable Name Association where
-  get projectName Association{name, source, target, lvlSource, lvlTarget, multSourceToTarget, multTargetToSource, sourceVisibleFromTarget, targetVisibleFromSource} =
-    [i|    <addAssociation accessSourceFromTargetName="#{name}_#{from}" accessTargetFromSourceName="#{name}_#{to}" classSource="Root::#{projectName}::#{from}" classTarget="Root::#{projectName}::#{to}" fwName="#{name}" instLevelSource="#{lvlSource}" instLevelTarget="#{lvlTarget}" isSymmetric="false" isTransitive="false" multSourceToTarget="#{get () multSourceToTarget}" multTargetToSource="#{get () multTargetToSource}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="#{get () sourceVisibleFromTarget}" targetVisibleFromSource="#{get () targetVisibleFromSource}"/>\n|]
+  get (Name projectName) Association{name, source, target, lvlSource, lvlTarget, multSourceToTarget, multTargetToSource, sourceVisibleFromTarget, targetVisibleFromSource} =
+    [i|    <addAssociation accessSourceFromTargetName="#{nameString name}_#{from}" accessTargetFromSourceName="#{nameString name}_#{to}" classSource="Root::#{projectName}::#{from}" classTarget="Root::#{projectName}::#{to}" fwName="#{nameString name}" instLevelSource="#{lvlSource}" instLevelTarget="#{lvlTarget}" isSymmetric="false" isTransitive="false" multSourceToTarget="#{get () multSourceToTarget}" multTargetToSource="#{get () multTargetToSource}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="#{get () sourceVisibleFromTarget}" targetVisibleFromSource="#{get () targetVisibleFromSource}"/>\n|]
    where
-     from = show source
-     to = show target
+     from = nameString source
+     to = nameString target
 
 -- Link
 instance XModelerable Name Link where
-  get projectName Link{source, target, name} =
-    [i|    <addLink classSource="Root::#{projectName}::#{source}" classTarget="Root::#{projectName}::#{target}" name="#{name}" package="Root::#{projectName}"/>\n|]
+  get (Name projectName) Link{source, target, name} =
+    [i|    <addLink classSource="Root::#{projectName}::#{nameString source}" classTarget="Root::#{projectName}::#{nameString target}" name="#{nameString name}" package="Root::#{projectName}"/>\n|]
 
 -- MLM
 instance XModelerable ([Object], Double, Int) MLM where
@@ -172,10 +174,10 @@ instance XModelerable ([Object], Double, Int) MLM where
   <Version>2</Version>
   <Categories/>
   <Projects>
-    <Project name="Root::#{show projectName}"/>
+    <Project name="Root::#{nameString projectName}"/>
   </Projects>
   <Diagrams>
-    <Diagram label="#{show projectName}_diagram" package_path="Root::#{show projectName}" showConstraintReports="false" showConstraints="false" showDerivedAttributes="false" showDerivedOperations="false" showGettersAndSetters="false" showMetaClassName="false" showOperationValues="true" showOperations="true" showSlots="true">
+    <Diagram label="#{nameString projectName}_diagram" package_path="Root::#{nameString projectName}" showConstraintReports="false" showConstraints="false" showDerivedAttributes="false" showDerivedOperations="false" showGettersAndSetters="false" showMetaClassName="false" showOperationValues="true" showOperations="true" showSlots="true">
       <Categories/>
       <Owners/>
       <Objects>
@@ -202,15 +204,15 @@ instance XModelerable ([Object], Double, Int) MLM where
 toXModeler :: (GraphvizCommand, Double -> Double, Double, Int ) -> MLM -> IO String
 toXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)
               mlm@MLM{classes, associations, links} = let
-    vertices = map (show . #name) classes :: [String]
+    vertices = map (nameString . #name) classes :: [String]
     extractEdge from to x =
-      (show (from x), show (to x), ()) :: (String, String, ())
+      (nameString (from x), nameString (to x), ()) :: (String, String, ())
     edges =
       map (extractEdge #source #target) associations ++
       map (extractEdge #source #target) links ++
       concatMap
         (\child -> map
-          (\parent -> (show (#name child), show parent, ()))
+          (\parent -> (nameString (#name child), nameString parent, ()))
           (#parents child))
         classes :: [(String, String, ())]
 

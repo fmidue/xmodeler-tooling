@@ -61,7 +61,7 @@ instance HasField x r a => IsLabel x (r -> a) where
 class Validatable context a where
   valid :: context -> a -> Bool
 
-newtype Name = Name String deriving (Eq, Ord, Read)
+newtype Name = Name String deriving (Eq, Ord, Show, Read)
 
 emptyName :: Name
 emptyName = Name ""
@@ -73,9 +73,6 @@ instance Validatable () Name where
     in
       all ($ name)
         [not . null, validChar1 . head, all validCharN . tail]
-
-instance Show Name where
-  show (Name name) = name
 
 data MLM = MLM {
   name :: Name,
