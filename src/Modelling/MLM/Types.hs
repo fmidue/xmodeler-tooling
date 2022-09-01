@@ -39,7 +39,6 @@ module Modelling.MLM.Types(
 import Data.List.UniqueStrict (allUnique)
 import Data.Char (isDigit)
 import Data.List (find, sort, group)
-import Data.List.Ordered (nubSort)
 import Data.Ix (inRange)
 import Data.Maybe (isJust, isNothing, maybeToList)
 import GHC.OverloadedLabels (IsLabel (..))
@@ -84,7 +83,7 @@ data MLM = MLM {
 instance Eq MLM where
   (==) MLM{classes = c1, associations = a1, links = l1} MLM{classes = c2, associations = a2, links = l2} = let
     f :: (Eq a, Ord a) => ([a],[a]) -> Bool
-    f = uncurry (==) . both nubSort
+    f = uncurry (==) . both sort
     in f (c1,c2) && f (a1,a2) && f (l1,l2)
 
 emptyMLM :: MLM
@@ -253,11 +252,11 @@ instance Eq Class where
       eqBy x y #isAbstract,
       eqBy x y #level,
       eqBy x y #name,
-      eqBy (#parents x) (#parents y) nubSort,
+      eqBy (#parents x) (#parents y) sort,
       eqBy x y #classifier,
-      eqBy (#attributes x) (#attributes y) nubSort,
-      eqBy (#operations x) (#operations y) nubSort,
-      eqBy (#slots x) (#slots y) nubSort
+      eqBy (#attributes x) (#attributes y) sort,
+      eqBy (#operations x) (#operations y) sort,
+      eqBy (#slots x) (#slots y) sort
     ]
 
 emptyClass :: Class
