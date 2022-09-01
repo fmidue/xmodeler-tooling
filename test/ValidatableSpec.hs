@@ -6,9 +6,10 @@ import Test.QuickCheck (ioProperty)
 import Data.List ((\\))
 import Control.Monad (forM_, forM)
 import System.Directory (listDirectory)
+import System.FilePath (takeExtension)
 
 import Modelling.MLM.FromXModeler (fromXModeler)
-import Modelling.MLM.Types (valid)
+import Modelling.MLM.Types (valid, MLM)
 
 spec :: Spec
 spec = do
@@ -34,25 +35,30 @@ spec = do
             input <- fromXModeler file
             return $ input `shouldSatisfy` (not . valid ())
   describe "invalid" $
-    let dir = "should_fail/" in
-    it ("correctly judges content of " ++ dir ++ " directory") $
+   let dir = "should_fail/" in do
+    it ("correctly judges .xml content of " ++ dir ++ " directory") $
       ioProperty $ do
-        files <- map (dir ++) <$> listDirectory dir
-        validities <- forM files $ \file -> ((file,) . valid ()) <$> fromXModeler file
+        files <- map (dir ++) . filter ((".xml" ==) . takeExtension) <$> listDirectory dir
+        validities <- forM files $ \file -> (file,) . valid () <$> fromXModeler file
+        return $ filter snd validities `shouldSatisfy` null
+    it ("correctly judges .hs content of " ++ dir ++ " directory") $
+      ioProperty $ do
+        files <- map (dir ++) . filter ((".hs" ==) . takeExtension) <$> listDirectory dir
+        validities <- forM files $ \file -> (file,) . valid () . (read :: String -> MLM) <$> readFile file
         return $ filter snd validities `shouldSatisfy` null
   describe "valid" $
     let dir = "should_narrowly_pass/" in
     it ("correctly judges content of " ++ dir ++ " directory") $
       ioProperty $ do
         files <- map (dir ++) <$> listDirectory dir
-        validities <- forM files $ \file -> ((file,) . valid ()) <$> fromXModeler file
+        validities <- forM files $ \file -> (file,) . valid () <$> fromXModeler file
         return $ filter (not . snd) validities `shouldSatisfy` null
   describe "valid" $
     let dir = "XModeler-strange/" in
     it ("correctly judges content of " ++ dir ++ " directory") $
       ioProperty $ do
         files <- map (dir ++) <$> listDirectory dir
-        validities <- forM files $ \file -> ((file,) . valid ()) <$> fromXModeler file
+        validities <- forM files $ \file -> (file,) . valid () <$> fromXModeler file
         return $ filter (not . snd) validities `shouldSatisfy` null
 
 withIsolatedObjects :: [Int]

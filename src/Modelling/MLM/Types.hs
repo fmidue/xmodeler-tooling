@@ -61,7 +61,7 @@ instance HasField x r a => IsLabel x (r -> a) where
 class Validatable context a where
   valid :: context -> a -> Bool
 
-newtype Name = Name String deriving (Eq, Ord)
+newtype Name = Name String deriving (Eq, Ord, Read)
 
 emptyName :: Name
 emptyName = Name ""
@@ -82,7 +82,7 @@ data MLM = MLM {
   classes :: [Class],
   associations :: [Association],
   links :: [Link]
-} deriving Show
+} deriving (Show, Read)
 
 instance Eq MLM where
   (==) MLM{classes = c1, associations = a1, links = l1} MLM{classes = c2, associations = a2, links = l2} = let
@@ -246,7 +246,7 @@ data Class = Class {
   attributes :: [Attribute],
   operations :: [Operation],
   slots :: [Slot]
-} deriving Show
+} deriving (Show, Read)
 
 instance Ord Class where
   compare x y = compare (#name x) (#name y)
@@ -292,7 +292,7 @@ data Attribute = Attribute {
   name :: Name,
   dataType :: Type,
   multiplicity :: Multiplicity
-} deriving Show
+} deriving (Show, Read)
 
 instance Ord Attribute where
   compare x y = compare (#name x) (#name y)
@@ -314,7 +314,7 @@ instance Validatable Level Attribute where
 data Slot = Slot {
   name :: Name,
   value :: Value
-} deriving Show
+} deriving (Show, Read)
 
 instance Ord Slot where
   compare x y = let
@@ -340,7 +340,7 @@ data Operation = Operation {
   dataType :: Type,
   isMonitored :: Bool,
   body :: OperationBody
-} deriving Show
+} deriving (Show, Read)
 
 instance Ord Operation where
   compare x y = compare (#name x) (#name y)
@@ -358,7 +358,7 @@ instance Validatable Level Operation where
 data OperationBody = OperationBody {
   placeholder1 :: String,
   placeholder2 :: String
-} deriving Show
+} deriving (Show, Read)
 
 instance Eq OperationBody where
   (==) x y = all (eqBy x y) [#placeholder1, #placeholder2]
@@ -379,7 +379,7 @@ data Association = Association {
   multSourceToTarget :: Multiplicity,
   sourceVisibleFromTarget :: Bool,
   targetVisibleFromSource :: Bool
-} deriving Show
+} deriving (Show, Read)
 
 instance Ord Association where
   compare x y = compare (#name x) (#name y)
@@ -413,7 +413,7 @@ data Link = Link {
   name :: Name,
   source :: Name,
   target :: Name
-} deriving Show
+} deriving (Show, Read)
 
 instance Ord Link where
   compare x y = let
@@ -437,7 +437,7 @@ instance Validatable (Maybe Class, Maybe Class) (Maybe Association) where
       ) linkSource0
     )
 
-newtype Multiplicity = Multiplicity (Int, Maybe Int) deriving (Eq, Show)
+newtype Multiplicity = Multiplicity (Int, Maybe Int) deriving (Eq, Show, Read)
 
 emptyMultiplicity :: Multiplicity
 emptyMultiplicity = Multiplicity (0, Nothing)
