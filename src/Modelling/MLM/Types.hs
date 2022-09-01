@@ -38,7 +38,7 @@ module Modelling.MLM.Types(
 
 import Data.List.UniqueStrict (allUnique)
 import Data.Char (isDigit)
-import Data.List (find, sort, group)
+import Data.List (find, sort)
 import Data.Ix (inRange)
 import Data.Maybe (isJust, isNothing, maybeToList)
 import GHC.OverloadedLabels (IsLabel (..))
@@ -171,22 +171,47 @@ instance Validatable () MLM where
     inScope = generateInScopeFinder classes
 
     -- whether an association multiplicity is violated:
-    linksOf :: Association -> [Link]
-    linksOf x = filter ((#name x ==) . #name) links
-    sourcesOf :: Association -> [Name]
-    sourcesOf = map #source . linksOf
-    targetsOf :: Association -> [Name]
-    targetsOf = map #target . linksOf
+    candidates :: Name -> Level -> [Class]
+    candidates className lvl =
+      filter (\Class{level, name} -> level == lvl && name \/ className) classes
+
+    numOfTimesAsSource :: Name -> Class -> Int
+    numOfTimesAsSource associationName Class{name = className} =
+      length $ filter (\Link{name, source} ->
+        name == associationName &&
+        source == className
+      ) links
+
+    numOfTimesAsTarget :: Name -> Class -> Int
+    numOfTimesAsTarget associationName Class{name = className} =
+      length $ filter (\Link{name, target} ->
+        name == associationName &&
+        target == className
+      ) links
+
     inRangeOfMult :: Multiplicity -> Int -> Bool
     inRangeOfMult (Multiplicity (a, Nothing)) x = x >= a
     inRangeOfMult (Multiplicity (a, Just b)) x = inRange (a, b) x
-    allInRangeOfMult :: Multiplicity -> [Name] -> Bool
-    allInRangeOfMult mult = all (inRangeOfMult mult . length) . group . sort
+
+    allSourcesAreLinkedAccordingToMultiplicity :: Association -> Bool
+    allSourcesAreLinkedAccordingToMultiplicity Association{name = associationName, source, multSourceToTarget, lvlSource} = let
+      candidatesHere :: [Class]
+      candidatesHere = candidates source lvlSource
+      numOfTimes :: Class -> Int
+      numOfTimes = numOfTimesAsSource associationName
+      in all (inRangeOfMult multSourceToTarget . numOfTimes) candidatesHere
+
+    allTargetsAreLinkedAccordingToMultiplicity :: Association -> Bool
+    allTargetsAreLinkedAccordingToMultiplicity Association{name = associationName, target, multTargetToSource, lvlTarget} = let
+      candidatesHere :: [Class]
+      candidatesHere = candidates target lvlTarget
+      numOfTimes :: Class -> Int
+      numOfTimes = numOfTimesAsTarget associationName
+      in all (inRangeOfMult multTargetToSource . numOfTimes) candidatesHere
 
     multNotViolated :: Association -> Bool
-    multNotViolated x@(Association {multSourceToTarget, multTargetToSource}) =
-      allInRangeOfMult multSourceToTarget (sourcesOf x) &&
-      allInRangeOfMult multTargetToSource (targetsOf x)
+    multNotViolated a = allTargetsAreLinkedAccordingToMultiplicity a && allSourcesAreLinkedAccordingToMultiplicity a
+
 
     -- whether a class concretizes a class whose level is not higher by 1
     lvlIsClassifierLvlMinusOne class' =
@@ -263,10 +288,10 @@ emptyClass :: Class
 emptyClass = Class False 0 emptyName [] Nothing [] [] []
 
 instance Validatable ([Class], [Maybe Class]) Class where
-  valid (classinScope, parentsClasses) (Class {name = className, level = level', attributes = attributes', slots, operations, parents}) = let
+  valid (classInScope, parentsClasses) (Class {name = className, level = level', attributes = attributes', slots, operations, parents}) = let
 
     getAttributeClass :: Name -> Maybe Class
-    getAttributeClass x = find (elem x . map #name . #attributes) classinScope
+    getAttributeClass x = find (elem x . map #name . #attributes) classInScope
 
     getAttribute :: Name -> Maybe Attribute
     getAttribute x = ((find ((== x) . #name) . #attributes) =<< getAttributeClass x)
