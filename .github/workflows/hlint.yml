@@ -9,12 +9,16 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
-    permissions:
-      checks: write
-      contents: read
     steps:
     - uses: actions/checkout@v2
 
-    - uses: domdere/haskell-lint-action@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: 'Set up HLint'
+      uses: rwe/actions-hlint-setup@v1
+      with:
+        version: '3.1.6'
+
+    - name: 'Run HLint'
+      uses: rwe/actions-hlint-run@v2
+      with:
+        path: src/
+        fail-on: warning
