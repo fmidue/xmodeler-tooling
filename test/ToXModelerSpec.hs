@@ -2,6 +2,7 @@ module ToXModelerSpec (spec) where
 
 import Test.Hspec (Spec, describe, it, shouldSatisfy)
 import Test.QuickCheck (forAll, ioProperty)
+import Test.Hspec.QuickCheck (modifyMaxSuccess)
 
 import Data.GraphViz (GraphvizCommand(..))
 import Control.DeepSeq (force)
@@ -13,6 +14,7 @@ import Modelling.MLM.ToXModeler (toXModeler)
 
 spec :: Spec
 spec = describe "toXModeler" $
+         modifyMaxSuccess (const 5) $
           it "can serialize MLMs to strings" $
             forAll reasonableConfigs $ \Config{..} ->
             forAll (generateMLM

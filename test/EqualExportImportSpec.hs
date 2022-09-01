@@ -2,6 +2,7 @@ module EqualExportImportSpec (spec) where
 
 import Test.Hspec (Spec, describe, it, shouldSatisfy)
 import Test.QuickCheck (ioProperty, forAll)
+import Test.Hspec.QuickCheck (modifyMaxSuccess)
 
 import Data.GraphViz (GraphvizCommand(..))
 import Config (Config(..), reasonableConfigs)
@@ -13,6 +14,7 @@ import Modelling.MLM.GenerateMLM (generateMLM)
 spec :: Spec
 spec = do
          describe "Exporting an MLM and then importing it and comparing to the original." $
+           modifyMaxSuccess (const 5) $
             it "correctly judges some randomly generated MLM to be equal to the same MLM after being exported and then imported. \n So, importing and exporting an MLM does not change it." $
                 forAll reasonableConfigs $ \Config{..} ->
                     forAll (generateMLM
