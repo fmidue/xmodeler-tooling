@@ -37,5 +37,7 @@
     <addAttribute class="Root::a::A" level="1" multiplicity="Seq{1,1,true,false}" name="att" package="Root::a" type="Root::XCore::Integer"/>
     <changeSlotValue class="Root::a::B" package="Root::a" slotName="att" valueToBeParsed="1"/>
     <changeSlotValue class="Root::a::B2" package="Root::a" slotName="att" valueToBeParsed="2"/>
+    <addAttribute class="Root::a::A" level="0" multiplicity="Seq{1,1,true,false}" name="att2" package="Root::a" type="Root::XCore::Integer"/>
+    <changeSlotValue class="Root::a::b" package="Root::a" slotName="att2" valueToBeParsed="3"/>
   </Logs>
 </XModeler>

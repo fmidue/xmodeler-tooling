@@ -17,6 +17,15 @@ MLM
                         , Just 1
                         )
                     }
+                , Attribute
+                    { level = 1
+                    , name = Name "att2"
+                    , dataType = Integer
+                    , multiplicity = Multiplicity
+                        ( 1
+                        , Just 1
+                        )
+                    }
                 ]
             , operations = []
             , slots = []
@@ -35,6 +44,10 @@ MLM
                     { name = Name "att"
                     , value = VInteger 1
                     }
+                , Slot
+                    { name = Name "att2"
+                    , value = VInteger 2
+                    }
                 ]
             }
         , Class
@@ -47,7 +60,12 @@ MLM
                 ( Name "A" )
             , attributes = []
             , operations = []
-            , slots = []
+            , slots =
+                [ Slot
+                    { name = Name "att2"
+                    , value = VInteger 3
+                    }
+                ]
             }
         ]
     , associations = []
