@@ -33,6 +33,7 @@ module Modelling.MLM.Types(
   generateParentDict,
   (\?/),
   generateScopeFinder,
+  generateInScopeFinder,
   generateClassFinder
 ) where
 
@@ -40,15 +41,17 @@ import Data.List.UniqueStrict (allUnique)
 import Data.Char (isDigit)
 import Data.List (find, sort)
 import Data.Ix (inRange)
-import Data.Maybe (isJust, isNothing, maybeToList)
+import Data.Maybe (isNothing, maybeToList)
 import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
 import Data.Tuple.Extra (both)
+import qualified Data.Map.Strict as M
+import Data.Map.Strict (Map, member, (!), fromList)
 
-noCycles :: Eq a => [(a, a)] -> Bool
-noCycles [] = True
-noCycles list = let peeled = filter (isJust . flip lookup list . snd) list in
-  (length peeled < length list) && noCycles peeled
+noCycles :: (Eq a, Ord a) => Map a [a] -> Bool
+noCycles x = M.null x || peeled /= x && noCycles peeled
+    where peeled = M.filter (not . null) $ M.map (filter (`member` x)) x
+
 
 eqBy :: Eq b => a -> a -> (a -> b) -> Bool
 eqBy x y f = f x == f y
@@ -89,54 +92,34 @@ instance Eq MLM where
 emptyMLM :: MLM
 emptyMLM = MLM emptyName [] [] []
 
-loosenUp :: [(a, [b])] -> [(a, b)]
-loosenUp = concatMap (\(x, xs) -> map (x, ) xs)
+generateParentDict :: [Class] -> Map Name [Name]
+generateParentDict = fromList . map (\Class{name, parents} -> (name, parents))
 
-generateParentDict :: [Class] -> [(Name, Name)]
-generateParentDict theClasses = let
-  listDict = map (\(Class {name, parents}) -> (name, parents)) theClasses
-  in loosenUp listDict
+generateClassifierDict :: [Class] -> Map Name (Maybe Name)
+generateClassifierDict = fromList . map (\Class{name, classifier} -> (name, classifier))
 
-generateClassifierDict :: [Class] -> [(Name, Name)]
-generateClassifierDict theClasses = let
-  listDict = filter (not . null . snd) $
-      map (\(Class {name, classifier}) -> (name, maybeToList classifier))
-      theClasses
-    in loosenUp listDict
+generateClassDict :: [Class] -> Map Name [Name]
+generateClassDict = fromList . map (\Class{name, classifier, parents} -> (name, maybeToList classifier ++ parents))
 
-generateClassDict :: [Class] -> [(Name, Name)]
-generateClassDict theClasses = generateParentDict theClasses ++ generateClassifierDict theClasses
-
--- whether x concretizes or inherits from z
-(\?/) :: [(Name, Name)] -> (Name -> Name -> Bool)
-(\?/) dict x z = maybe False (\y -> y==z || (\?/) dict y z) $ lookup x dict
-
--- generateInScopeFinder :: (Name -> Name -> Bool) -> [Class] -> (Class -> [Class])
--- generateInScopeFinder (\/) theClasses x = filter ((#name x \/) . #name)  theClasses
+(\?/) :: Map Name [Name] -> (Name -> Name -> Bool)
+(\?/) dict x z = let list = dict ! x
+  in z `elem` list || any (\y -> (\?/) dict y z) list
 
 generateInScopeFinder :: [Class] -> (Class -> [Class])
 generateInScopeFinder theClasses x = let
-
-  dict :: [(Name, Name)]
+  dict :: Map Name [Name]
   dict = generateClassDict theClasses
-
   (\/) :: Name -> Name -> Bool
   (\/) = (\?/) dict
-
   in filter ((#name x \/) . #name) theClasses
-
 
 generateScopeFinder :: [Class] -> (Class -> [Class])
 generateScopeFinder theClasses x = let
-
-  dict :: [(Name, Name)]
+  dict :: Map Name [Name]
   dict = generateClassDict theClasses
-
   (\/) :: Name -> Name -> Bool
   (\/) = (\?/) dict
-
   in filter ((\/ #name x) . #name) theClasses
-
 
 generateClassFinder :: [Class] -> (Name -> Maybe Class)
 generateClassFinder theClasses x = find ((== x) . #name) theClasses
@@ -152,17 +135,17 @@ instance Validatable () MLM where
     getAssociation :: Link -> Maybe Association
     getAssociation Link{name = linkName} = find ((== linkName) . #name) associations
 
-    parentDict :: [(Name, Name)]
+    parentDict :: Map Name [Name]
     parentDict = generateParentDict classes
 
-    classifierDict :: [(Name, Name)]
+    classifierDict :: Map Name (Maybe Name)
     classifierDict = generateClassifierDict classes
 
-    dict :: [(Name, Name)]
-    dict = parentDict ++ classifierDict
+    dict :: Map Name [Name]
+    dict = generateClassDict classes
 
     getClassifier :: Name -> Maybe Name
-    getClassifier x = lookup x classifierDict
+    getClassifier = (classifierDict !)
 
     (\/) :: Name -> Name -> Bool
     (\/) = (\?/) dict
@@ -213,7 +196,7 @@ instance Validatable () MLM where
     multNotViolated a = allTargetsAreLinkedAccordingToMultiplicity a && allSourcesAreLinkedAccordingToMultiplicity a
 
 
-    -- whether a class concretizes a class whose level is not higher by 1
+    -- whether a class does not concretize a class whose level is not higher by 1
     lvlIsClassifierLvlMinusOne class' =
       maybe True
         (maybe False
@@ -222,7 +205,7 @@ instance Validatable () MLM where
       ) (#classifier class')
 
     isLinked :: Name -> Bool
-    isLinked className = any (\(Link {source, target}) -> source == className || target == className) links
+    isLinked className = any (\(Link{source, target}) -> source == className || target == className) links
 
     instantiatesSomethingOrIsMetaClass :: Class -> Bool
     instantiatesSomethingOrIsMetaClass (Class {slots, classifier, operations, name}) = or [
@@ -247,7 +230,8 @@ instance Validatable () MLM where
       noCycles dict,
       all lvlIsClassifierLvlMinusOne classes,
       all instantiatesSomethingOrIsMetaClass classes,
-      all (\(x, y) -> getClassifier x == getClassifier y) parentDict,
+      -- all (\(x, y) -> getClassifier x == getClassifier y) parentDict,
+      all (\Class{classifier = c, name} -> all ((== c) . getClassifier) (parentDict ! name) ) classes,
       all (\x -> valid (inScope x, map getClass (#parents x)) x) classes,
       all (\x -> valid (getClass (#source x), getClass (#target x)) x) associations,
       all multNotViolated associations,

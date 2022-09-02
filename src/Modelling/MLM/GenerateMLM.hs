@@ -16,14 +16,13 @@ import Modelling.MLM.Types (
   emptyClass,
   emptyAssociation,
   attributeTypeSpace,
-  generateClassDict,
   generateScopeFinder,
+  generateInScopeFinder,
   generateClassFinder
   )
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, Gen)
 import Data.Digits (digits)
-import Data.Maybe (fromMaybe)
 -- import Control.Monad (foldM)
 import Data.Foldable (foldlM)
 
@@ -186,149 +185,20 @@ addAttributes multSpecs theClasses = let
     --     let result = map (round . (* fromIntegral value)) proportions :: [Int]
     --     return result
 
-    -- numNon0Classes = length $ non0Classes theClasses :: Int
-    -- randomMultGen' = randomMultGen multSpecs
-    -- in do
-    --     numOfAttributesForEachClass0 <- numAttributes `distributedRandomlyOnto` numNon0Classes
-    --         :: Gen [Int]
-
-    --     let numOfAttributesForEachClass =
-    --             snd $ foldl (\(remainingNums, soFar) class' ->
-    --                 if #level class' == 0
-    --                     then (remainingNums, soFar ++ [0])
-    --                     -- at least one attribute for each class
-    --                     else (tail remainingNums, soFar ++ [max 1 (head remainingNums)]))
-    --                 (numOfAttributesForEachClass0 :: [Int], [] :: [Int])
-    --                 theClasses
-    --             :: [Int]
-
-    --     if numNon0Classes == length numOfAttributesForEachClass0
-    --         then return ()
-    --         else error "ERROR : Number of attributes portions is different from number of classes!!!"
-
-    --     let attributesToAdd =
-    --             snd $ foldl (\(attributesRemaining, soFar) n ->
-    --                 (drop n attributesRemaining, soFar ++ [take n attributesRemaining]))
-    --                 (theAttributes, [] :: [[Attribute]])
-    --                 numOfAttributesForEachClass
-    --             :: [[Attribute]]
-
-    --     let withLevelZeroAttributes = zipWith (<<<) theClasses attributesToAdd
-    --             :: [Class]
-
-    --     accumulateSimple withLevelZeroAttributes (\x -> do
-    --             toAdd <- accumulateSimple (#attributes x) (\attr -> do
-    --                     randomLevel <- chooseInt (0, #level x - 1)
-    --                     randomMult <- randomMultGen'
-    --                     randomType <- elements [
-    --                         Boolean Nothing,
-    --                         Integer Nothing,
-    --                         Float Nothing,
-    --                         String Nothing,
-    --                         Element Nothing,
-    --                         MonetaryValue Nothing,
-    --                         Date Nothing,
-    --                         Currency Nothing,
-    --                         Complex Nothing,
-    --                         AuxiliaryClass Nothing
-    --                         ]
-    --                     return $ attr <<< randomLevel <<< randomMult <<< randomType
-    --                 )
-    --             return $ x <<< toAdd
-    --         ) :: Gen [Class]
-
-
 addSlotValues :: [Class] -> Gen [Class]
 addSlotValues theClasses = let
 
-    attributeDict :: [(Name, [Attribute])]
-    attributeDict = map (\Class{name, attributes} -> (name, attributes)) theClasses
-
-    classDict :: [(Name, Name)]
-    classDict = generateClassDict theClasses
-
-    -- (\/) :: Name -> Name -> Bool
-    -- (\/) = (\?/) classDict
-
-    -- instantiatable :: Class -> [Attribute]
-    -- instantiatable Class{name = className, level = classLevel, classifier} =
-    --     concatMap (\x -> maybeToList (lookup x attributeDict)) $
-    --         filter (className \/) (map #name theClasses)
+    inScope :: Class -> [Class]
+    inScope = generateInScopeFinder theClasses
 
     instantiatable :: Class -> [Attribute]
-    instantiatable Class{level = classLevel, classifier} = let
-        f :: Name -> [Attribute]
-        f x = maybe [] f (lookup x classDict) ++
-            filter
-            ((== classLevel) . #level)
-            (fromMaybe [] (lookup x attributeDict))
-        in
-            maybe [] f classifier
+    instantiatable c@Class{level = classLevel} = filter ((== classLevel) . #level) $ concatMap #attributes $ inScope c
 
     addSlotValue :: Class -> Gen Class
     addSlotValue c =
         (c <<<) <$> mapM randomSlotValue (instantiatable c)
 
     in mapM addSlotValue theClasses
-
-
-
-
-
---     getClass :: Maybe Name -> Maybe Class
---     getClass = maybe Nothing (\x -> find ((== x) . #name) theClasses)
-
---     toIncorporateGen :: Gen [Class]
---     toIncorporateGen = snd <$> foldM (\(emptyAttrs, newClasses) x@(Class {classifier, level}) -> do
---             let toInstantiate = instantiatable x :: [Attribute]
---             instantiated <- mapM randomSlotValue toInstantiate :: Gen [Slot]
---             let x' = x <<< instantiated :: Class
---             let newAttr = head emptyAttrs <<< level :: Attribute
---             let remains = tail emptyAttrs :: [Attribute]
---             newSlot <- randomSlotValue newAttr :: Gen Slot
---             return $ maybe (remains, x' : newClasses) (\c -> if null toInstantiate then (remains, x' : newClasses) else (remains, (x' <<< newSlot) : (c <<< newAttr) : newClasses)) (getClass classifier)
---         ) (emptyAttributes, []) theClasses
---     -- merge :: [Class] -> Class
---     -- merge [] = error "There are no classes to merge!!!"
---     -- merge = foldl1 (\soFar y -> soFar <<< #slots y)
-
---     in do
---         toIncorporate <- toIncorporateGen :: Gen [Class]
---         return $ map (\x@(Class {name}) -> foldl (\xSofar class' -> if #name class' == name then xSofar <<< #attributes class' <<< #slots class' else xSofar) x toIncorporate) theClasses
-
-
-
-
-
-
-
-    -- instantiatableAttributes :: Class -> [Attribute]
-    -- instantiatableAttributes (Class {level = classLevel, classifier}) = let
-    --     f :: Maybe Name -> [Attribute]
-    --     f Nothing = []
-    --     f (Just x) =
-    --         filter ((== classLevel) . #level) (fromMaybe [] (lookup x attributeDict))
-    --             ++ maybe [] f (lookup x classifierDict)
-    --     in
-    --         f classifier
-
-    -- addSlotValue :: Class -> Gen (Class, Class
-    -- addSlotValue class' = do
-    --     let toInstantiate = instantiatableAttributes class' :: [Attribute]
-    --     instantiated <- mapM randomSlotValue () :: Gen [Slot]
-    --     return $ class' <<< instantiated
-
-    -- merge :: [Class] -> Class
-    -- merge [] = error "There are no classes to merge!!!"
-    -- merge = foldl1 (\soFar y -> soFar <<< #slots y)
-
-    -- groupedByName :: [Class] -> [[Class]]
-    -- groupedByName = groupBy (\x y -> #name x == #name y)
-
-    -- in do
-    --     mapM addSlotValue theClasses
-
-
 
 
 addAssociations :: (Int, Int) -> Int -> [Class] -> [Association] -> Gen [Association]
@@ -388,7 +258,6 @@ addLinks theClasses theAssociations = let
     -- participationAsSource :: Class -> Association -> Int
     -- participationAsSource Class{name} Association{source} =
 
-
     in do
         _ <- return theAssociations
         _ <- return $ scope $ head theClasses
@@ -396,8 +265,6 @@ addLinks theClasses theAssociations = let
         _ <- return $ candidateSources $ head theAssociations
         _ <- return $ candidateTargets $ head theAssociations
         return []
-
-
 
 
 
