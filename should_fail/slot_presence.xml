@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<XModeler>
+  <Version>2</Version>
+  <Categories/>
+  <Projects>
+    <Project name="Root::a"/>
+  </Projects>
+  <Diagrams>
+    <Diagram label="b" package_path="Root::a" showDerivedAttributes="true" showDerivedOperations="true" showGettersAndSetters="true" showOperationValues="true" showOperations="true" showSlots="true">
+      <Categories/>
+      <Owners/>
+      <Objects>
+        <Object hidden="false" ref="Root::a::B" x="403" y="75"/>
+        <Object hidden="false" ref="Root::a::b" x="585" y="169"/>
+        <Object hidden="false" ref="Root::a::A" x="100" y="140"/>
+        <Object hidden="false" ref="Root::a::B2" x="403" y="264"/>
+      </Objects>
+      <Edges>
+        <Edge ref="InheritanceMapping: Root::a::B2/Root::a::B" source_port="NORTH" target_port="SOUTH" type="inheritance">
+          <IntermediatePoints>
+            <IntermediatePoint x="453.14285" y="221.08691"/>
+            <IntermediatePoint x="453.0" y="221.08691"/>
+          </IntermediatePoints>
+        </Edge>
+      </Edges>
+      <Labels/>
+      <Preferences/>
+      <View name="Main View" tx="0.0" ty="0.0" xx="1.0"/>
+    </Diagram>
+  </Diagrams>
+  <Logs>
+    <addMetaClass abstract="false" level="2" name="A" package="Root::a" parents=""/>
+    <addInstance abstract="false" name="B2" of="Root::a::A" package="Root::a" parents=""/>
+    <addInstance abstract="false" name="B" of="Root::a::A" package="Root::a" parents=""/>
+    <addInstance abstract="false" name="b" of="Root::a::B" package="Root::a" parents=""/>
+    <changeParent class="Root::a::B2" new="Root::a::B" old="" package="Root::a"/>
+    <addAttribute class="Root::a::A" level="1" multiplicity="Seq{1,1,true,false}" name="att" package="Root::a" type="Root::XCore::Integer"/>
+    <changeSlotValue class="Root::a::B" package="Root::a" slotName="att" valueToBeParsed="1"/>
+  </Logs>
+</XModeler>
