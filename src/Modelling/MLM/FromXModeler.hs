@@ -17,14 +17,16 @@ import Modelling.MLM.Types (
   emptyAssociation,
   emptyLink,
   emptyName,
-  emptyOperation
+  emptyOperation,
+  generateClassFinder,
+  generateInstantiatableFinder
   )
 
 import Text.XML.HXT.Core (readString, runX, hasName, getAttrValue, withParseHTML, withWarnings, no, (//>), (>>>))
 import Modelling.MLM.Modify ((<<<),(|<<<|), SourceOrTarget (..))
 import Data.List.Split (splitOn)
 import Data.List (find)
-import Data.Map (fromListWith, toList)
+import Data.Map (Map, fromListWith, fromList, (!?))
 import Data.Maybe (fromMaybe)
 import Data.Tuple.Extra (second)
 import Data.Char (toUpper, chr)
@@ -55,13 +57,26 @@ findClass className theClasses =
   (error ("No class with the name " ++ show className ++ " was found!!!"))
   (find ((== className) . #name) theClasses)
 
-findSlotType :: [Class] -> Name -> Type
-findSlotType theClasses slotName = let
-  theAttributes = concatMap #attributes theClasses :: [Attribute]
-  in maybe
+generateSlotTypeFinder :: [Class] -> (RawSlot -> RawSlot)
+generateSlotTypeFinder theClasses rawSlot@RawSlot{slotClass, slotName} = let
+
+  findClassMaybe :: Name -> Maybe Class
+  findClassMaybe = generateClassFinder theClasses
+
+  instantiatableAttributes :: Class -> [Attribute]
+  instantiatableAttributes = generateInstantiatableFinder theClasses
+
+  instantiatableAttributesMaybe :: Name -> [Attribute]
+  instantiatableAttributesMaybe = maybe [] instantiatableAttributes . findClassMaybe
+
+  typeFound :: Type
+  typeFound = maybe
     (error "This slot value change is referring to a non-existent attribute!!!")
     #dataType
-    (find ((== slotName) . #name) theAttributes)
+    (find ((== slotName) . #name) (instantiatableAttributesMaybe slotClass))
+  in rawSlot {slotType = typeFound}
+
+
 
 deduceLvl ::  [Class] -> Class -> Class
 deduceLvl _ Class{classifier = Nothing} = error "Cannot deduce level of a meta class!!!"
@@ -114,9 +129,6 @@ getMult x = let
 getType :: String -> Type
 getType x = fromMaybe Boolean $ readMaybe $ last $ splitOn "::" x
 
-primt :: Show a => [a] -> IO ()
-primt = const $ return () -- mapM_ print
-
 fromXModeler :: String -> IO MLM
 fromXModeler inputXML = let
   in do
@@ -124,16 +136,13 @@ fromXModeler inputXML = let
     let doc = readString [withParseHTML no, withWarnings no] xml
     let extract tag att = runX $ doc //> hasName tag >>> getAttrValue att :: IO [String]
     -----------------------------------------------------------------------------------------------
-    -- projectName <- getName . head <$> extract "Project" "name" :: IO Name
     let projectName = Name $ "imported_from_" ++ takeWhile (/= '.') (last $ splitOn "/" inputXML)
-    --putStrLn "Got projectName"
     -----------------------------------------------------------------------------------------------
     isAbstractMetaClass <- map getBool <$> extract "addMetaClass" "abstract" :: IO [Bool]
     levelMetaClass <- map read <$> extract "addMetaClass" "level" :: IO [Level]
     nameMetaClass <- map Name <$> extract "addMetaClass" "name" :: IO [Name]
 
     let withMetaClasses = repeat emptyClass |<<<| isAbstractMetaClass |<<<| levelMetaClass |<<<| nameMetaClass
-    -- putStrLn "Got metaclasses"
     -----------------------------------------------------------------------------------------------
     isAbstractInstance <- map getBool <$> extract "addInstance" "abstract" :: IO [Bool]
     nameInstance <- map Name <$> extract "addInstance" "name" :: IO [Name]
@@ -142,13 +151,11 @@ fromXModeler inputXML = let
     let withInstancesButLvlZero = repeat emptyClass |<<<| isAbstractInstance |<<<| nameInstance |<<<| classifiers
 
     let withInstances = accumulate withMetaClasses withInstancesButLvlZero deduceLvl
-    -- putStrLn "Got instances"
     -----------------------------------------------------------------------------------------------
     changeParentClass <- map getName <$> extract "changeParent" "class" :: IO [Name]
     changeParentNew <- map (map getName . splitOn ",") <$> extract "changeParent" "new" :: IO [[Name]]
-    let changeParentDict = zip changeParentClass changeParentNew :: [(Name, [Name])]
-    let withInheritances = accumulateSimple withInstances (\x -> maybe x (x <<<) (lookup (#name x) changeParentDict) ) :: [Class]
-    -- putStrLn "Got inheritances"
+    let changeParentDict = fromList $ zip changeParentClass changeParentNew :: Map Name [Name]
+    let withInheritances = accumulateSimple withInstances (\x -> maybe x (x <<<) (changeParentDict !? #name x)) :: [Class]
     -----------------------------------------------------------------------------------------------
     attrClasses <- map getName <$> extract "addAttribute" "class" :: IO [Name]
     attrLevels <- map read <$> extract "addAttribute" "level" :: IO [Int]
@@ -158,11 +165,9 @@ fromXModeler inputXML = let
 
     let allAttributes = repeat emptyAttribute |<<<| attrLevels |<<<| attributesMultiplicities |<<<| attributesNames |<<<| attributesTypes
 
-    let attributesDictUngrouped = zip attrClasses allAttributes :: [(Name, Attribute)]
-    -- let attributesDict = concatMap (toList . fromListWith (++)) $ groupBy ((==) `on` fst) attributesDictUngrouped :: [(Name, [Attribute])]
-    let attributesDict = toList $ fromListWith (++) $ map (second (:[])) attributesDictUngrouped :: [(Name, [Attribute])]
-    let withAttributes = accumulateSimple withInheritances (\x -> maybe x (x <<<) (lookup (#name x) attributesDict)) :: [Class]
-    -- putStrLn "Got attributes"
+    let attributesDictUngrouped = zip attrClasses (map (:[]) allAttributes) :: [(Name, [Attribute])]
+    let attributesDict = fromListWith (++) attributesDictUngrouped :: Map Name [Attribute]
+    let withAttributes = accumulateSimple withInheritances (\x -> maybe x (x <<<) (attributesDict !? #name x)) :: [Class]
     -----------------------------------------------------------------------------------------------
     opClasses <- map Name <$> extract "addOperation" "class" :: IO [Name]
     opBodies <- map (OperationBody "") <$> extract "changeSlotValue" "valueToBeParsed" :: IO [OperationBody]
@@ -175,10 +180,9 @@ fromXModeler inputXML = let
 
     let opDictUngrouped = zip opClasses (map (:[]) readyOperations) :: [(Name, [Operation])]
 
-    let opDict = toList $ fromListWith (++) opDictUngrouped :: [(Name, [Operation])]
+    let opDict = fromListWith (++) opDictUngrouped :: Map Name [Operation]
 
-    let withOperations = accumulateSimple withAttributes (\x -> maybe x (x <<<) (lookup (#name x) opDict)) :: [Class]
-    -- putStrLn "Got operations"
+    let withOperations = accumulateSimple withAttributes (\x -> maybe x (x <<<) (opDict !? #name x)) :: [Class]
     -----------------------------------------------------------------------------------------------
     slotClasses <- map getName <$> extract "changeSlotValue" "class" :: IO [Name]
     slotNames <- map getName <$> extract "changeSlotValue" "slotName" :: IO [Name]
@@ -188,15 +192,12 @@ fromXModeler inputXML = let
     let rawSlotsWithNames = zipWith (\rawSlot x -> rawSlot {slotName = x}) rawSlotsWithClasses slotNames :: [RawSlot]
     let rawSlotsWithValuesUnfiltered = zipWith (\rawSlot x -> rawSlot {rawValue = x}) rawSlotsWithNames slotValues :: [RawSlot]
     let rawSlotsWithValues = filter (\RawSlot {slotName} -> slotName /= Name "lastUpdated") rawSlotsWithValuesUnfiltered :: [RawSlot]
-    let findSlotTypeNow = findSlotType withOperations :: Name -> Type
-    let rawSlotsWithTypes = map (\rawSlot@RawSlot{slotName} -> rawSlot {slotType = findSlotTypeNow slotName}) rawSlotsWithValues :: [RawSlot]
-    primt rawSlotsWithTypes
+    let findSlotType = generateSlotTypeFinder withOperations :: RawSlot -> RawSlot
+    let rawSlotsWithTypes = map findSlotType rawSlotsWithValues :: [RawSlot]
     let slotsDictUngrouped = map (second (:[]) . deduceValue) rawSlotsWithTypes :: [(Name, [Slot])]
-    primt slotsDictUngrouped
-    let slotsDict = toList $ fromListWith (++) slotsDictUngrouped :: [(Name, [Slot])]
+    let slotsDict = fromListWith (++) slotsDictUngrouped :: Map Name [Slot]
 
-    let withSlots = accumulateSimple withOperations (\x -> maybe x (x <<<) (lookup (#name x) slotsDict)) :: [Class]
-    -- putStrLn "Got slots"
+    let withSlots = accumulateSimple withOperations (\x -> maybe x (x <<<) (slotsDict !? #name x)) :: [Class]
     -----------------------------------------------------------------------------------------------
     assoSources <- map getName <$> extract "addAssociation" "classSource" :: IO [Name]
     assoTargets <- map getName <$> extract "addAssociation" "classTarget" :: IO [Name]
@@ -209,14 +210,12 @@ fromXModeler inputXML = let
     assoVisibilityTarget <- map getBool <$> extract "addAssociation" "targetVisibleFromSource" :: IO [Bool]
 
     let readyAssociations = repeat emptyAssociation |<<<| zip (repeat Source) assoSources |<<<| zip (repeat Target) assoTargets |<<<| assoNames |<<<| zip (repeat Source) assoSourceLvls |<<<| zip (repeat Target) assoTargetLvls |<<<| zip (repeat Target) assoMultSourceToTarget |<<<| zip (repeat Source) assoMultTargetToSource |<<<| zip (repeat Source) assoVisibilitySource |<<<| zip (repeat Target) assoVisibilityTarget
-    -- putStrLn "Got associations"
     -----------------------------------------------------------------------------------------------
     linkNames <- map getName <$> extract "addLink" "name" :: IO [Name]
     linkSources <- map getName <$> extract "addLink" "classSource" :: IO [Name]
     linkTargets <- map getName <$> extract "addLink" "classTarget" :: IO [Name]
 
     let readyLinks = repeat emptyLink |<<<| linkNames |<<<| zip (repeat Source) linkSources |<<<| zip (repeat Target) linkTargets
-    -- putStrLn "Got links"
     -----------------------------------------------------------------------------------------------
     let readyClasses = withSlots
     return $ MLM projectName readyClasses readyAssociations readyLinks

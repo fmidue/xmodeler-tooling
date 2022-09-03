@@ -34,7 +34,8 @@ module Modelling.MLM.Types(
   (\?/),
   generateScopeFinder,
   generateInScopeFinder,
-  generateClassFinder
+  generateClassFinder,
+  generateInstantiatableFinder
 ) where
 
 import Data.List.UniqueStrict (allUnique)
@@ -124,6 +125,12 @@ generateScopeFinder theClasses x = let
 generateClassFinder :: [Class] -> (Name -> Maybe Class)
 generateClassFinder theClasses x = find ((== x) . #name) theClasses
 
+generateInstantiatableFinder :: [Class] -> (Class -> [Attribute])
+generateInstantiatableFinder theClasses c@Class{level = classLevel} = let
+  inScope :: Class -> [Class]
+  inScope = generateInScopeFinder theClasses
+  in filter ((== classLevel) . #level) $ concatMap #attributes $ inScope c
+
 instance Validatable () MLM where
   valid () (MLM {name = projectName, classes, associations, links}) = let
     allClassesNames = map #name classes :: [Name]
@@ -195,7 +202,6 @@ instance Validatable () MLM where
     multNotViolated :: Association -> Bool
     multNotViolated a = allTargetsAreLinkedAccordingToMultiplicity a && allSourcesAreLinkedAccordingToMultiplicity a
 
-
     -- whether a class does not concretize a class whose level is not higher by 1
     lvlIsClassifierLvlMinusOne class' =
       maybe True
@@ -222,6 +228,12 @@ instance Validatable () MLM where
         #source x \/ #source asso && #target x \/ #target asso
       ) (getAssociation x)
 
+    instantiatableAttributes :: Class -> [Attribute]
+    instantiatableAttributes = generateInstantiatableFinder classes
+
+    instantiatableAttributesAreInstantiated :: Class -> Bool
+    instantiatableAttributesAreInstantiated c@Class{slots} = all ((`elem` map #name slots) . #name) (instantiatableAttributes c)
+
     in and [
       not (null classes),
       valid () projectName,
@@ -230,7 +242,10 @@ instance Validatable () MLM where
       noCycles dict,
       all lvlIsClassifierLvlMinusOne classes,
       all instantiatesSomethingOrIsMetaClass classes,
-      -- all (\(x, y) -> getClassifier x == getClassifier y) parentDict,
+      allUnique (map (\Link{name, source, target} -> (name, source, target)) links),
+      all (allUnique . instantiatableAttributes) classes,
+      all instantiatableAttributesAreInstantiated classes,
+      all (allUnique . map #name . #slots) classes,
       all (\Class{classifier = c, name} -> all ((== c) . getClassifier) (parentDict ! name) ) classes,
       all (\x -> valid (inScope x, map getClass (#parents x)) x) classes,
       all (\x -> valid (getClass (#source x), getClass (#target x)) x) associations,

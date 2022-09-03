@@ -14,12 +14,6 @@ import Modelling.MLM.Types (valid, MLM)
 spec :: Spec
 spec = do
 
-  forM_ ["aaaaa.xml"] $ \file ->
-      describe "valid" $
-        it ("correctly judges " ++ file) $
-          ioProperty $ do
-            input <- fromXModeler file
-            return $ input `shouldSatisfy` valid ()
   forM_ ([1..2292] \\ withIsolatedObjects) $ \i ->
       let file = "UML_examples/testing_" ++ show i ++ ".xml" in
       describe "valid" $

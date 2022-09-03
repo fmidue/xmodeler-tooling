@@ -17,8 +17,8 @@ import Modelling.MLM.Types (
   emptyAssociation,
   attributeTypeSpace,
   generateScopeFinder,
-  generateInScopeFinder,
-  generateClassFinder
+  generateClassFinder,
+  generateInstantiatableFinder
   )
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, Gen)
@@ -188,11 +188,8 @@ addAttributes multSpecs theClasses = let
 addSlotValues :: [Class] -> Gen [Class]
 addSlotValues theClasses = let
 
-    inScope :: Class -> [Class]
-    inScope = generateInScopeFinder theClasses
-
     instantiatable :: Class -> [Attribute]
-    instantiatable c@Class{level = classLevel} = filter ((== classLevel) . #level) $ concatMap #attributes $ inScope c
+    instantiatable = generateInstantiatableFinder theClasses
 
     addSlotValue :: Class -> Gen Class
     addSlotValue c =
