@@ -114,7 +114,7 @@ deduceValue RawSlot{slotClass, slotName, slotType, rawValue} = let
     (slotClass, Slot slotName v)
 
 getBool :: String -> Bool
-getBool x = fromMaybe False $ readMaybe $ toUpper (head x) : tail x
+getBool x = Just True == readMaybe (toUpper (head x) : tail x)
 
 getName :: String -> Name
 getName = Name . last . splitOn "::"

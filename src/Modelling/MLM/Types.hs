@@ -132,7 +132,7 @@ generateInstantiatableFinder theClasses c@Class{level = classLevel} = let
   in filter ((== classLevel) . #level) $ concatMap #attributes $ inScope c
 
 instance Validatable () MLM where
-  valid () (MLM {name = projectName, classes, associations, links}) = let
+  valid () MLM{name = projectName, classes, associations, links} = let
     allClassesNames = map #name classes :: [Name]
 
     -- navigation
@@ -211,10 +211,10 @@ instance Validatable () MLM where
       ) (#classifier class')
 
     isLinked :: Name -> Bool
-    isLinked className = any (\(Link{source, target}) -> source == className || target == className) links
+    isLinked className = any (\Link{source, target} -> source == className || target == className) links
 
     instantiatesSomethingOrIsMetaClass :: Class -> Bool
-    instantiatesSomethingOrIsMetaClass (Class {slots, classifier, operations, name}) = or [
+    instantiatesSomethingOrIsMetaClass Class{slots, classifier, operations, name} = or [
       isNothing classifier,
       isLinked name ,
       not (null operations),
@@ -287,7 +287,7 @@ emptyClass :: Class
 emptyClass = Class False 0 emptyName [] Nothing [] [] []
 
 instance Validatable ([Class], [Maybe Class]) Class where
-  valid (classInScope, parentsClasses) (Class {name = className, level = level', attributes = attributes', slots, operations, parents}) = let
+  valid (classInScope, parentsClasses) Class{name = className, level = level', attributes = attributes', slots, operations, parents} = let
 
     getAttributeClass :: Name -> Maybe Class
     getAttributeClass x = find (elem x . map #name . #attributes) classInScope
@@ -351,7 +351,7 @@ emptySlot :: Slot
 emptySlot = Slot emptyName emptyValue
 
 instance Validatable (Maybe Attribute, Level) Slot where
-  valid (slotAttribute, slotClassLvl) (Slot {value}) =
+  valid (slotAttribute, slotClassLvl) Slot{value} =
       maybe False (\x -> slotClassLvl == #level x && equalType (#dataType x) value) slotAttribute
 
 data Operation = Operation {
@@ -420,7 +420,7 @@ emptyAssociation :: Association
 emptyAssociation = Association emptyName emptyName emptyName 0 0 emptyMultiplicity emptyMultiplicity False False
 
 instance Validatable (Maybe Class, Maybe Class) Association where
-  valid (sourceClass, targetClass) (Association {lvlSource, lvlTarget, multTargetToSource, multSourceToTarget, name}) =
+  valid (sourceClass, targetClass) Association{lvlSource, lvlTarget, multTargetToSource, multSourceToTarget, name} =
     and [
       valid () name,
       maybe False ((> lvlSource) . #level) sourceClass,

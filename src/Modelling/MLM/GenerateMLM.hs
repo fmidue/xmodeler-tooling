@@ -253,7 +253,9 @@ addLinks theClasses theAssociations = let
             (getClass target)
 
     -- participationAsSource :: Class -> Association -> Int
-    -- participationAsSource Class{name} Association{source} =
+    -- participationAsSource Class{name = className} Association{name = associationName} =
+    --     length $ filter ()
+
 
     in do
         _ <- return theAssociations
