@@ -224,8 +224,8 @@ instance Validatable () MLM where
     -- whether source of link concretizes or inherits from source of association of that link and
     -- whether target of link concretizes or inherits from target of association of that link
     checkSourceAndTarget :: Link -> Bool
-    checkSourceAndTarget x = maybe False (\asso ->
-        #source x \/ #source asso && #target x \/ #target asso
+    checkSourceAndTarget x = maybe False (\a ->
+        #source x \/ #source a && #target x \/ #target a
       ) (getAssociation x)
 
     instantiatableAttributes :: Class -> [Attribute]
