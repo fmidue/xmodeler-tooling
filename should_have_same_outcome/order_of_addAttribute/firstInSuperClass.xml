@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<XModeler>
+  <Version>2</Version>
+  <Categories/>
+  <Projects>
+    <Project name="Root::ord"/>
+  </Projects>
+  <Diagrams>
+    <Diagram label="atts" package_path="Root::ord" showDerivedAttributes="true" showDerivedOperations="true" showGettersAndSetters="true" showOperationValues="true" showOperations="true" showSlots="true">
+      <Categories/>
+      <Owners/>
+      <Objects>
+        <Object hidden="false" ref="Root::ord::B" x="192" y="253"/>
+        <Object hidden="false" ref="Root::ord::A" x="189" y="80"/>
+      </Objects>
+      <Edges>
+        <Edge ref="InheritanceMapping: Root::ord::B/Root::ord::A" source_port="null" target_port="null" type="inheritance">
+          <IntermediatePoints/>
+        </Edge>
+      </Edges>
+      <Labels/>
+      <Preferences/>
+      <View name="Main View" tx="0.0" ty="0.0" xx="1.0"/>
+    </Diagram>
+  </Diagrams>
+  <Logs>
+    <addMetaClass abstract="false" level="1" name="B" package="Root::ord" parents=""/>
+    <addMetaClass abstract="false" level="1" name="A" package="Root::ord" parents=""/>
+    <changeParent class="Root::ord::B" new="Root::ord::A" old="" package="Root::ord"/>
+    <addAttribute class="Root::ord::A" level="0" multiplicity="Seq{1,1,true,false}" name="attr" package="Root::ord" type="Root::XCore::Integer"/>
+    <addAttribute class="Root::ord::B" level="0" multiplicity="Seq{1,1,true,false}" name="attr" package="Root::ord" type="Root::XCore::Integer"/>
+  </Logs>
+</XModeler>

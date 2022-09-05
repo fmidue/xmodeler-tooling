@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<XModeler>
+  <Version>2</Version>
+  <Categories/>
+  <Projects>
+    <Project name="Root::atts"/>
+  </Projects>
+  <Diagrams>
+    <Diagram label="diag" package_path="Root::atts" showDerivedAttributes="true" showDerivedOperations="true" showGettersAndSetters="true" showOperationValues="true" showOperations="true" showSlots="true">
+      <Categories/>
+      <Owners/>
+      <Objects>
+        <Object hidden="false" ref="Root::atts::B" x="179" y="285"/>
+        <Object hidden="false" ref="Root::atts::A" x="191" y="81"/>
+      </Objects>
+      <Edges>
+        <Edge ref="InheritanceMapping: Root::atts::B/Root::atts::A" source_port="null" target_port="null" type="inheritance">
+          <IntermediatePoints/>
+        </Edge>
+      </Edges>
+      <Labels/>
+      <Preferences/>
+      <View name="Main View" tx="0.0" ty="0.0" xx="1.0"/>
+    </Diagram>
+  </Diagrams>
+  <Logs>
+    <addMetaClass abstract="false" level="1" name="A" package="Root::atts" parents=""/>
+    <addMetaClass abstract="false" level="1" name="B" package="Root::atts" parents=""/>
+    <changeParent class="Root::atts::B" new="Root::atts::A" old="" package="Root::atts"/>
+    <addAttribute class="Root::atts::A" level="0" multiplicity="Seq{1,1,true,false}" name="att" package="Root::atts" type="Root::XCore::Integer"/>
+    <addAttribute class="Root::atts::B" level="0" multiplicity="Seq{1,1,true,false}" name="att" package="Root::atts" type="Root::XCore::Integer"/>
+  </Logs>
+</XModeler>
