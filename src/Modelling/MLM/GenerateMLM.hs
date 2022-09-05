@@ -58,8 +58,8 @@ accumulate start list f = foldM (\soFar x -> do
         return $ soFar ++ [new]
     ) start list
 
-weightedRandomXOr :: Rational -> Gen a -> Gen a -> Gen a
-weightedRandomXOr chance f g = if chance < 0 || chance > 1
+randomWeightedXOr :: Rational -> Gen a -> Gen a -> Gen a
+randomWeightedXOr chance f g = if chance < 0 || chance > 1
     then error "Chance values must be in the inclusive range (0, 1) !!!"
     else let
         chanceTo = fromIntegral $ numerator chance :: Int
@@ -74,7 +74,7 @@ normalizeClassLevels classes = let lowest = minimum $ map #level classes in
 
 randomMultGen :: (Rational, Int) -> Gen Multiplicity
 randomMultGen (chance, max') = do
-    b <- weightedRandomXOr chance (return Nothing) (Just <$> chooseInt (1, max'))
+    b <- randomWeightedXOr chance (return Nothing) (Just <$> chooseInt (1, max'))
     return $ Multiplicity (0, b)
 
 randomSlotValue :: Attribute -> Gen Slot
@@ -118,7 +118,7 @@ addConcretizations maxLvl chanceToConcretize theClasses = let
         spine <- accumulate [initial] vertebras (\soFar x -> x `concretizing` Just (last soFar))
             :: Gen [Class]
         torso <- accumulate spine meat (\soFar x -> do
-                toConcretize <- weightedRandomXOr
+                toConcretize <- randomWeightedXOr
                     chanceToConcretize
                     (return Nothing)
                     (Just <$> elements (non0Classes soFar))
@@ -129,14 +129,16 @@ addConcretizations maxLvl chanceToConcretize theClasses = let
 
 
 addInheritances :: Rational -> [Class] -> Gen [Class]
-addInheritances chanceToInherit theClasses = let
+addInheritances chanceToInherit theClasses0 = let
+
+    theClasses = non0Classes theClasses0 :: [Class]
 
     sameAs :: Class -> Class -> Bool
     sameAs Class{level = l1, classifier = c1}
          Class {level = l2, classifier = c2} = l1 == l2 && c1 == c2
     in
     accumulate [head theClasses] (tail theClasses) (\soFar x -> do
-        toInheritFrom <- weightedRandomXOr
+        toInheritFrom <- randomWeightedXOr
             chanceToInherit
             (return [])
             (sublistOf (map #name (filter (sameAs x) soFar)))
@@ -173,15 +175,6 @@ addAttributes multSpecs theClasses = let
         mapM addAttribute theClasses'
 
 
-    -- distributedRandomlyOnto :: Int -> Int -> Gen [Int]
-    -- distributedRandomlyOnto value numOfParts = do
-    --     weightsInt <- vectorOf numOfParts $ chooseInt (0, precisionFactor * value) :: Gen [Int]
-    --     let weights = map fromIntegral weightsInt :: [Float]
-    --     let total = max 1 $ sum weights :: Float
-    --     let proportions = map (/total) weights :: [Float]
-    --     let result = map (round . (* fromIntegral value)) proportions :: [Int]
-    --     return result
-
 addSlotValues :: [Class] -> Gen [Class]
 addSlotValues theClasses = let
 
@@ -201,7 +194,7 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
     randomClassGen = elements theClasses :: Gen Class
     randomLevelGen x = chooseInt (0, #level x - 1) :: Gen Level
     randomMultGen' = randomMultGen multSpecs
-    randomVisibilityGen = weightedRandomXOr
+    randomVisibilityGen = randomWeightedXOr
         visibilityChance (return True) (return False) :: Gen Bool
     in forM emptyAssociations (\x -> do
                 sourceClass <- randomClassGen
@@ -265,10 +258,6 @@ addLinks theClasses theAssociations = let
                             <$> shuffle candidateSourcesHere
                 )
             return $ nubSort $ concat $ sourceToTarget ++ targetToSource
-        -- participationAsSource :: Class -> Association -> Int
-    -- participationAsSource Class{name = className} Association{name = associationName} =
-    --     length $ filter ()
-
 
     in do
         _ <- return theAssociations

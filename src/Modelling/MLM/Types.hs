@@ -100,24 +100,24 @@ generateClassifierDict = fromList . map (\Class{name, classifier} -> (name, clas
 generateClassDict :: [Class] -> Map Name [Name]
 generateClassDict = fromList . map (\Class{name, classifier, parents} -> (name, maybeToList classifier ++ parents))
 
-(\?/) :: Map Name [Name] -> (Name -> Name -> Bool)
-(\?/) dict x z = let list = dict ! x
-  in z `elem` list || any (\y -> (\?/) dict y z) list
+(\?/) :: [Class] -> (Name -> Name -> Bool)
+(\?/) theClasses a b = let
+  classDict = generateClassDict theClasses :: Map Name [Name]
+  f :: Name -> Name -> Bool
+  f x y = let list = classDict ! x
+    in y `elem` list || any (`f` y) list
+  in f a b
 
 generateInScopeFinder :: [Class] -> (Class -> [Class])
 generateInScopeFinder theClasses x = let
-  dict :: Map Name [Name]
-  dict = generateClassDict theClasses
   (\/) :: Name -> Name -> Bool
-  (\/) = (\?/) dict
+  (\/) = (\?/) theClasses
   in filter ((#name x \/) . #name) theClasses
 
 generateScopeFinder :: [Class] -> (Class -> [Class])
 generateScopeFinder theClasses x = let
-  dict :: Map Name [Name]
-  dict = generateClassDict theClasses
   (\/) :: Name -> Name -> Bool
-  (\/) = (\?/) dict
+  (\/) = (\?/) theClasses
   in filter ((\/ #name x) . #name) theClasses
 
 generateClassFinder :: [Class] -> (Name -> Maybe Class)
@@ -131,7 +131,6 @@ generateInstantiatableFinder theClasses c@Class{level = classLevel} = let
 
 instance Validatable () MLM where
   valid () MLM{name = projectName, classes, associations, links} = let
-    allClassesNames = map #name classes :: [Name]
 
     -- navigation
     getClass :: Name -> Maybe Class
@@ -153,7 +152,7 @@ instance Validatable () MLM where
     getClassifier = (classifierDict !)
 
     (\/) :: Name -> Name -> Bool
-    (\/) = (\?/) dict
+    (\/) = (\?/) classes
 
     inScope :: Class -> [Class]
     inScope = generateInScopeFinder classes
@@ -232,17 +231,19 @@ instance Validatable () MLM where
     instantiatableAttributesAreInstantiated :: Class -> Bool
     instantiatableAttributesAreInstantiated c@Class{slots} = all ((`elem` map #name slots) . #name) (instantiatableAttributes c)
 
+    allAttributesInScope :: Class -> [Attribute]
+    allAttributesInScope x = #attributes x ++ concatMap #attributes (inScope x)
+
     in and [
       not (null classes),
       valid () projectName,
-      allUnique allClassesNames,
+      allUnique (map #name classes),
       allUnique (map #name associations),
       noCycles dict,
       all lvlIsClassifierLvlMinusOne classes,
       all instantiatesSomethingOrIsMetaClass classes,
       allUnique links,
-      all (allUnique . map #name . instantiatableAttributes) classes,
-      all (allUnique . map #name . #attributes) classes,
+      all (allUnique . map #name . allAttributesInScope) classes,
       all instantiatableAttributesAreInstantiated classes,
       all (allUnique . map #name . #slots) classes,
       all (\Class{classifier = c, name} -> all ((== c) . getClassifier) (parentDict ! name) ) classes,
@@ -297,7 +298,7 @@ instance Validatable ([Class], [Maybe Class]) Class where
         valid () level',
         all (maybe False ((== level') . #level)) parentsClasses,
         allUnique parents,
-        level' > 0 || (null attributes' && null operations),
+        level' > 0 || (null attributes' && null operations && null parents),
         all (valid level') attributes',
         all (valid level') operations,
         all (\x -> valid (getAttribute (#name x) , level') x) slots
