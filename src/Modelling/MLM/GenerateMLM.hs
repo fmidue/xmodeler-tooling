@@ -26,6 +26,7 @@ import Control.Monad.Extra (concatMapM)
 import Control.Monad (forM, foldM)
 import Data.Maybe (fromMaybe)
 import Data.List.Ordered (nubSort)
+import Data.Ratio (numerator, denominator)
 
 abcCapital :: [String]
 abcCapital = map (:[]) ['A'..'Z']
@@ -57,17 +58,21 @@ accumulate start list f = foldM (\soFar x -> do
         return $ soFar ++ [new]
     ) start list
 
-weightedRandomXOr :: Float -> Gen a -> Gen a -> Gen a
-weightedRandomXOr chance0 f g = let
-    chance = round $ min 0 $ max 100 chance0 :: Int
-    in frequency [(chance, f), (100 - chance, g)]
+weightedRandomXOr :: Rational -> Gen a -> Gen a -> Gen a
+weightedRandomXOr chance f g = if chance < 0 || chance > 1
+    then error "Chance values must be in the inclusive range (0, 1) !!!"
+    else let
+        chanceTo = fromIntegral $ numerator chance :: Int
+        chanceNotTo = fromIntegral (denominator chance) - chanceTo :: Int
+    in
+        frequency [(chanceTo, f), (chanceNotTo, g)]
 
 -- there must be at least one class of level 0.
 normalizeClassLevels :: [Class] -> [Class]
 normalizeClassLevels classes = let lowest = minimum $ map #level classes in
     map (\x -> x <<< (#level x - lowest)) classes
 
-randomMultGen :: (Float, Int) -> Gen Multiplicity
+randomMultGen :: (Rational, Int) -> Gen Multiplicity
 randomMultGen (chance, max') = do
     b <- weightedRandomXOr chance (return Nothing) (Just <$> chooseInt (1, max'))
     return $ Multiplicity (0, b)
@@ -95,7 +100,7 @@ randomSlotValue Attribute{name, dataType} = let
 -- ADDING COMPONENTS
 ----------------------------------------------------------
 
-addConcretizations :: Int -> Float -> [Class] -> Gen [Class]
+addConcretizations :: Int -> Rational -> [Class] -> Gen [Class]
 addConcretizations maxLvl chanceToConcretize theClasses = let
     concretizing :: Class -> Maybe Class -> Gen Class
     concretizing x (Just Class{name, level}) = return (x <<< Just name <<< (level - 1))
@@ -123,7 +128,7 @@ addConcretizations maxLvl chanceToConcretize theClasses = let
 
 
 
-addInheritances :: Float -> [Class] -> Gen [Class]
+addInheritances :: Rational -> [Class] -> Gen [Class]
 addInheritances chanceToInherit theClasses = let
 
     sameAs :: Class -> Class -> Bool
@@ -139,7 +144,7 @@ addInheritances chanceToInherit theClasses = let
         )
 
 
-addAttributes :: (Float, Int) -> [Class] -> Gen [Class]
+addAttributes :: (Rational, Int) -> [Class] -> Gen [Class]
 addAttributes multSpecs theClasses = let
 
     addAttribute :: (Class, Int) -> Gen Class
@@ -190,7 +195,7 @@ addSlotValues theClasses = let
     in mapM addSlotValue theClasses
 
 
-addAssociations :: (Float, Int) -> Float -> [Class] -> [Association] -> Gen [Association]
+addAssociations :: (Rational, Int) -> Rational -> [Class] -> [Association] -> Gen [Association]
 addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAssociations = let
     theClasses = non0Classes theClassesIncludingLevelZero :: [Class]
     randomClassGen = elements theClasses :: Gen Class
@@ -276,7 +281,7 @@ addLinks theClasses theAssociations = let
 
 
 
-generateMLM :: String -> Int -> Int -> Int -> Float -> Float -> (Float, Int) -> (Float, Int) -> Float -> Gen MLM
+generateMLM :: String -> Int -> Int -> Int -> Rational -> Rational -> (Rational, Int) -> (Rational, Int) -> Rational -> Gen MLM
 generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToConcretize chanceToInherit multSpecsAttributes multSpecsAssociations chanceVisibleAssociation = let
 
     projectName = Name projectNameString :: Name
