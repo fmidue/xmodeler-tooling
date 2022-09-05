@@ -48,9 +48,6 @@ emptyRawSlot = RawSlot emptyName Boolean "" emptyName
 accumulate :: [a] -> [b] -> ([a] -> b -> a) -> [a]
 accumulate start list f = foldl (\soFar x -> soFar ++ [f soFar x]) start list
 
-accumulateSimple :: [b] -> (b -> a) -> [a]
-accumulateSimple list f = foldl (\soFar x -> soFar ++ [f x]) [] list
-
 findClass :: Name -> [Class] -> Class
 findClass className theClasses =
   fromMaybe
@@ -155,7 +152,7 @@ fromXModeler inputXML = let
     changeParentClass <- map getName <$> extract "changeParent" "class" :: IO [Name]
     changeParentNew <- map (map getName . splitOn ",") <$> extract "changeParent" "new" :: IO [[Name]]
     let changeParentDict = fromList $ zip changeParentClass changeParentNew :: Map Name [Name]
-    let withInheritances = accumulateSimple withInstances (\x -> maybe x (x <<<) (changeParentDict !? #name x)) :: [Class]
+    let withInheritances = map (\x -> maybe x (x <<<) (changeParentDict !? #name x)) withInstances :: [Class]
     -----------------------------------------------------------------------------------------------
     attrClasses <- map getName <$> extract "addAttribute" "class" :: IO [Name]
     attrLevels <- map read <$> extract "addAttribute" "level" :: IO [Int]
@@ -167,7 +164,7 @@ fromXModeler inputXML = let
 
     let attributesDictUngrouped = zip attrClasses (map (:[]) allAttributes) :: [(Name, [Attribute])]
     let attributesDict = fromListWith (++) attributesDictUngrouped :: Map Name [Attribute]
-    let withAttributes = accumulateSimple withInheritances (\x -> maybe x (x <<<) (attributesDict !? #name x)) :: [Class]
+    let withAttributes = map (\x -> maybe x (x <<<) (attributesDict !? #name x)) withInheritances :: [Class]
     -----------------------------------------------------------------------------------------------
     opClasses <- map Name <$> extract "addOperation" "class" :: IO [Name]
     opBodies <- map (OperationBody "") <$> extract "changeSlotValue" "valueToBeParsed" :: IO [OperationBody]
@@ -182,7 +179,7 @@ fromXModeler inputXML = let
 
     let opDict = fromListWith (++) opDictUngrouped :: Map Name [Operation]
 
-    let withOperations = accumulateSimple withAttributes (\x -> maybe x (x <<<) (opDict !? #name x)) :: [Class]
+    let withOperations = map (\x -> maybe x (x <<<) (opDict !? #name x)) withAttributes :: [Class]
     -----------------------------------------------------------------------------------------------
     slotClasses <- map getName <$> extract "changeSlotValue" "class" :: IO [Name]
     slotNames <- map getName <$> extract "changeSlotValue" "slotName" :: IO [Name]
@@ -197,7 +194,7 @@ fromXModeler inputXML = let
     let slotsDictUngrouped = map (second (:[]) . deduceValue) rawSlotsWithTypes :: [(Name, [Slot])]
     let slotsDict = fromListWith (++) slotsDictUngrouped :: Map Name [Slot]
 
-    let withSlots = accumulateSimple withOperations (\x -> maybe x (x <<<) (slotsDict !? #name x)) :: [Class]
+    let withSlots = map (\x -> maybe x (x <<<) (slotsDict !? #name x)) withOperations :: [Class]
     -----------------------------------------------------------------------------------------------
     assoSources <- map getName <$> extract "addAssociation" "classSource" :: IO [Name]
     assoTargets <- map getName <$> extract "addAssociation" "classTarget" :: IO [Name]

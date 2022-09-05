@@ -23,9 +23,8 @@ import Modelling.MLM.Types (
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, Gen)
 import Data.Digits (digits)
--- import Control.Monad (foldM)
-import Data.Foldable (foldlM)
 
+import Control.Monad (forM, foldM)
 
 abcCapital :: [String]
 abcCapital = map (:[]) ['A'..'Z']
@@ -52,16 +51,10 @@ non0Classes :: [Class] -> [Class]
 non0Classes = filter ((>0) . #level)
 
 accumulate :: [a] -> [b] -> ([a] -> b -> Gen a) -> Gen [a]
-accumulate start list f = foldlM (\soFar x -> do
+accumulate start list f = foldM (\soFar x -> do
         new <- f soFar x
         return $ soFar ++ [new]
     ) start list
-
-accumulateSimple :: [b] -> (b -> Gen a) -> Gen [a]
-accumulateSimple list f = foldlM (\soFar x -> do
-        new <- f x
-        return $ soFar ++ [new]
-    ) [] list
 
 weightedRandomXOr :: Int -> Gen a -> Gen a -> Gen a
 weightedRandomXOr chance f g =
@@ -206,7 +199,6 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
     randomMultGen' = randomMultGen multSpecs
     randomVisibilityGen = weightedRandomXOr
         visibilityChance (return True) (return False) :: Gen Bool
-    in accumulateSimple emptyAssociations (\x -> do
                 sourceClass <- randomClassGen
                 targetClass <- randomClassGen
                 lvlSource' <- randomLevelGen sourceClass
@@ -252,7 +244,6 @@ addLinks theClasses theAssociations = let
             (filter ((== lvlTarget) . #level) . scope)
             (getClass target)
 
-    -- participationAsSource :: Class -> Association -> Int
     -- participationAsSource Class{name = className} Association{name = associationName} =
     --     length $ filter ()
 
