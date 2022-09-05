@@ -21,10 +21,12 @@ import Modelling.MLM.Types (
   generateInstantiatableFinder
   )
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
-import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, Gen)
+import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, shuffle, Gen)
 import Data.Digits (digits)
-
+import Control.Monad.Extra (concatMapM)
 import Control.Monad (forM, foldM)
+import Data.Maybe (fromMaybe)
+import Data.List.Ordered (nubSort)
 
 abcCapital :: [String]
 abcCapital = map (:[]) ['A'..'Z']
@@ -199,6 +201,7 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
     randomMultGen' = randomMultGen multSpecs
     randomVisibilityGen = weightedRandomXOr
         visibilityChance (return True) (return False) :: Gen Bool
+    in forM emptyAssociations (\x -> do
                 sourceClass <- randomClassGen
                 targetClass <- randomClassGen
                 lvlSource' <- randomLevelGen sourceClass
@@ -244,6 +247,23 @@ addLinks theClasses theAssociations = let
             (filter ((== lvlTarget) . #level) . scope)
             (getClass target)
 
+    f :: Association -> Gen [Link]
+    f a@Association{name = associationName, multTargetToSource = Multiplicity (_, multTargetToSourceMax), multSourceToTarget = Multiplicity (_, multSourceToTargetMax)} = let
+        candidateTargetsHere = candidateTargets a :: [Class]
+        candidateSourcesHere = candidateSources a :: [Class]
+        in do
+            sourceToTarget <- forM candidateSourcesHere (\Class{name = sourceClassName} -> do
+                    map (\Class{name = targetClassName} -> Link associationName sourceClassName targetClassName)
+                        . take (fromMaybe (length candidateTargetsHere) multTargetToSourceMax)
+                            <$> shuffle candidateTargetsHere
+                )
+            targetToSource <- forM candidateTargetsHere (\Class{name = targetClassName} -> do
+                    map (\Class{name = sourceClassName} -> Link associationName sourceClassName targetClassName)
+                        . take (fromMaybe (length candidateSourcesHere) multSourceToTargetMax)
+                            <$> shuffle candidateSourcesHere
+                )
+            return $ nubSort $ concat $ sourceToTarget ++ targetToSource
+        -- participationAsSource :: Class -> Association -> Int
     -- participationAsSource Class{name = className} Association{name = associationName} =
     --     length $ filter ()
 
@@ -254,6 +274,7 @@ addLinks theClasses theAssociations = let
         _ <- return $ getClass $ Name ""
         _ <- return $ candidateSources $ head theAssociations
         _ <- return $ candidateTargets $ head theAssociations
+        _ <- concatMapM f theAssociations
         return []
 
 
