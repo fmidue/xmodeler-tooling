@@ -244,6 +244,7 @@ instance Validatable () MLM where
       all instantiatesSomethingOrIsMetaClass classes,
       allUnique links,
       all (allUnique . instantiatableAttributes) classes,
+      all (allUnique . map #name . #attributes) classes,
       all instantiatableAttributesAreInstantiated classes,
       all (allUnique . map #name . #slots) classes,
       all (\Class{classifier = c, name} -> all ((== c) . getClassifier) (parentDict ! name) ) classes,
