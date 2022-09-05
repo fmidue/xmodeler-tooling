@@ -22,11 +22,9 @@ spec = do
                             maxLvl0
                             numClasses0
                             numAssociations0
-                            chanceToNotConcretize
-                            chanceToNotInherit
-                            multSpecsAttributes0
-                            multSpecsAssociations0
-                            visibilityChanceAssociations) $
+                            chanceToConcretize
+                            chanceToInherit
+                            multSpecsAttributes multSpecsAssociations chanceVisibleAssociation) $
                     \randomMLM -> ioProperty $ do
                         x <- toXModeler (Neato, (**1.135), 1.1, 163) randomMLM
                         writeFile "exportedForTesting.xml" x

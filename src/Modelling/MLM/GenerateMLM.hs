@@ -22,7 +22,6 @@ import Modelling.MLM.Types (
   )
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, shuffle, Gen)
-import Data.Digits (digits)
 import Control.Monad.Extra (concatMapM)
 import Control.Monad (forM, foldM)
 import Data.Maybe (fromMaybe)
@@ -44,7 +43,7 @@ classNameSpace :: [Name]
 classNameSpace = map Name $ getNameSpaceABC abcCapital
 
 attributeNameSpace :: [Name]
-attributeNameSpace = map Name $ getNameSpaceWithPrefix "attr"
+attributeNameSpace = map Name $ getNameSpaceWithPrefix "attribute"
 
 associationNameSpace :: [Name]
 associationNameSpace = map Name $ getNameSpaceABC abcSmall
@@ -58,20 +57,18 @@ accumulate start list f = foldM (\soFar x -> do
         return $ soFar ++ [new]
     ) start list
 
-weightedRandomXOr :: Int -> Gen a -> Gen a -> Gen a
-weightedRandomXOr chance f g =
-    frequency [(chance, f), (complement chance, g)]
-
-complement :: Int -> Int
-complement x = ((10 ^) . length . digits 10 . abs) x - x
+weightedRandomXOr :: Float -> Gen a -> Gen a -> Gen a
+weightedRandomXOr chance0 f g = let
+    chance = round $ min 0 $ max 100 chance0 :: Int
+    in frequency [(chance, f), (100 - chance, g)]
 
 -- there must be at least one class of level 0.
 normalizeClassLevels :: [Class] -> [Class]
 normalizeClassLevels classes = let lowest = minimum $ map #level classes in
     map (\x -> x <<< (#level x - lowest)) classes
 
-randomMultGen :: (Int, Int) -> Gen Multiplicity
-randomMultGen (max', chance) = do
+randomMultGen :: (Float, Int) -> Gen Multiplicity
+randomMultGen (chance, max') = do
     b <- weightedRandomXOr chance (return Nothing) (Just <$> chooseInt (1, max'))
     return $ Multiplicity (0, b)
 
@@ -98,8 +95,8 @@ randomSlotValue Attribute{name, dataType} = let
 -- ADDING COMPONENTS
 ----------------------------------------------------------
 
-addConcretizations :: Int -> Int -> [Class] -> Gen [Class]
-addConcretizations maxLvl chanceToNotConcretize theClasses = let
+addConcretizations :: Int -> Float -> [Class] -> Gen [Class]
+addConcretizations maxLvl chanceToConcretize theClasses = let
     concretizing :: Class -> Maybe Class -> Gen Class
     concretizing x (Just Class{name, level}) = return (x <<< Just name <<< (level - 1))
     concretizing x Nothing = do
@@ -117,7 +114,7 @@ addConcretizations maxLvl chanceToNotConcretize theClasses = let
             :: Gen [Class]
         torso <- accumulate spine meat (\soFar x -> do
                 toConcretize <- weightedRandomXOr
-                    chanceToNotConcretize
+                    chanceToConcretize
                     (return Nothing)
                     (Just <$> elements (non0Classes soFar))
                 x `concretizing` toConcretize
@@ -126,8 +123,8 @@ addConcretizations maxLvl chanceToNotConcretize theClasses = let
 
 
 
-addInheritances :: Int -> [Class] -> Gen [Class]
-addInheritances chanceToNotInherit theClasses = let
+addInheritances :: Float -> [Class] -> Gen [Class]
+addInheritances chanceToInherit theClasses = let
 
     sameAs :: Class -> Class -> Bool
     sameAs Class{level = l1, classifier = c1}
@@ -135,14 +132,14 @@ addInheritances chanceToNotInherit theClasses = let
     in
     accumulate [head theClasses] (tail theClasses) (\soFar x -> do
         toInheritFrom <- weightedRandomXOr
-            chanceToNotInherit
+            chanceToInherit
             (return [])
             (sublistOf (map #name (filter (sameAs x) soFar)))
         return $ x <<< (toInheritFrom :: [Name])
         )
 
 
-addAttributes :: (Int, Int) -> [Class] -> Gen [Class]
+addAttributes :: (Float, Int) -> [Class] -> Gen [Class]
 addAttributes multSpecs theClasses = let
 
     addAttribute :: (Class, Int) -> Gen Class
@@ -193,7 +190,7 @@ addSlotValues theClasses = let
     in mapM addSlotValue theClasses
 
 
-addAssociations :: (Int, Int) -> Int -> [Class] -> [Association] -> Gen [Association]
+addAssociations :: (Float, Int) -> Float -> [Class] -> [Association] -> Gen [Association]
 addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAssociations = let
     theClasses = non0Classes theClassesIncludingLevelZero :: [Class]
     randomClassGen = elements theClasses :: Gen Class
@@ -279,32 +276,26 @@ addLinks theClasses theAssociations = let
 
 
 
-generateMLM :: String -> Int -> Int -> Int -> Int -> Int -> (Int, Int) -> (Int, Int) -> Int -> Gen MLM
-generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotConcretize chanceToNotInherit multSpecsAttributes0 multSpecsAssociations0 visibilityChanceAssociations = let
+generateMLM :: String -> Int -> Int -> Int -> Float -> Float -> (Float, Int) -> (Float, Int) -> Float -> Gen MLM
+generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToConcretize chanceToInherit multSpecsAttributes multSpecsAssociations chanceVisibleAssociation = let
 
     projectName = Name projectNameString :: Name
 
     maxLvl = max 0 maxLvl0 :: Level
     numClasses = max 1 numClasses0 :: Int
     numAssociations = max 0 numAssociations0 :: Int
-    -- numAttributes = max 0 numAttributes0 :: Int
-    secureMultSpecs (a, b) = (max 0 a, b)
-    multSpecsAttributes = secureMultSpecs multSpecsAttributes0 :: (Int, Int)
-    multSpecsAssociations = secureMultSpecs multSpecsAssociations0 :: (Int, Int)
-    -- precisionFactorAttributes = max 1 precisionFactorAttributes0
 
     endlessEmptyClasses = map (emptyClass <<<) classNameSpace :: [Class]
     endlessEmptyAssociations = map (emptyAssociation <<<) associationNameSpace :: [Association]
 
     emptyClasses = take numClasses endlessEmptyClasses :: [Class]
-    -- emptyAttributes = take numAttributes endlessEmptyAttributes :: [Attribute]
     emptyAssociations = take numAssociations endlessEmptyAssociations:: [Association]
 
     in do
-        withConcretizations <- addConcretizations maxLvl chanceToNotConcretize emptyClasses
+        withConcretizations <- addConcretizations maxLvl chanceToConcretize emptyClasses
             :: Gen [Class]
 
-        withInheritances <- addInheritances chanceToNotInherit withConcretizations
+        withInheritances <- addInheritances chanceToInherit withConcretizations
             :: Gen [Class]
 
         withAttributes <- addAttributes multSpecsAttributes withInheritances
@@ -313,7 +304,7 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToNotCo
         withSlotValues <- addSlotValues withAttributes
             :: Gen [Class]
 
-        readyAssociations <- addAssociations multSpecsAssociations visibilityChanceAssociations withAttributes emptyAssociations
+        readyAssociations <- addAssociations multSpecsAssociations chanceVisibleAssociation withAttributes emptyAssociations
             :: Gen [Association]
 
         let readyClasses = withSlotValues

@@ -13,13 +13,13 @@ spec = describe "generateMLM" $
           it "creates valid MLMs" $
             forAll reasonableConfigs $ \Config{..} ->
             forAll (generateMLM
-                    projectNameString
-                    maxLvl0
-                    numClasses0
-                    numAssociations0
-                    chanceToNotConcretize
-                    chanceToNotInherit
-                    multSpecsAttributes0
-                    multSpecsAssociations0
-                    visibilityChanceAssociations) $
+                projectNameString
+                maxLvl0
+                numClasses0
+                numAssociations0
+                chanceToConcretize
+                chanceToInherit
+                multSpecsAttributes
+                multSpecsAssociations
+                chanceVisibleAssociation) $
             valid ()
