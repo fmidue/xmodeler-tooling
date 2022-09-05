@@ -242,7 +242,7 @@ instance Validatable () MLM where
       noCycles dict,
       all lvlIsClassifierLvlMinusOne classes,
       all instantiatesSomethingOrIsMetaClass classes,
-      allUnique (map (\Link{name, source, target} -> (name, source, target)) links),
+      allUnique links,
       all (allUnique . instantiatableAttributes) classes,
       all instantiatableAttributesAreInstantiated classes,
       all (allUnique . map #name . #slots) classes,
@@ -433,12 +433,7 @@ data Link = Link {
   name :: Name,
   source :: Name,
   target :: Name
-} deriving (Show, Read)
-
-instance Ord Link where
-  compare x y = let
-    f = #name :: Link -> Name
-    in compare (f x) (f y)
+} deriving (Show, Read, Ord)
 
 instance Eq Link where
   (==) x y = all (eqBy x y) [#name, #source, #target]
