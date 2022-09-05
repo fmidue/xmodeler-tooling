@@ -35,7 +35,7 @@ data Object = Object {
   name :: Name,
   x :: Int,
   y :: Int
-} deriving Show
+}
 
 class XModelerable context a where
   get :: context -> a -> String

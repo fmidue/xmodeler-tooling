@@ -33,7 +33,6 @@ module Modelling.MLM.Types(
   generateParentDict,
   (\?/),
   generateScopeFinder,
-  generateInScopeFinder,
   generateClassFinder,
   generateInstantiatableFinder
 ) where
@@ -419,7 +418,7 @@ type Level = Int
 instance Validatable () Level where
   valid () level = level >= 0
 
-data Type = Boolean | Integer | Float | String | Element | MonetaryValue | Date | Currency | Complex | AuxiliaryClass deriving (Eq, Show, Read)
+data Type = Boolean | Integer | Float | String | Element | MonetaryValue | Date | Currency | Complex | AuxiliaryClass deriving (Eq, Show, Read, Enum, Bounded)
 
 data Value =
   VBoolean Bool |
@@ -438,7 +437,7 @@ emptyValue :: Value
 emptyValue = VBoolean False
 
 attributeTypeSpace :: [Type]
-attributeTypeSpace = [Boolean,Integer,Float,String,Element,MonetaryValue,Date,Currency,Complex,AuxiliaryClass]
+attributeTypeSpace = [minBound .. maxBound]
 
 equalType :: Type -> Value -> Bool
 equalType Boolean (VBoolean _) = True
