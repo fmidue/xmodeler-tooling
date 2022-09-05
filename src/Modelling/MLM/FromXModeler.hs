@@ -166,20 +166,20 @@ fromXModeler inputXML = let
     let attributesDict = fromListWith (++) attributesDictUngrouped :: Map Name [Attribute]
     let withAttributes = map (\x -> maybe x (x <<<) (attributesDict !? #name x)) withInheritances :: [Class]
     -----------------------------------------------------------------------------------------------
-    opClasses <- map Name <$> extract "addOperation" "class" :: IO [Name]
-    opBodies <- map (OperationBody "") <$> extract "changeSlotValue" "valueToBeParsed" :: IO [OperationBody]
-    opLvls <- map read <$> extract "addOperation" "level" :: IO [Level]
-    opMonitored <- map getBool <$> extract "addOperation" "monitored" :: IO [Bool]
-    opNames <- map getName <$> extract "addOperation" "name" :: IO [Name]
-    opTypes <- map getType <$> extract "addOperation" "name" :: IO [Type]
+    OperationClasses <- map Name <$> extract "addOperation" "class" :: IO [Name]
+    OperationBodies <- map (OperationBody "") <$> extract "changeSlotValue" "valueToBeParsed" :: IO [OperationBody]
+    OperationLevels <- map read <$> extract "addOperation" "level" :: IO [Level]
+    OperationMonitored <- map getBool <$> extract "addOperation" "monitored" :: IO [Bool]
+    OperationNames <- map getName <$> extract "addOperation" "name" :: IO [Name]
+    OperationTypes <- map getType <$> extract "addOperation" "name" :: IO [Type]
 
-    let readyOperations = repeat emptyOperation |<<<| opBodies |<<<| opLvls |<<<| opMonitored |<<<| opNames |<<<| opTypes
+    let readyOperations = repeat emptyOperation |<<<| OperationBodies |<<<| OperationLevels |<<<| OperationMonitored |<<<| OperationNames |<<<| OperationTypes
 
-    let opDictUngrouped = zip opClasses (map (:[]) readyOperations) :: [(Name, [Operation])]
+    let OperationDictUngrouped = zip OperationClasses (map (:[]) readyOperations) :: [(Name, [Operation])]
 
-    let opDict = fromListWith (++) opDictUngrouped :: Map Name [Operation]
+    let OperationDict = fromListWith (++) OperationDictUngrouped :: Map Name [Operation]
 
-    let withOperations = map (\x -> maybe x (x <<<) (opDict !? #name x)) withAttributes :: [Class]
+    let withOperations = map (\x -> maybe x (x <<<) (OperationDict !? #name x)) withAttributes :: [Class]
     -----------------------------------------------------------------------------------------------
     slotClasses <- map getName <$> extract "changeSlotValue" "class" :: IO [Name]
     slotNames <- map getName <$> extract "changeSlotValue" "slotName" :: IO [Name]
@@ -196,17 +196,17 @@ fromXModeler inputXML = let
 
     let withSlots = map (\x -> maybe x (x <<<) (slotsDict !? #name x)) withOperations :: [Class]
     -----------------------------------------------------------------------------------------------
-    assoSources <- map getName <$> extract "addAssociation" "classSource" :: IO [Name]
-    assoTargets <- map getName <$> extract "addAssociation" "classTarget" :: IO [Name]
-    assoNames <- map Name <$> extract "addAssociation" "fwName" :: IO [Name]
-    assoSourceLvls <- map read <$> extract "addAssociation" "instLevelSource" :: IO [Level]
-    assoTargetLvls <- map read <$> extract "addAssociation" "instLevelTarget" :: IO [Level]
-    assoMultSourceToTarget <- map getMult <$> extract "addAssociation" "multSourceToTarget" :: IO [Multiplicity]
-    assoMultTargetToSource <- map getMult <$> extract "addAssociation" "multTargetToSource" :: IO [Multiplicity]
-    assoVisibilitySource <- map getBool <$> extract "addAssociation" "sourceVisibleFromTarget" :: IO [Bool]
-    assoVisibilityTarget <- map getBool <$> extract "addAssociation" "targetVisibleFromSource" :: IO [Bool]
+    associationSources <- map getName <$> extract "addAssociation" "classSource" :: IO [Name]
+    associationTargets <- map getName <$> extract "addAssociation" "classTarget" :: IO [Name]
+    associationNames <- map Name <$> extract "addAssociation" "fwName" :: IO [Name]
+    associationSourceLevels <- map read <$> extract "addAssociation" "instLevelSource" :: IO [Level]
+    associationTargetLevels <- map read <$> extract "addAssociation" "instLevelTarget" :: IO [Level]
+    associationMultSourceToTarget <- map getMult <$> extract "addAssociation" "multSourceToTarget" :: IO [Multiplicity]
+    associationMultTargetToSource <- map getMult <$> extract "addAssociation" "multTargetToSource" :: IO [Multiplicity]
+    associationVisibilitySource <- map getBool <$> extract "addAssociation" "sourceVisibleFromTarget" :: IO [Bool]
+    associationVisibilityTarget <- map getBool <$> extract "addAssociation" "targetVisibleFromSource" :: IO [Bool]
 
-    let readyAssociations = repeat emptyAssociation |<<<| zip (repeat Source) assoSources |<<<| zip (repeat Target) assoTargets |<<<| assoNames |<<<| zip (repeat Source) assoSourceLvls |<<<| zip (repeat Target) assoTargetLvls |<<<| zip (repeat Target) assoMultSourceToTarget |<<<| zip (repeat Source) assoMultTargetToSource |<<<| zip (repeat Source) assoVisibilitySource |<<<| zip (repeat Target) assoVisibilityTarget
+    let readyAssociations = repeat emptyAssociation |<<<| zip (repeat Source) associationSources |<<<| zip (repeat Target) associationTargets |<<<| associationNames |<<<| zip (repeat Source) associationSourceLevels |<<<| zip (repeat Target) associationTargetLevels |<<<| zip (repeat Target) associationMultSourceToTarget |<<<| zip (repeat Source) associationMultTargetToSource |<<<| zip (repeat Source) associationVisibilitySource |<<<| zip (repeat Target) associationVisibilityTarget
     -----------------------------------------------------------------------------------------------
     linkNames <- map getName <$> extract "addLink" "name" :: IO [Name]
     linkSources <- map getName <$> extract "addLink" "classSource" :: IO [Name]
