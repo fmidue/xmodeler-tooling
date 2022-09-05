@@ -166,20 +166,20 @@ fromXModeler inputXML = let
     let attributesDict = fromListWith (++) attributesDictUngrouped :: Map Name [Attribute]
     let withAttributes = map (\x -> maybe x (x <<<) (attributesDict !? #name x)) withInheritances :: [Class]
     -----------------------------------------------------------------------------------------------
-    OperationClasses <- map Name <$> extract "addOperation" "class" :: IO [Name]
-    OperationBodies <- map (OperationBody "") <$> extract "changeSlotValue" "valueToBeParsed" :: IO [OperationBody]
-    OperationLevels <- map read <$> extract "addOperation" "level" :: IO [Level]
-    OperationMonitored <- map getBool <$> extract "addOperation" "monitored" :: IO [Bool]
-    OperationNames <- map getName <$> extract "addOperation" "name" :: IO [Name]
-    OperationTypes <- map getType <$> extract "addOperation" "name" :: IO [Type]
+    operationClasses <- map Name <$> extract "addOperation" "class" :: IO [Name]
+    operationBodies <- map (OperationBody "") <$> extract "changeSlotValue" "valueToBeParsed" :: IO [OperationBody]
+    operationLevels <- map read <$> extract "addOperation" "level" :: IO [Level]
+    operationMonitored <- map getBool <$> extract "addOperation" "monitored" :: IO [Bool]
+    operationNames <- map getName <$> extract "addOperation" "name" :: IO [Name]
+    operationTypes <- map getType <$> extract "addOperation" "name" :: IO [Type]
 
-    let readyOperations = repeat emptyOperation |<<<| OperationBodies |<<<| OperationLevels |<<<| OperationMonitored |<<<| OperationNames |<<<| OperationTypes
+    let readyOperations = repeat emptyOperation |<<<| operationBodies |<<<| operationLevels |<<<| operationMonitored |<<<| operationNames |<<<| operationTypes
 
-    let OperationDictUngrouped = zip OperationClasses (map (:[]) readyOperations) :: [(Name, [Operation])]
+    let operationDictUngrouped = zip operationClasses (map (:[]) readyOperations) :: [(Name, [Operation])]
 
-    let OperationDict = fromListWith (++) OperationDictUngrouped :: Map Name [Operation]
+    let operationDict = fromListWith (++) operationDictUngrouped :: Map Name [Operation]
 
-    let withOperations = map (\x -> maybe x (x <<<) (OperationDict !? #name x)) withAttributes :: [Class]
+    let withOperations = map (\x -> maybe x (x <<<) (operationDict !? #name x)) withAttributes :: [Class]
     -----------------------------------------------------------------------------------------------
     slotClasses <- map getName <$> extract "changeSlotValue" "class" :: IO [Name]
     slotNames <- map getName <$> extract "changeSlotValue" "slotName" :: IO [Name]
