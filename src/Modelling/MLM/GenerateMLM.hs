@@ -1,5 +1,6 @@
 module Modelling.MLM.GenerateMLM (generateMLM) where
 
+import Modelling.MLM.Config (Config(..))
 import Modelling.MLM.Types (
   MLM (..),
   Link (..),
@@ -270,8 +271,8 @@ addLinks theClasses theAssociations = let
 
 
 
-generateMLM :: String -> Int -> Int -> Int -> Rational -> Rational -> (Rational, Int) -> (Rational, Int) -> Rational -> Gen MLM
-generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToConcretize chanceToInherit multSpecsAttributes multSpecsAssociations chanceVisibleAssociation = let
+generateMLM :: Config -> Gen MLM
+generateMLM Config{ projectNameString, maxLvl0, numClasses0, numAssociations0, chanceToConcretize, chanceToInherit, multSpecsAttributes, multSpecsAssociations, chanceVisibleAssociation } = let
 
     projectName = Name projectNameString :: Name
 
@@ -306,6 +307,3 @@ generateMLM projectNameString maxLvl0 numClasses0 numAssociations0 chanceToConcr
         readyLinks <- addLinks readyClasses readyAssociations
 
         return $ MLM projectName readyClasses readyAssociations readyLinks
-
-
-
