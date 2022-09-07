@@ -33,7 +33,7 @@ module Modelling.MLM.Types(
   (\?/),
   generateScopeFinder,
   generateClassFinder,
-  generateInstantiatableFinder
+  generateInstantiatableAttributesFinder
 ) where
 
 import Data.List.UniqueStrict (allUnique)
@@ -123,11 +123,17 @@ generateScopeFinder theClasses x = let
 generateClassFinder :: [Class] -> (Name -> Maybe Class)
 generateClassFinder theClasses x = find ((== x) . #name) theClasses
 
-generateInstantiatableFinder :: [Class] -> (Class -> [Attribute])
-generateInstantiatableFinder theClasses c@Class{level = classLevel} = let
+generateInstantiatableAttributesFinder :: [Class] -> (Class -> [Attribute])
+generateInstantiatableAttributesFinder theClasses c@Class{level = classLevel} = let
   inScope :: Class -> [Class]
   inScope = generateInScopeFinder theClasses
   in filter ((== classLevel) . #level) $ concatMap #attributes $ inScope c
+
+generateInstantiatableOperationsFinder :: [Class] -> (Class -> [Operation])
+generateInstantiatableOperationsFinder theClasses c@Class{level = classLevel} = let
+  inScope :: Class -> [Class]
+  inScope = generateInScopeFinder theClasses
+  in filter ((== classLevel) . #level) $ concatMap #operations $ inScope c
 
 instance Validatable () MLM where
   valid () MLM{name = projectName, classes, associations, links} = let
@@ -210,13 +216,16 @@ instance Validatable () MLM where
     isLinked :: Name -> Bool
     isLinked className = any (\Link{source, target} -> source == className || target == className) links
 
+    instantiatableOperations :: Class -> [Operation]
+    instantiatableOperations = generateInstantiatableOperationsFinder classes
+
     instantiatesSomethingOrIsMetaClass :: Class -> Bool
-    instantiatesSomethingOrIsMetaClass Class{slots, classifier, operations, name} = or [
-      isNothing classifier,
-      isLinked name ,
-      not (null operations),
-      not (null slots)
-      ]
+    instantiatesSomethingOrIsMetaClass c@Class{slots, classifier, name} =
+      isNothing classifier ||
+      isLinked name ||
+      not (null slots) ||
+      not (null (instantiatableOperations c))
+
 
     -- whether source of link concretizes or inherits from source of association of that link and
     -- whether target of link concretizes or inherits from target of association of that link
@@ -226,7 +235,7 @@ instance Validatable () MLM where
       ) (getAssociation x)
 
     instantiatableAttributes :: Class -> [Attribute]
-    instantiatableAttributes = generateInstantiatableFinder classes
+    instantiatableAttributes = generateInstantiatableAttributesFinder classes
 
     instantiatableAttributesAreInstantiated :: Class -> Bool
     instantiatableAttributesAreInstantiated c@Class{slots} = all ((`elem` map #name slots) . #name) (instantiatableAttributes c)
@@ -355,7 +364,9 @@ emptyOperation :: Operation
 emptyOperation = Operation 0 emptyName Boolean False ""
 
 instance Validatable Level Operation where
-  valid operationClassLvl Operation{level} =
+  valid operationClassLvl Operation{level, name} =
+    valid () name &&
+    valid () level &&
     operationClassLvl > level
 
 data Association = Association {

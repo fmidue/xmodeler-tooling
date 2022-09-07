@@ -19,7 +19,7 @@ import Modelling.MLM.Types (
   attributeTypeSpace,
   generateScopeFinder,
   generateClassFinder,
-  generateInstantiatableFinder
+  generateInstantiatableAttributesFinder
   )
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, shuffle, Gen)
@@ -178,7 +178,7 @@ addSlotValues :: [Class] -> Gen [Class]
 addSlotValues theClasses = let
 
     instantiatable :: Class -> [Attribute]
-    instantiatable = generateInstantiatableFinder theClasses
+    instantiatable = generateInstantiatableAttributesFinder theClasses
 
     addSlotValue :: Class -> Gen Class
     addSlotValue c =

@@ -18,7 +18,7 @@ import Modelling.MLM.Types (
   emptyName,
   emptyOperation,
   generateClassFinder,
-  generateInstantiatableFinder
+  generateInstantiatableAttributesFinder
   )
 
 import Text.XML.HXT.Core (readString, runX, hasName, getAttrValue, withParseHTML, withWarnings, no, (//>), (>>>))
@@ -54,7 +54,7 @@ generateSlotTypeFinder theClasses rawSlot@RawSlot{slotClass, slotName} = let
   findClassMaybe = generateClassFinder theClasses
 
   instantiatableAttributes :: Class -> [Attribute]
-  instantiatableAttributes = generateInstantiatableFinder theClasses
+  instantiatableAttributes = generateInstantiatableAttributesFinder theClasses
 
   instantiatableAttributesMaybe :: Name -> [Attribute]
   instantiatableAttributesMaybe = maybe [] instantiatableAttributes . findClassMaybe
