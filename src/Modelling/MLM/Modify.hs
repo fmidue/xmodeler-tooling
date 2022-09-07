@@ -10,7 +10,6 @@ import Modelling.MLM.Types (
   Attribute (..),
   Multiplicity (..),
   Name (..),
-  OperationBody (..),
   Level,
   Type (..),
   Value (..)
@@ -81,7 +80,7 @@ instance Modifiable Operation Type where
     (<<<) y x = y{dataType = x}
 instance Modifiable Operation Bool where
     (<<<) y x = y{isMonitored = x}
-instance Modifiable Operation OperationBody where
+instance Modifiable Operation String where
     (<<<) y x = y{body = x}
 
 -------- Association

@@ -11,7 +11,6 @@ import Modelling.MLM.Types (
   Attribute (..),
   Slot (..),
   Operation (..),
-  OperationBody (..),
   emptyClass,
   emptyAttribute,
   emptyAssociation,
@@ -154,26 +153,26 @@ fromXModeler inputXML = let
     let changeParentDict = fromList $ zip changeParentClass changeParentNew :: Map Name [Name]
     let withInheritances = map (\x -> maybe x (x <<<) (changeParentDict !? #name x)) withInstances :: [Class]
     -----------------------------------------------------------------------------------------------
-    attrClasses <- map getName <$> extract "addAttribute" "class" :: IO [Name]
-    attrLevels <- map read <$> extract "addAttribute" "level" :: IO [Int]
-    attributesMultiplicities <- map getMult <$> extract "addAttribute" "multiplicity" :: IO [Multiplicity]
-    attributesNames <- map Name <$> extract "addAttribute" "name" :: IO [Name]
-    attributesTypes <- map getType <$> extract "addAttribute" "type" :: IO [Type]
+    attributeClasses <- map getName <$> extract "addAttribute" "class" :: IO [Name]
+    attributeLevels <- map read <$> extract "addAttribute" "level" :: IO [Int]
+    attributeMultiplicities <- map getMult <$> extract "addAttribute" "multiplicity" :: IO [Multiplicity]
+    attributeNames <- map Name <$> extract "addAttribute" "name" :: IO [Name]
+    attributeTypes <- map getType <$> extract "addAttribute" "type" :: IO [Type]
 
-    let allAttributes = repeat emptyAttribute |<<<| attrLevels |<<<| attributesMultiplicities |<<<| attributesNames |<<<| attributesTypes
+    let allAttributes = repeat emptyAttribute |<<<| attributeLevels |<<<| attributeMultiplicities |<<<| attributeNames |<<<| attributeTypes
 
-    let attributesDictUngrouped = zip attrClasses (map (:[]) allAttributes) :: [(Name, [Attribute])]
-    let attributesDict = fromListWith (++) attributesDictUngrouped :: Map Name [Attribute]
-    let withAttributes = map (\x -> maybe x (x <<<) (attributesDict !? #name x)) withInheritances :: [Class]
+    let attributeDictUngrouped = zip attributeClasses (map (:[]) allAttributes) :: [(Name, [Attribute])]
+    let attributeDict = fromListWith (++) attributeDictUngrouped :: Map Name [Attribute]
+    let withAttributes = map (\x -> maybe x (x <<<) (attributeDict !? #name x)) withInheritances :: [Class]
     -----------------------------------------------------------------------------------------------
-    operationClasses <- map Name <$> extract "addOperation" "class" :: IO [Name]
-    operationBodies <- map (OperationBody "") <$> extract "changeSlotValue" "valueToBeParsed" :: IO [OperationBody]
+    operationClasses <- map getName <$> extract "addOperation" "class" :: IO [Name]
+    operationBodies <- extract "addOperation" "body" :: IO [String]
     operationLevels <- map read <$> extract "addOperation" "level" :: IO [Level]
     operationMonitored <- map getBool <$> extract "addOperation" "monitored" :: IO [Bool]
-    operationNames <- map getName <$> extract "addOperation" "name" :: IO [Name]
-    operationTypes <- map getType <$> extract "addOperation" "name" :: IO [Type]
+    operationNames <- map Name <$> extract "addOperation" "name" :: IO [Name]
+    operationTypes <- map getType <$> extract "addOperation" "type" :: IO [Type]
 
-    let readyOperations = repeat emptyOperation |<<<| operationBodies |<<<| operationLevels |<<<| operationMonitored |<<<| operationNames |<<<| operationTypes
+    let readyOperations = repeat emptyOperation |<<<| operationBodies |<<<| operationLevels |<<<| operationMonitored |<<<| operationNames |<<<| operationTypes :: [Operation]
 
     let operationDictUngrouped = zip operationClasses (map (:[]) readyOperations) :: [(Name, [Operation])]
 

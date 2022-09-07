@@ -10,7 +10,6 @@ module Modelling.MLM.Types(
   Attribute (..),
   Multiplicity (..),
   Name (..),
-  OperationBody (..),
   Level,
   Validatable,
   Type (..),
@@ -46,6 +45,7 @@ import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
 import qualified Data.Map.Strict as M
 import Data.Map.Strict (Map, member, (!), fromList)
+import Data.String.Utils (replace)
 
 noCycles :: (Eq a, Ord a) => Map a [a] -> Bool
 noCycles x = M.null x || peeled /= x && noCycles peeled
@@ -339,26 +339,26 @@ data Operation = Operation {
   name :: Name,
   dataType :: Type,
   isMonitored :: Bool,
-  body :: OperationBody
-} deriving (Show, Read, Eq)
+  body :: String
+} deriving (Show, Read)
+
+instance Eq Operation where
+  (==) x y = let
+    replaceHere = replace "&#10;" "\n"
+    in and [
+      eqBy x y #level,
+      eqBy x y #name,
+      eqBy x y #dataType,
+      eqBy x y #isMonitored,
+      replaceHere (#body x) == #body y
+    ]
 
 emptyOperation :: Operation
-emptyOperation = Operation 0 emptyName Boolean False emptyOperationBody
+emptyOperation = Operation 0 emptyName Boolean False ""
 
 instance Validatable Level Operation where
   valid operationClassLvl Operation{level} =
     operationClassLvl > level
-
-data OperationBody = OperationBody {
-  placeholder1 :: String,
-  placeholder2 :: String
-} deriving (Show, Read, Eq)
-
-emptyOperationBody :: OperationBody
-emptyOperationBody = OperationBody "" ""
-
-instance Validatable () OperationBody where
-  valid _ _ = True --placeholder
 
 data Association = Association {
   name :: Name,

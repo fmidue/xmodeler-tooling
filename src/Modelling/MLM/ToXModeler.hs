@@ -22,7 +22,6 @@ import Modelling.MLM.Types (
   Type (..),
   Value (..),
   Name (..),
-  OperationBody (..),
   relativeToEur,
   currencySymbol
   )
@@ -112,14 +111,10 @@ instance XModelerable (Name, Name) Attribute where
   get (Name projectName, Name className) Attribute{level, name, dataType, multiplicity} =
     [i|    <addAttribute class="Root::#{projectName}::#{className}" level="#{level}" multiplicity="#{get () multiplicity}" name="#{nameString name}" package="Root::#{projectName}" type="Root::#{get () dataType}"/>\n|]
 
--- OperationBody
-instance XModelerable Name OperationBody where
-  get _ _ = "STILL UNDEFINED OPERATION BODY"
-
 -- Operation
 instance XModelerable (Name, Name) Operation where
   get (Name projectName, Name attributeClass) Operation{body, level, isMonitored, name, dataType} =
-    [i|    <addOperation body="#{get (Name projectName) body}" class="Root::${projectName}::#{attributeClass}" level="#{level}" monitored="#{get () isMonitored}" name="#{nameString name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () dataType}"/>\n|]
+    [i|    <addOperation body="#{body}" class="Root::#{projectName}::#{attributeClass}" level="#{level}" monitored="#{get () isMonitored}" name="#{nameString name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () dataType}"/>\n|]
 
 -- Slot
 instance XModelerable (Name, Name) Slot where

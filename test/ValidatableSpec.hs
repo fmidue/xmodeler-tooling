@@ -57,15 +57,19 @@ spec = do
         validities <- forM files $ \file -> (file,) . valid () <$> fromXModeler file
         return $ filter (not . snd) validities `shouldSatisfy` null
   describe "valid" $
+    it "correctly judges should_pass/exporting_operations.hs" $
+      ioProperty $ do
+        let file = "should_pass/exporting_operations.hs"
+        x <- (read :: String -> MLM) <$> readFile file
+        return $ x `shouldSatisfy` valid ()
+  describe "valid" $
     let dir = "should_have_same_outcome" in
     it ("makes consistent judgements in each subdirectory of " ++ dir ++ " directory") $
       ioProperty $ do
         subdirs <- filterM (fmap (fileTypeIsDirectory . fileTypeFromMetadata) . getFileMetadata)
-                   =<< map (dir </>) <$> listDirectory dir
-        results <- forM subdirs $
-          \subdir ->
-            (map (subdir </>) <$> listDirectory subdir)
-            >>= mapM (\file -> (file,) . valid () <$> fromXModeler file)
+                    . map (dir </>) =<< listDirectory dir
+        results <- forM subdirs $ \subdir ->
+          listDirectory subdir >>= mapM ((\ file -> (file,) . valid () <$> fromXModeler file) . (subdir </>))
         return $ filter ((1<) . length . nubOrd . map snd) results `shouldSatisfy` null
 
 withIsolatedObjects :: [Int]
