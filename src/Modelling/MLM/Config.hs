@@ -1,4 +1,6 @@
-module Modelling.MLM.Config (Config(..)) where
+module Modelling.MLM.Config (Config(..), defaultConfig) where
+
+import Data.Ratio ((%))
 
 data Config = Config
   { projectNameString :: String
@@ -11,3 +13,16 @@ data Config = Config
   , multSpecsAssociations :: (Rational, Int) -- same as above, but for associations
   , chanceVisibleAssociation :: Rational -- the chance for an association to have visibility of True
   } deriving Show
+
+defaultConfig :: Config
+defaultConfig = Config
+  { projectNameString = "someMLM"
+  , maxLvl0 = 5
+  , numClasses0 = 30
+  , numAssociations0 = 30
+  , chanceToConcretize = 1 % 2
+  , chanceToInherit = 1 % 2
+  , multSpecsAttributes = (1 % 2, 2)
+  , multSpecsAssociations = (1 % 2, 2)
+  , chanceVisibleAssociation = 1 % 2
+  }
