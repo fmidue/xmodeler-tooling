@@ -47,12 +47,6 @@ emptyRawSlot = RawSlot emptyName Boolean "" emptyName
 accumulate :: [a] -> [b] -> ([a] -> b -> a) -> [a]
 accumulate start list f = foldl (\soFar x -> soFar ++ [f soFar x]) start list
 
-findClass :: Name -> [Class] -> Class
-findClass className theClasses =
-  fromMaybe
-  (error ("No class with the name " ++ show className ++ " was found!!!"))
-  (find ((== className) . #name) theClasses)
-
 generateSlotTypeFinder :: [Class] -> (RawSlot -> RawSlot)
 generateSlotTypeFinder theClasses rawSlot@RawSlot{slotClass, slotName} = let
 
@@ -72,7 +66,11 @@ generateSlotTypeFinder theClasses rawSlot@RawSlot{slotClass, slotName} = let
     (find ((== slotName) . #name) (instantiatableAttributesMaybe slotClass))
   in rawSlot {slotType = typeFound}
 
-
+findClass :: Name -> [Class] -> Class
+findClass className theClasses =
+  fromMaybe
+  (error ("No class with the name " ++ show className ++ " was found!!!"))
+  (find ((== className) . #name) theClasses)
 
 deduceLvl ::  [Class] -> Class -> Class
 deduceLvl _ Class{classifier = Nothing} = error "Cannot deduce level of a meta class!!!"

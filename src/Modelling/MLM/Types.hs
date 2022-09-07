@@ -45,7 +45,7 @@ import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
 import qualified Data.Map.Strict as M
 import Data.Map.Strict (Map, member, (!), fromList)
-import Data.String.Utils (replace)
+import Data.List.Extra (replace)
 
 noCycles :: (Eq a, Ord a) => Map a [a] -> Bool
 noCycles x = M.null x || peeled /= x && noCycles peeled
@@ -343,14 +343,12 @@ data Operation = Operation {
 } deriving (Show, Read)
 
 instance Eq Operation where
-  (==) x y = let
-    replaceHere = replace "&#10;" "\n"
-    in and [
+  (==) x y = and [
       eqBy x y #level,
       eqBy x y #name,
       eqBy x y #dataType,
       eqBy x y #isMonitored,
-      replaceHere (#body x) == #body y
+      eqBy x y (replace "&#10;" "\n" . #body)
     ]
 
 emptyOperation :: Operation

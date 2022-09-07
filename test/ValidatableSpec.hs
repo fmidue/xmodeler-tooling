@@ -15,7 +15,7 @@ import Modelling.MLM.Types (valid, MLM)
 
 spec :: Spec
 spec = do
-
+  -- total number of files is 2292
   forM_ ([1..2292] \\ withIsolatedObjects) $ \i ->
       let file = "UML_examples" </> "testing_" ++ show i ++ ".xml" in
       describe "valid" $

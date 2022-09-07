@@ -130,21 +130,19 @@ addConcretizations maxLvl chanceToConcretize theClasses = let
 
 
 addInheritances :: Rational -> [Class] -> Gen [Class]
-addInheritances chanceToInherit theClasses0 = let
-
-    theClasses = non0Classes theClasses0 :: [Class]
+addInheritances chanceToInherit theClasses = let
 
     sameAs :: Class -> Class -> Bool
     sameAs Class{level = l1, classifier = c1}
          Class {level = l2, classifier = c2} = l1 == l2 && c1 == c2
-    in
-    accumulate [head theClasses] (tail theClasses) (\soFar x -> do
-        toInheritFrom <- randomWeightedXOr
-            chanceToInherit
-            (return [])
-            (sublistOf (map #name (filter (sameAs x) soFar)))
-        return $ x <<< (toInheritFrom :: [Name])
-        )
+
+    in accumulate [head theClasses] (tail theClasses) (\soFar x -> do
+            toInheritFrom <- randomWeightedXOr
+                chanceToInherit
+                (return [])
+                (if #level x > 0 then sublistOf (map #name (filter (sameAs x) soFar)) else return [])
+            return $ x <<< (toInheritFrom :: [Name])
+            )
 
 
 addAttributes :: (Rational, Int) -> [Class] -> Gen [Class]
@@ -217,11 +215,6 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
                     <<< (Target, targetVisibleFromSource')
             )
 
-
-
--- addLinks :: [Class] -> [Association] -> Gen [Link]
--- addLinks _ _ = return []
-
 addLinks :: [Class] -> [Association] -> Gen [Link]
 addLinks theClasses theAssociations = let
 
@@ -284,25 +277,15 @@ generateMLM Config{ projectNameString, maxLvl0, numClasses0, numAssociations0, c
     endlessEmptyAssociations = map (emptyAssociation <<<) associationNameSpace :: [Association]
 
     emptyClasses = take numClasses endlessEmptyClasses :: [Class]
-    emptyAssociations = take numAssociations endlessEmptyAssociations:: [Association]
+    emptyAssociations = take numAssociations endlessEmptyAssociations :: [Association]
 
     in do
-        withConcretizations <- addConcretizations maxLvl chanceToConcretize emptyClasses
-            :: Gen [Class]
+        withConcretizations <- addConcretizations maxLvl chanceToConcretize emptyClasses :: Gen [Class]
+        withInheritances <- addInheritances chanceToInherit withConcretizations :: Gen [Class]
+        withAttributes <- addAttributes multSpecsAttributes withInheritances :: Gen [Class]
+        readyClasses <- addSlotValues withAttributes :: Gen [Class]
 
-        withInheritances <- addInheritances chanceToInherit withConcretizations
-            :: Gen [Class]
-
-        withAttributes <- addAttributes multSpecsAttributes withInheritances
-            :: Gen [Class]
-
-        withSlotValues <- addSlotValues withAttributes
-            :: Gen [Class]
-
-        readyAssociations <- addAssociations multSpecsAssociations chanceVisibleAssociation withAttributes emptyAssociations
-            :: Gen [Association]
-
-        let readyClasses = withSlotValues
+        readyAssociations <- addAssociations multSpecsAssociations chanceVisibleAssociation withAttributes emptyAssociations :: Gen [Association]
 
         readyLinks <- addLinks readyClasses readyAssociations
 

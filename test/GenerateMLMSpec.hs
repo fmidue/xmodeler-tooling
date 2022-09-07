@@ -20,6 +20,6 @@ spec = do
           it "respects certain configuration parameters" $
             forAll reasonableConfigs $ \config@Config{maxLvl0, numClasses0, numAssociations0} ->
             forAll (generateMLM config) $ \MLM{classes, associations} ->
-            maximum (map (\Class{level} -> level) classes) <= maxLvl0 &&
-            length classes == numClasses0 &&
-            length associations == numAssociations0
+              maximum (map (\Class{level} -> level) classes) <= maxLvl0 &&
+              length classes == numClasses0 &&
+              length associations == numAssociations0
