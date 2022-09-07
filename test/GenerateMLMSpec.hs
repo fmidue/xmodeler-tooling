@@ -6,7 +6,7 @@ import Test.QuickCheck (forAll)
 import Config (reasonableConfigs)
 
 import Modelling.MLM.GenerateMLM (generateMLM)
-import Modelling.MLM.Types (valid, MLM(..))
+import Modelling.MLM.Types (valid, MLM(..), Class(..))
 import Modelling.MLM.Config (Config(..))
 
 spec :: Spec
@@ -17,7 +17,9 @@ spec = do
             forAll (generateMLM config) $
             valid ()
         describe "generateMLM" $
-          it "creates as many classes as asked for" $
-            forAll reasonableConfigs $ \config@Config{numClasses0} ->
-            forAll (generateMLM config) $ \MLM{classes} ->
-            length classes == numClasses0
+          it "respects certain configuration parameters" $
+            forAll reasonableConfigs $ \config@Config{maxLvl0, numClasses0, numAssociations0} ->
+            forAll (generateMLM config) $ \MLM{classes, associations} ->
+            maximum (map (\Class{level} -> level) classes) <= maxLvl0 &&
+            length classes == numClasses0 &&
+            length associations == numAssociations0
