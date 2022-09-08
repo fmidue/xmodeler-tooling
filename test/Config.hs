@@ -27,4 +27,5 @@ reasonableConfigs = do
   multSpecsAttributes <- randomMultSpec
   multSpecsAssociations <- randomMultSpec
   chanceVisibleAssociation <- randomChanceStandard
+  chanceAbstractClass <- randomChanceStandard
   return $ Config {..}

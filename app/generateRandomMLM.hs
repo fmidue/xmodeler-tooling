@@ -52,6 +52,7 @@ determineConfig = do
   multSpecsAttributes' <- offerChange "multSpecsAttributes" multSpecsAttributes
   multSpecsAssociations' <- offerChange "multSpecsAssociations" multSpecsAssociations
   chanceVisibleAssociation' <- offerChange "chanceVisibleAssociation" chanceVisibleAssociation
+  chanceAbstractClass' <- offerChange "chanceAbstractClass" chanceAbstractClass
   let newConfig = Config
         { projectNameString = projectNameString'
         , maxLvl0 = maxLvl0'
@@ -62,6 +63,7 @@ determineConfig = do
         , multSpecsAttributes = multSpecsAttributes'
         , multSpecsAssociations = multSpecsAssociations'
         , chanceVisibleAssociation = chanceVisibleAssociation'
+        , chanceAbstractClass = chanceAbstractClass'
         }
   return newConfig
 

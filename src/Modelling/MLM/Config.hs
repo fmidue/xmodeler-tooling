@@ -12,6 +12,7 @@ data Config = Config
   , multSpecsAttributes :: (Rational, Int) -- (chance for an attribute to have no upper bound, max value of upper bound of a multiplicity of an attribute)
   , multSpecsAssociations :: (Rational, Int) -- same as above, but for associations
   , chanceVisibleAssociation :: Rational -- the chance for an association to have visibility of True
+  , chanceAbstractClass :: Rational -- the chance for a class to be abstract
   } deriving Show
 
 defaultConfig :: Config
@@ -25,4 +26,5 @@ defaultConfig = Config
   , multSpecsAttributes = (1 % 2, 2)
   , multSpecsAssociations = (1 % 2, 2)
   , chanceVisibleAssociation = 1 % 2
+  , chanceAbstractClass = 2 % 10
   }

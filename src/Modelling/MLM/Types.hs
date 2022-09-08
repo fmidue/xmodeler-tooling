@@ -40,7 +40,7 @@ import Data.List.UniqueStrict (allUnique)
 import Data.Char (isDigit)
 import Data.List (find, sort, sortOn)
 import Data.Ix (inRange)
-import Data.Maybe (isNothing, maybeToList)
+import Data.Maybe (isNothing, maybeToList, mapMaybe)
 import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
 import qualified Data.Map.Strict as M
@@ -243,6 +243,9 @@ instance Validatable () MLM where
     allAttributesInScope :: Class -> [Attribute]
     allAttributesInScope x = #attributes x ++ concatMap #attributes (inScope x)
 
+    allClassifiers :: [Name]
+    allClassifiers = mapMaybe #classifier classes
+
     in and [
       not (null classes),
       valid () projectName,
@@ -263,7 +266,8 @@ instance Validatable () MLM where
       all (\x -> valid
           (getClass (#source x),getClass (#target x))
           (getAssociation x)
-        ) links
+        ) links,
+      all (\Class{name, isAbstract} -> not isAbstract || name `notElem` allClassifiers) classes
     ]
 
 data Class = Class {

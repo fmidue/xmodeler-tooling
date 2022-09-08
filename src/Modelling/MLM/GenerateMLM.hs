@@ -50,8 +50,11 @@ attributeNameSpace = map Name $ getNameSpaceWithPrefix "attribute"
 associationNameSpace :: [Name]
 associationNameSpace = map Name $ getNameSpaceABC abcSmall
 
-non0Classes :: [Class] -> [Class]
-non0Classes = filter ((>0) . #level)
+nonLevelZero :: [Class] -> [Class]
+nonLevelZero = filter ((>0) . #level)
+
+nonAbstract :: [Class] -> [Class]
+nonAbstract = filter (not . #isAbstract)
 
 accumulate :: [a] -> [b] -> ([a] -> b -> Gen a) -> Gen [a]
 accumulate start list f = foldM (\soFar x -> do
@@ -75,7 +78,7 @@ normalizeClassLevels classes = let lowest = minimum $ map #level classes in
 
 randomMultGen :: (Rational, Int) -> Gen Multiplicity
 randomMultGen (chance, max') = do
-    b <- randomWeightedXOr chance (return Nothing) (Just <$> chooseInt (1, max'))
+    b <- randomWeightedXOr chance (Just <$> chooseInt (1, max')) (return Nothing)
     return $ Multiplicity (0, b)
 
 randomSlotValue :: Attribute -> Gen Slot
@@ -101,7 +104,21 @@ randomSlotValue Attribute{name, dataType} = let
 -- ADDING COMPONENTS
 ----------------------------------------------------------
 
-addConcretizations :: Int -> Rational -> [Class] -> Gen [Class]
+addAbstractions :: Level -> Rational -> [Class] -> Gen [Class]
+addAbstractions maxLvl chanceAbstract theClasses = let
+    -- spine is a chain of classes from level 0 to maxLvl that will be concretized later by other classes.
+    -- This is why they must be concrete (not abstract):
+    spine = map (<<< False) $ take (maxLvl + 1) theClasses :: [Class]
+    meat = drop (maxLvl + 1) theClasses :: [Class]
+    in (++) spine <$>
+        mapM
+            (\c -> do
+                abstractOrNot <- randomWeightedXOr chanceAbstract (return True) (return False)
+                return $ c <<< abstractOrNot
+                )
+            meat
+
+addConcretizations :: Level -> Rational -> [Class] -> Gen [Class]
 addConcretizations maxLvl chanceToConcretize theClasses = let
     concretizing :: Class -> Maybe Class -> Gen Class
     concretizing x (Just Class{name, level}) = return (x <<< Just name <<< (level - 1))
@@ -119,10 +136,11 @@ addConcretizations maxLvl chanceToConcretize theClasses = let
         spine <- accumulate [initial] vertebras (\soFar x -> x `concretizing` Just (last soFar))
             :: Gen [Class]
         torso <- accumulate spine meat (\soFar x -> do
+                let canConcretize = nonAbstract $ nonLevelZero soFar :: [Class]
                 toConcretize <- randomWeightedXOr
                     chanceToConcretize
+                    (if null canConcretize then return Nothing else  Just <$> elements canConcretize)
                     (return Nothing)
-                    (Just <$> elements (non0Classes soFar))
                 x `concretizing` toConcretize
             ) :: Gen [Class]
         return $ normalizeClassLevels torso
@@ -139,8 +157,8 @@ addInheritances chanceToInherit theClasses = let
     in accumulate [head theClasses] (tail theClasses) (\soFar x -> do
             toInheritFrom <- randomWeightedXOr
                 chanceToInherit
-                (return [])
                 (if #level x > 0 then sublistOf (map #name (filter (sameAs x) soFar)) else return [])
+                (return [])
             return $ x <<< (toInheritFrom :: [Name])
             )
 
@@ -189,7 +207,7 @@ addSlotValues theClasses = let
 
 addAssociations :: (Rational, Int) -> Rational -> [Class] -> [Association] -> Gen [Association]
 addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAssociations = let
-    theClasses = non0Classes theClassesIncludingLevelZero :: [Class]
+    theClasses = nonLevelZero theClassesIncludingLevelZero :: [Class]
     randomClassGen = elements theClasses :: Gen Class
     randomLevelGen x = chooseInt (0, #level x - 1) :: Gen Level
     randomMultGen' = randomMultGen multSpecs
@@ -263,9 +281,8 @@ addLinks theClasses theAssociations = let
         return []
 
 
-
 generateMLM :: Config -> Gen MLM
-generateMLM Config{ projectNameString, maxLvl0, numClasses0, numAssociations0, chanceToConcretize, chanceToInherit, multSpecsAttributes, multSpecsAssociations, chanceVisibleAssociation } = let
+generateMLM Config{ projectNameString, maxLvl0, numClasses0, numAssociations0, chanceToConcretize, chanceToInherit, multSpecsAttributes, multSpecsAssociations, chanceVisibleAssociation, chanceAbstractClass } = let
 
     projectName = Name projectNameString :: Name
 
@@ -280,7 +297,8 @@ generateMLM Config{ projectNameString, maxLvl0, numClasses0, numAssociations0, c
     emptyAssociations = take numAssociations endlessEmptyAssociations :: [Association]
 
     in do
-        withConcretizations <- addConcretizations maxLvl chanceToConcretize emptyClasses :: Gen [Class]
+        withAbstractions <- addAbstractions maxLvl chanceAbstractClass emptyClasses :: Gen [Class]
+        withConcretizations <- addConcretizations maxLvl chanceToConcretize withAbstractions :: Gen [Class]
         withInheritances <- addInheritances chanceToInherit withConcretizations :: Gen [Class]
         withAttributes <- addAttributes multSpecsAttributes withInheritances :: Gen [Class]
         readyClasses <- addSlotValues withAttributes :: Gen [Class]
