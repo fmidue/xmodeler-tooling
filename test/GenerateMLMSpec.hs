@@ -1,13 +1,15 @@
 module GenerateMLMSpec (spec) where
 
-import Test.Hspec (Spec, describe, it)
+import Test.Hspec (Spec, describe, it, shouldSatisfy)
 import Test.QuickCheck (forAll)
 
 import Config (reasonableConfigs)
 
 import Modelling.MLM.GenerateMLM (generateMLM)
-import Modelling.MLM.Types (valid, MLM(..), Class(..))
+import Modelling.MLM.Types (valid, MLM(..), Class(..), Attribute(..), Association(..), Multiplicity(..))
 import Modelling.MLM.Config (Config(..))
+
+import Data.Maybe (isJust, isNothing)
 
 spec :: Spec
 spec = do
@@ -23,3 +25,59 @@ spec = do
               maximum (map (\Class{level} -> level) classes) <= maxLvl0 &&
               length classes == numClasses0 &&
               length associations == numAssociations0
+        describe "generateMLM" $
+          it "respects chanceAbstractClass" $
+            forAll reasonableConfigs $ \config@Config{chanceAbstractClass} ->
+            forAll (generateMLM config) $ \MLM{classes} ->
+              let
+                probability =
+                  fromIntegral (length (filter (\Class{isAbstract} -> isAbstract) classes))
+                  / fromIntegral (length classes)
+              in
+                probability `shouldSatisfy` within 0.4 chanceAbstractClass
+        describe "generateMLM" $
+          it "respects chanceToConcretize" $
+            forAll reasonableConfigs $ \config@Config{chanceToConcretize} ->
+            forAll (generateMLM config) $ \MLM{classes} ->
+              let
+                probability =
+                  fromIntegral (length (filter (\Class{classifier} -> isJust classifier) classes))
+                  / fromIntegral (length classes)
+              in
+                probability `shouldSatisfy` within 0.4 chanceToConcretize
+        describe "generateMLM" $
+          it "respects multSpecsAttributes" $
+            forAll reasonableConfigs $ \config@Config{multSpecsAttributes} ->
+            forAll (generateMLM config) $ \MLM{classes} ->
+              let
+                theAttributes = concatMap (\Class{attributes} -> attributes) classes
+                probability =
+                  fromIntegral (length (filter (\Attribute{multiplicity = Multiplicity (_, upper)} -> isNothing upper) theAttributes))
+                  / fromIntegral (length theAttributes)
+              in
+                probability `shouldSatisfy` within 0.2 (fst multSpecsAttributes)
+        describe "generateMLM" $
+          it "respects multSpecsAssociations" $
+            forAll reasonableConfigs $ \config@Config{multSpecsAssociations} ->
+            forAll (generateMLM config) $ \MLM{associations} ->
+              let
+                multiplicities = concatMap (\Association{multTargetToSource, multSourceToTarget} -> [multTargetToSource, multSourceToTarget]) associations
+                probability =
+                  fromIntegral (length (filter (\(Multiplicity (_, upper)) -> isNothing upper) multiplicities))
+                  / fromIntegral (length multiplicities)
+              in
+                probability `shouldSatisfy` within 0.2 (fst multSpecsAssociations)
+        describe "generateMLM" $
+          it "respects chanceVisibleAssociation" $
+            forAll reasonableConfigs $ \config@Config{chanceVisibleAssociation} ->
+            forAll (generateMLM config) $ \MLM{associations} ->
+              let
+                visibilities = concatMap (\Association{sourceVisibleFromTarget, targetVisibleFromSource} -> [sourceVisibleFromTarget, targetVisibleFromSource]) associations
+                probability =
+                  fromIntegral (length (filter id visibilities))
+                  / fromIntegral (length visibilities)
+              in
+                probability `shouldSatisfy` within 0.2 chanceVisibleAssociation
+
+within :: Float -> Rational -> Float -> Bool
+within m p q = abs (fromRational p - q) < m
