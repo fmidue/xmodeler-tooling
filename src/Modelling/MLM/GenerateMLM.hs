@@ -27,7 +27,6 @@ import Control.Monad.Extra (concatMapM)
 import Control.Monad (forM, foldM)
 import Data.Maybe (fromMaybe)
 import Data.List.Ordered (nubSort)
-import Data.Ratio (numerator, denominator)
 
 abcCapital :: [String]
 abcCapital = map (:[]) ['A'..'Z']
@@ -66,8 +65,8 @@ randomWeightedXOr :: Rational -> Gen a -> Gen a -> Gen a
 randomWeightedXOr chance f g = if chance < 0 || chance > 1
     then error "Chance values must be in the inclusive range (0, 1) !!!"
     else let
-        chanceTo = fromIntegral $ numerator chance :: Int
-        chanceNotTo = fromIntegral (denominator chance) - chanceTo :: Int
+        chanceTo = round (chance * 1000) :: Int
+        chanceNotTo = 1000 - chanceTo
     in
         frequency [(chanceTo, f), (chanceNotTo, g)]
 
