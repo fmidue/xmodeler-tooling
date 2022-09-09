@@ -45,7 +45,7 @@ import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
 import qualified Data.Map.Strict as M
 import Data.Map.Strict (Map, member, (!), fromList)
-import Data.List.Extra (replace)
+import Data.List.Extra (replace, nubOrd)
 
 noCycles :: (Eq a, Ord a) => Map a [a] -> Bool
 noCycles x = M.null x || peeled /= x && noCycles peeled
@@ -244,7 +244,7 @@ instance Validatable () MLM where
     allAttributesInScope x = #attributes x ++ concatMap #attributes (inScope x)
 
     allClassifiers :: [Name]
-    allClassifiers = mapMaybe #classifier classes
+    allClassifiers = nubOrd $ mapMaybe #classifier classes
 
     in and [
       not (null classes),
