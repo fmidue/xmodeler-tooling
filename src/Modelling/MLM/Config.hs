@@ -8,7 +8,7 @@ data Config = Config
   , chanceToConcretize :: Float -- the chance for a generated class to be an instance
   , chanceToInherit :: Float -- the chance for a generated class to have parents
   , multiplicitySpecAttributes :: (Float, Int) -- (chance for an attribute to have an upper bound, max value of upper bound of a multiplicity of an attribute)
-  , multiplicitySpecsAssociations :: (Float, Int) -- same as above, but for associations
+  , multiplicitySpecAssociations :: (Float, Int) -- same as above, but for associations
   , chanceVisibleAssociation :: Float -- the chance for an association to have visibility of True
   , chanceAbstractClass :: Float -- the chance for a class to be abstract
   } deriving Show
@@ -22,7 +22,7 @@ defaultConfig = Config
   , chanceToConcretize = 0.5
   , chanceToInherit = 0.5
   , multiplicitySpecAttributes = (0.5, 2)
-  , multiplicitySpecsAssociations = (0.5, 2)
+  , multiplicitySpecAssociations = (0.5, 2)
   , chanceVisibleAssociation = 0.5
   , chanceAbstractClass = 0.2
   }

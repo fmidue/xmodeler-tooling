@@ -22,7 +22,7 @@ reasonableConfigs = do
   chanceToConcretize <- randomChanceStandard
   chanceToInherit <- randomChanceStandard
   multiplicitySpecAttributes <- randomMultSpec
-  multiplicitySpecsAssociations <- randomMultSpec
+  multiplicitySpecAssociations <- randomMultSpec
   chanceVisibleAssociation <- randomChanceStandard
   chanceAbstractClass <- randomChanceStandard
   return $ Config {..}

@@ -243,6 +243,9 @@ instance Validatable () MLM where
     allAttributesInScope :: Class -> [Attribute]
     allAttributesInScope x = #attributes x ++ concatMap #attributes (inScope x)
 
+    -- allOperationsInScope :: Class -> [Operation]
+    -- allOperationsInScope x = #operations x ++ concatMap #operations (inScope x)
+
     allClassifiers :: [Name]
     allClassifiers = nubOrd $ mapMaybe #classifier classes
 
@@ -255,7 +258,10 @@ instance Validatable () MLM where
       all lvlIsClassifierLvlMinusOne classes,
       all instantiatesSomethingOrIsMetaClass classes,
       allUnique links,
-      all (allUnique . map #name . allAttributesInScope) classes,
+      all (allUnique . map (\Attribute{name, level} -> (name, level)) . allAttributesInScope) classes,
+      all (allUnique . map #name . #attributes) classes,
+      -- all (allUnique . map (\Operation{name, level} -> (name, level)) . allOperationsInScope) classes,
+      all (allUnique . map #name . #operations) classes,
       all instantiatableAttributesAreInstantiated classes,
       all (allUnique . map #name . #slots) classes,
       all (\Class{classifier = c, name} -> all ((== c) . getClassifier) (parentDict ! name) ) classes,

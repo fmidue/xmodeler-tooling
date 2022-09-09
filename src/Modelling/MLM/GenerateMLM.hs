@@ -253,8 +253,8 @@ addLinks theClasses theAssociations = let
             (filter ((== lvlTarget) . #level) . scope)
             (getClass target)
 
-    f :: Association -> Gen [Link]
-    f a@Association{name = associationName, multTargetToSource = Multiplicity (_, multTargetToSourceMax), multSourceToTarget = Multiplicity (_, multSourceToTargetMax)} = let
+    addLinksForOneAssociation :: Association -> Gen [Link]
+    addLinksForOneAssociation a@Association{name = associationName, multTargetToSource = Multiplicity (_, multTargetToSourceMax), multSourceToTarget = Multiplicity (_, multSourceToTargetMax)} = let
         candidateTargetsHere = candidateTargets a :: [Class]
         candidateSourcesHere = candidateSources a :: [Class]
         in do
@@ -271,17 +271,17 @@ addLinks theClasses theAssociations = let
             return $ nubOrd $ concat $ sourceToTarget ++ targetToSource
 
     in do
-        _ <- return theAssociations
-        _ <- return $ scope $ head theClasses
-        _ <- return $ getClass $ Name ""
-        _ <- return $ candidateSources $ head theAssociations
-        _ <- return $ candidateTargets $ head theAssociations
-        _ <- concatMapM f theAssociations
-        return []
+        -- _ <- return theAssociations
+        -- _ <- return $ scope $ head theClasses
+        -- _ <- return $ getClass $ Name ""
+        -- _ <- return $ candidateSources $ head theAssociations
+        -- _ <- return $ candidateTargets $ head theAssociations
+        concatMapM addLinksForOneAssociation theAssociations
+
 
 
 generateMLM :: Config -> Gen MLM
-generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfAssociations, chanceToConcretize, chanceToInherit, multiplicitySpecAttributes, multiplicitySpecsAssociations, chanceVisibleAssociation, chanceAbstractClass } = let
+generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfAssociations, chanceToConcretize, chanceToInherit, multiplicitySpecAttributes, multiplicitySpecAssociations, chanceVisibleAssociation, chanceAbstractClass } = let
 
     projectName = Name projectNameString :: Name
 
@@ -302,7 +302,7 @@ generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfA
         withAttributes <- addAttributes multiplicitySpecAttributes withInheritances :: Gen [Class]
         readyClasses <- addSlotValues withAttributes :: Gen [Class]
 
-        readyAssociations <- addAssociations multiplicitySpecsAssociations chanceVisibleAssociation withAttributes emptyAssociations :: Gen [Association]
+        readyAssociations <- addAssociations multiplicitySpecAssociations chanceVisibleAssociation withAttributes emptyAssociations :: Gen [Association]
 
         readyLinks <- addLinks readyClasses readyAssociations
 

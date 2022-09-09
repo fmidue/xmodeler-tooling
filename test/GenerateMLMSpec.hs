@@ -57,8 +57,8 @@ spec = do
               in
                 probability `shouldSatisfy` within 0.2 (fst multiplicitySpecAttributes)
         describe "generateMLM" $
-          it "respects multiplicitySpecsAssociations" $
-            forAll reasonableConfigs $ \config@Config{multiplicitySpecsAssociations} ->
+          it "respects multiplicitySpecAssociations" $
+            forAll reasonableConfigs $ \config@Config{multiplicitySpecAssociations} ->
             forAll (generateMLM config) $ \MLM{associations} ->
               let
                 multiplicities = concatMap (\Association{multTargetToSource, multSourceToTarget} -> [multTargetToSource, multSourceToTarget]) associations
@@ -66,7 +66,7 @@ spec = do
                   fromIntegral (length (filter (\(Multiplicity (_, upper)) -> isJust upper) multiplicities))
                   / fromIntegral (length multiplicities)
               in
-                probability `shouldSatisfy` within 0.2 (fst multiplicitySpecsAssociations)
+                probability `shouldSatisfy` within 0.2 (fst multiplicitySpecAssociations)
         describe "generateMLM" $
           it "respects chanceVisibleAssociation" $
             forAll reasonableConfigs $ \config@Config{chanceVisibleAssociation} ->

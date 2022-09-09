@@ -50,7 +50,7 @@ determineConfig = do
   chanceToConcretize' <- offerChange "chanceToConcretize" chanceToConcretize
   chanceToInherit' <- offerChange "chanceToInherit" chanceToInherit
   multiplicitySpecAttributes' <- offerChange "multiplicitySpecAttributes" multiplicitySpecAttributes
-  multiplicitySpecsAssociations' <- offerChange "multiplicitySpecsAssociations" multiplicitySpecsAssociations
+  multiplicitySpecAssociations' <- offerChange "multiplicitySpecAssociations" multiplicitySpecAssociations
   chanceVisibleAssociation' <- offerChange "chanceVisibleAssociation" chanceVisibleAssociation
   chanceAbstractClass' <- offerChange "chanceAbstractClass" chanceAbstractClass
   let newConfig = Config
@@ -61,7 +61,7 @@ determineConfig = do
         , chanceToConcretize = chanceToConcretize'
         , chanceToInherit = chanceToInherit'
         , multiplicitySpecAttributes = multiplicitySpecAttributes'
-        , multiplicitySpecsAssociations = multiplicitySpecsAssociations'
+        , multiplicitySpecAssociations = multiplicitySpecAssociations'
         , chanceVisibleAssociation = chanceVisibleAssociation'
         , chanceAbstractClass = chanceAbstractClass'
         }
