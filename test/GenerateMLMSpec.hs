@@ -9,7 +9,7 @@ import Modelling.MLM.GenerateMLM (generateMLM)
 import Modelling.MLM.Types (valid, MLM(..), Class(..), Attribute(..), Association(..), Multiplicity(..))
 import Modelling.MLM.Config (Config(..))
 
-import Data.Maybe (isJust, isNothing)
+import Data.Maybe (isJust)
 
 spec :: Spec
 spec = do
@@ -52,7 +52,7 @@ spec = do
               let
                 theAttributes = concatMap (\Class{attributes} -> attributes) classes
                 probability =
-                  fromIntegral (length (filter (\Attribute{multiplicity = Multiplicity (_, upper)} -> isNothing upper) theAttributes))
+                  fromIntegral (length (filter (\Attribute{multiplicity = Multiplicity (_, upper)} -> isJust upper) theAttributes))
                   / fromIntegral (length theAttributes)
               in
                 probability `shouldSatisfy` within 0.2 (fst multiplicitySpecAttributes)
@@ -63,7 +63,7 @@ spec = do
               let
                 multiplicities = concatMap (\Association{multTargetToSource, multSourceToTarget} -> [multTargetToSource, multSourceToTarget]) associations
                 probability =
-                  fromIntegral (length (filter (\(Multiplicity (_, upper)) -> isNothing upper) multiplicities))
+                  fromIntegral (length (filter (\(Multiplicity (_, upper)) -> isJust upper) multiplicities))
                   / fromIntegral (length multiplicities)
               in
                 probability `shouldSatisfy` within 0.2 (fst multiplicitySpecsAssociations)
