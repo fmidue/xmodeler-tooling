@@ -32,7 +32,7 @@ spec = do
               let
                 probability =
                   fromIntegral (length (filter (\Class{isAbstract} -> isAbstract) classes))
-                  / fromIntegral (length classes)
+                  / fromIntegral (length classes) :: Float
               in
                 probability `shouldSatisfy` within 0.4 chanceAbstractClass
         describe "generateMLM" $
@@ -79,5 +79,5 @@ spec = do
               in
                 probability `shouldSatisfy` within 0.2 chanceVisibleAssociation
 
-within :: Float -> Rational -> Float -> Bool
-within m p q = abs (fromRational p - q) < m
+within :: Float -> Float -> Float -> Bool
+within m p q = abs (p - q) < m

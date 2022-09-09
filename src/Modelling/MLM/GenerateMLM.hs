@@ -61,12 +61,12 @@ accumulate start list f = foldM (\soFar x -> do
         return $ soFar ++ [new]
     ) start list
 
-randomWeightedXOr :: Rational -> Gen a -> Gen a -> Gen a
+randomWeightedXOr :: Float -> Gen a -> Gen a -> Gen a
 randomWeightedXOr chance f g = if chance < 0 || chance > 1
     then error "Chance values must be in the inclusive range (0, 1) !!!"
     else let
         chanceTo = round (chance * 1000) :: Int
-        chanceNotTo = 1000 - chanceTo
+        chanceNotTo = 1000 - chanceTo :: Int
     in
         frequency [(chanceTo, f), (chanceNotTo, g)]
 
@@ -75,7 +75,7 @@ normalizeClassLevels :: [Class] -> [Class]
 normalizeClassLevels classes = let lowest = minimum $ map #level classes in
     map (\x -> x <<< (#level x - lowest)) classes
 
-randomMultGen :: (Rational, Int) -> Gen Multiplicity
+randomMultGen :: (Float, Int) -> Gen Multiplicity
 randomMultGen (chance, max') = do
     b <- randomWeightedXOr chance (Just <$> chooseInt (1, max')) (return Nothing)
     return $ Multiplicity (0, b)
@@ -103,7 +103,7 @@ randomSlotValue Attribute{name, dataType} = let
 -- ADDING COMPONENTS
 ----------------------------------------------------------
 
-addAbstractions :: Level -> Rational -> [Class] -> Gen [Class]
+addAbstractions :: Level -> Float -> [Class] -> Gen [Class]
 addAbstractions maxLevel chanceAbstract theClasses = let
     -- spine is a chain of classes from level 0 to maxLevel that will be concretized later by other classes.
     -- This is why they must be concrete (not abstract):
@@ -117,7 +117,7 @@ addAbstractions maxLevel chanceAbstract theClasses = let
                 )
             meat
 
-addConcretizations :: Level -> Rational -> [Class] -> Gen [Class]
+addConcretizations :: Level -> Float -> [Class] -> Gen [Class]
 addConcretizations maxLevel chanceToConcretize theClasses = let
     concretizing :: Class -> Maybe Class -> Gen Class
     concretizing x (Just Class{name, level}) = return (x <<< Just name <<< (level - 1))
@@ -146,7 +146,7 @@ addConcretizations maxLevel chanceToConcretize theClasses = let
 
 
 
-addInheritances :: Rational -> [Class] -> Gen [Class]
+addInheritances :: Float -> [Class] -> Gen [Class]
 addInheritances chanceToInherit theClasses = let
 
     sameAs :: Class -> Class -> Bool
@@ -162,7 +162,7 @@ addInheritances chanceToInherit theClasses = let
             )
 
 
-addAttributes :: (Rational, Int) -> [Class] -> Gen [Class]
+addAttributes :: (Float, Int) -> [Class] -> Gen [Class]
 addAttributes multSpecs theClasses = let
 
     addAttribute :: (Class, Int) -> Gen Class
@@ -204,7 +204,7 @@ addSlotValues theClasses = let
     in mapM addSlotValue theClasses
 
 
-addAssociations :: (Rational, Int) -> Rational -> [Class] -> [Association] -> Gen [Association]
+addAssociations :: (Float, Int) -> Float -> [Class] -> [Association] -> Gen [Association]
 addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAssociations = let
     theClasses = nonLevelZero theClassesIncludingLevelZero :: [Class]
     randomClassGen = elements theClasses :: Gen Class

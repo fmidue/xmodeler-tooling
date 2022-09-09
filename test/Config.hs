@@ -4,15 +4,12 @@ import Test.QuickCheck (Gen, choose, chooseInt)
 
 import Modelling.MLM.Config (Config(..))
 
-randomChance :: Float -> Float -> Gen Rational
-randomChance a b = toRational <$> choose (a, b)
+randomChanceStandard :: Gen Float
+randomChanceStandard = choose (0.0, 1.0)
 
-randomChanceStandard :: Gen Rational
-randomChanceStandard = randomChance 0.0 1.0
-
-randomMultSpec :: Gen (Rational, Int)
+randomMultSpec :: Gen (Float, Int)
 randomMultSpec = do
-  rc <- randomChanceStandard :: Gen Rational
+  rc <- randomChanceStandard :: Gen Float
   m <- chooseInt (1,3) :: Gen Int
   return (rc, m)
 
