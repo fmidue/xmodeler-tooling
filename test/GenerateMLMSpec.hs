@@ -20,11 +20,11 @@ spec = do
             valid ()
         describe "generateMLM" $
           it "respects certain configuration parameters" $
-            forAll reasonableConfigs $ \config@Config{maxLvl0, numClasses0, numAssociations0} ->
+            forAll reasonableConfigs $ \config@Config{maxClassLevel, numberOfClasses, numberOfAssociations} ->
             forAll (generateMLM config) $ \MLM{classes, associations} ->
-              maximum (map (\Class{level} -> level) classes) <= maxLvl0 &&
-              length classes == numClasses0 &&
-              length associations == numAssociations0
+              maximum (map (\Class{level} -> level) classes) <= maxClassLevel &&
+              length classes == numberOfClasses &&
+              length associations == numberOfAssociations
         describe "generateMLM" $
           it "respects chanceAbstractClass" $
             forAll reasonableConfigs $ \config@Config{chanceAbstractClass} ->
@@ -46,8 +46,8 @@ spec = do
               in
                 probability `shouldSatisfy` within 0.4 chanceToConcretize
         describe "generateMLM" $
-          it "respects multSpecsAttributes" $
-            forAll reasonableConfigs $ \config@Config{multSpecsAttributes} ->
+          it "respects multiplicitySpecAttributes" $
+            forAll reasonableConfigs $ \config@Config{multiplicitySpecAttributes} ->
             forAll (generateMLM config) $ \MLM{classes} ->
               let
                 theAttributes = concatMap (\Class{attributes} -> attributes) classes
@@ -55,10 +55,10 @@ spec = do
                   fromIntegral (length (filter (\Attribute{multiplicity = Multiplicity (_, upper)} -> isNothing upper) theAttributes))
                   / fromIntegral (length theAttributes)
               in
-                probability `shouldSatisfy` within 0.2 (fst multSpecsAttributes)
+                probability `shouldSatisfy` within 0.2 (fst multiplicitySpecAttributes)
         describe "generateMLM" $
-          it "respects multSpecsAssociations" $
-            forAll reasonableConfigs $ \config@Config{multSpecsAssociations} ->
+          it "respects multiplicitySpecsAssociations" $
+            forAll reasonableConfigs $ \config@Config{multiplicitySpecsAssociations} ->
             forAll (generateMLM config) $ \MLM{associations} ->
               let
                 multiplicities = concatMap (\Association{multTargetToSource, multSourceToTarget} -> [multTargetToSource, multSourceToTarget]) associations
@@ -66,7 +66,7 @@ spec = do
                   fromIntegral (length (filter (\(Multiplicity (_, upper)) -> isNothing upper) multiplicities))
                   / fromIntegral (length multiplicities)
               in
-                probability `shouldSatisfy` within 0.2 (fst multSpecsAssociations)
+                probability `shouldSatisfy` within 0.2 (fst multiplicitySpecsAssociations)
         describe "generateMLM" $
           it "respects chanceVisibleAssociation" $
             forAll reasonableConfigs $ \config@Config{chanceVisibleAssociation} ->

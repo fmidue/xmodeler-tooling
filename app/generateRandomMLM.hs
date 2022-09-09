@@ -44,24 +44,24 @@ determineConfig = do
   pPrint defaultConfig
   let Config{..} = defaultConfig
   projectNameString' <- offerChange "projectNameString" projectNameString
-  maxLvl0' <- offerChange "maxLvl0" maxLvl0
-  numClasses0' <- offerChange "numClasses0" numClasses0
-  numAssociations0' <- offerChange "numAssociations0" numAssociations0
+  maxClassLevel' <- offerChange "maxClassLevel" maxClassLevel
+  numberOfClasses' <- offerChange "numberOfClasses" numberOfClasses
+  numberOfAssociations' <- offerChange "numberOfAssociations" numberOfAssociations
   chanceToConcretize' <- offerChange "chanceToConcretize" chanceToConcretize
   chanceToInherit' <- offerChange "chanceToInherit" chanceToInherit
-  multSpecsAttributes' <- offerChange "multSpecsAttributes" multSpecsAttributes
-  multSpecsAssociations' <- offerChange "multSpecsAssociations" multSpecsAssociations
+  multiplicitySpecAttributes' <- offerChange "multiplicitySpecAttributes" multiplicitySpecAttributes
+  multiplicitySpecsAssociations' <- offerChange "multiplicitySpecsAssociations" multiplicitySpecsAssociations
   chanceVisibleAssociation' <- offerChange "chanceVisibleAssociation" chanceVisibleAssociation
   chanceAbstractClass' <- offerChange "chanceAbstractClass" chanceAbstractClass
   let newConfig = Config
         { projectNameString = projectNameString'
-        , maxLvl0 = maxLvl0'
-        , numClasses0 = numClasses0'
-        , numAssociations0 = numAssociations0'
+        , maxClassLevel = maxClassLevel'
+        , numberOfClasses = numberOfClasses'
+        , numberOfAssociations = numberOfAssociations'
         , chanceToConcretize = chanceToConcretize'
         , chanceToInherit = chanceToInherit'
-        , multSpecsAttributes = multSpecsAttributes'
-        , multSpecsAssociations = multSpecsAssociations'
+        , multiplicitySpecAttributes = multiplicitySpecAttributes'
+        , multiplicitySpecsAssociations = multiplicitySpecsAssociations'
         , chanceVisibleAssociation = chanceVisibleAssociation'
         , chanceAbstractClass = chanceAbstractClass'
         }

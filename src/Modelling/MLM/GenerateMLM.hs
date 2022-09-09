@@ -104,11 +104,11 @@ randomSlotValue Attribute{name, dataType} = let
 ----------------------------------------------------------
 
 addAbstractions :: Level -> Rational -> [Class] -> Gen [Class]
-addAbstractions maxLvl chanceAbstract theClasses = let
-    -- spine is a chain of classes from level 0 to maxLvl that will be concretized later by other classes.
+addAbstractions maxLevel chanceAbstract theClasses = let
+    -- spine is a chain of classes from level 0 to maxLevel that will be concretized later by other classes.
     -- This is why they must be concrete (not abstract):
-    spine = map (<<< False) $ take (maxLvl + 1) theClasses :: [Class]
-    meat = drop (maxLvl + 1) theClasses :: [Class]
+    spine = map (<<< False) $ take (maxLevel + 1) theClasses :: [Class]
+    meat = drop (maxLevel + 1) theClasses :: [Class]
     in (++) spine <$>
         mapM
             (\c -> do
@@ -118,17 +118,17 @@ addAbstractions maxLvl chanceAbstract theClasses = let
             meat
 
 addConcretizations :: Level -> Rational -> [Class] -> Gen [Class]
-addConcretizations maxLvl chanceToConcretize theClasses = let
+addConcretizations maxLevel chanceToConcretize theClasses = let
     concretizing :: Class -> Maybe Class -> Gen Class
     concretizing x (Just Class{name, level}) = return (x <<< Just name <<< (level - 1))
     concretizing x Nothing = do
-        randomLevel <- chooseInt (1, max 1 maxLvl)
+        randomLevel <- chooseInt (1, max 1 maxLevel)
         -- max 1 ... because having meta classes of level zero is useless
         return $ x <<< (Nothing :: Maybe Name) <<< randomLevel
 
-    initial = head theClasses <<< maxLvl <<< (Nothing :: Maybe Name) :: Class
-    vertebras = take maxLvl $ tail theClasses :: [Class]
-    meat = drop (maxLvl + 1) theClasses :: [Class]
+    initial = head theClasses <<< maxLevel <<< (Nothing :: Maybe Name) :: Class
+    vertebras = take maxLevel $ tail theClasses :: [Class]
+    meat = drop (maxLevel + 1) theClasses :: [Class]
 
     in do
         -- if there is a class of level n, then there has to be at least a class of level n-1.
@@ -281,28 +281,28 @@ addLinks theClasses theAssociations = let
 
 
 generateMLM :: Config -> Gen MLM
-generateMLM Config{ projectNameString, maxLvl0, numClasses0, numAssociations0, chanceToConcretize, chanceToInherit, multSpecsAttributes, multSpecsAssociations, chanceVisibleAssociation, chanceAbstractClass } = let
+generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfAssociations, chanceToConcretize, chanceToInherit, multiplicitySpecAttributes, multiplicitySpecsAssociations, chanceVisibleAssociation, chanceAbstractClass } = let
 
     projectName = Name projectNameString :: Name
 
-    maxLvl = max 0 maxLvl0 :: Level
-    numClasses = max 1 numClasses0 :: Int
-    numAssociations = max 0 numAssociations0 :: Int
+    maxClassLevelSafe = max 0 maxClassLevel :: Level
+    numberOfClassesSafe = max 1 numberOfClasses :: Int
+    numberOfAssociationsSafe = max 0 numberOfAssociations :: Int
 
     endlessEmptyClasses = map (emptyClass <<<) classNameSpace :: [Class]
     endlessEmptyAssociations = map (emptyAssociation <<<) associationNameSpace :: [Association]
 
-    emptyClasses = take numClasses endlessEmptyClasses :: [Class]
-    emptyAssociations = take numAssociations endlessEmptyAssociations :: [Association]
+    emptyClasses = take numberOfClassesSafe endlessEmptyClasses :: [Class]
+    emptyAssociations = take numberOfAssociationsSafe endlessEmptyAssociations :: [Association]
 
     in do
-        withAbstractions <- addAbstractions maxLvl chanceAbstractClass emptyClasses :: Gen [Class]
-        withConcretizations <- addConcretizations maxLvl chanceToConcretize withAbstractions :: Gen [Class]
+        withAbstractions <- addAbstractions maxClassLevelSafe chanceAbstractClass emptyClasses :: Gen [Class]
+        withConcretizations <- addConcretizations maxClassLevelSafe chanceToConcretize withAbstractions :: Gen [Class]
         withInheritances <- addInheritances chanceToInherit withConcretizations :: Gen [Class]
-        withAttributes <- addAttributes multSpecsAttributes withInheritances :: Gen [Class]
+        withAttributes <- addAttributes multiplicitySpecAttributes withInheritances :: Gen [Class]
         readyClasses <- addSlotValues withAttributes :: Gen [Class]
 
-        readyAssociations <- addAssociations multSpecsAssociations chanceVisibleAssociation withAttributes emptyAssociations :: Gen [Association]
+        readyAssociations <- addAssociations multiplicitySpecsAssociations chanceVisibleAssociation withAttributes emptyAssociations :: Gen [Association]
 
         readyLinks <- addLinks readyClasses readyAssociations
 

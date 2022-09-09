@@ -19,13 +19,13 @@ randomMultSpec = do
 reasonableConfigs :: Gen Config
 reasonableConfigs = do
   let projectNameString = "randomMLM"
-  maxLvl0 <- choose (3,7)
-  numClasses0 <- choose (25,35) -- I advice to not surpass 35 classes, because XModeler struggles to handle that (at least on my computer).
-  numAssociations0 <- choose (25,35)
+  maxClassLevel <- choose (3,7)
+  numberOfClasses <- choose (25,35) -- I advice to not surpass 35 classes, because XModeler struggles to handle that (at least on my computer).
+  numberOfAssociations <- choose (25,35)
   chanceToConcretize <- randomChanceStandard
   chanceToInherit <- randomChanceStandard
-  multSpecsAttributes <- randomMultSpec
-  multSpecsAssociations <- randomMultSpec
+  multiplicitySpecAttributes <- randomMultSpec
+  multiplicitySpecsAssociations <- randomMultSpec
   chanceVisibleAssociation <- randomChanceStandard
   chanceAbstractClass <- randomChanceStandard
   return $ Config {..}
