@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<XModeler>
+  <Version>2</Version>
+  <Categories/>
+  <Projects>
+    <Project name="Root::a"/>
+  </Projects>
+  <Diagrams>
+    <Diagram label="b" package_path="Root::a" showDerivedAttributes="true" showDerivedOperations="true" showGettersAndSetters="true" showOperationValues="true" showOperations="true" showSlots="true">
+      <Categories/>
+      <Owners/>
+      <Objects>
+        <Object hidden="false" ref="Root::a::C" x="465" y="32"/>
+        <Object hidden="false" ref="Root::a::B" x="90" y="256"/>
+        <Object hidden="false" ref="Root::a::A" x="96" y="13"/>
+        <Object hidden="false" ref="Root::a::C1" x="469" y="151"/>
+      </Objects>
+      <Edges>
+        <Edge ref="InheritanceMapping: Root::a::B/Root::a::A" source_port="NORTH" target_port="SOUTH" type="inheritance">
+          <IntermediatePoints>
+            <IntermediatePoint x="233.24791" y="232.77637"/>
+            <IntermediatePoint x="200.98926" y="232.77637"/>
+          </IntermediatePoints>
+        </Edge>
+      </Edges>
+      <Labels/>
+      <Preferences/>
+      <View name="Main View" tx="0.0" ty="0.0" xx="1.0"/>
+    </Diagram>
+  </Diagrams>
+  <Logs>
+    <addMetaClass abstract="false" level="1" name="A" package="Root::a" parents=""/>
+    <addMetaClass abstract="false" level="1" name="B" package="Root::a" parents=""/>
+    <addMetaClass abstract="false" level="2" name="C" package="Root::a" parents=""/>
+    <addInstance abstract="false" name="C1" of="Root::a::C" package="Root::a" parents=""/>
+    <changeParent class="Root::a::B" new="Root::a::A" old="" package="Root::a"/>
+    <addAttribute class="Root::a::A" level="0" multiplicity="Seq{1,1,true,false}" name="op0" package="Root::a" type="Root::XCore::Integer"/>
+    <addOperation body="@Operation op0[monitor=false,delToClassAllowed=false]():XCore::Element&#10;  null&#10;end" class="Root::a::A" level="0" monitored="false" name="op0" package="Root::a" paramNames="" paramTypes="" type="Root::XCore::Element"/>
+    <addOperation body="@Operation op4[monitor=false,delToClassAllowed=false]():XCore::Element&#10;  null&#10;end" class="Root::a::A" level="0" monitored="false" name="op4" package="Root::a" paramNames="" paramTypes="" type="Root::XCore::Element"/>
+    <addOperation body="@Operation op0[monitor=false,delToClassAllowed=false]():XCore::Element&#10;  null&#10;end" class="Root::a::B" level="0" monitored="false" name="op0" package="Root::a" paramNames="" paramTypes="" type="Root::XCore::Element"/>
+    <addOperation body="@Operation op1[monitor=false,delToClassAllowed=false]():XCore::Element&#10;  null&#10;end" class="Root::a::B" level="0" monitored="false" name="op1" package="Root::a" paramNames="" paramTypes="" type="Root::XCore::Element"/>
+    <addOperation body="@Operation op2[monitor=false,delToClassAllowed=false]():XCore::Element&#10;  null&#10;end" class="Root::a::B" level="0" monitored="false" name="op2" package="Root::a" paramNames="" paramTypes="" type="Root::XCore::Element"/>
+    <addOperation body="@Operation op3[monitor=false,delToClassAllowed=false]():XCore::Element&#10;  null&#10;end" class="Root::a::C" level="1" monitored="false" name="op3" package="Root::a" paramNames="" paramTypes="" type="Root::XCore::Element"/>
+    <addOperation body="@Operation op3[monitor=false,delToClassAllowed=false]():XCore::Element&#10;  null&#10;end" class="Root::a::C1" level="0" monitored="false" name="op3" package="Root::a" paramNames="" paramTypes="" type="Root::XCore::Element"/>
+    <addOperation body="@Operation op5[monitor=false,delToClassAllowed=false]():XCore::Element&#10;  null&#10;end" class="Root::a::C" level="1" monitored="false" name="op5" package="Root::a" paramNames="" paramTypes="" type="Root::XCore::Element"/>
+  </Logs>
+</XModeler>
