@@ -26,7 +26,7 @@ import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, subli
 import Control.Monad.Extra (concatMapM)
 import Control.Monad (forM, foldM)
 import Data.Maybe (fromMaybe)
-import Data.List.Ordered (nubSort)
+import Data.List.Extra (nubOrd)
 
 abcCapital :: [String]
 abcCapital = map (:[]) ['A'..'Z']
@@ -268,7 +268,7 @@ addLinks theClasses theAssociations = let
                         . take (fromMaybe (length candidateSourcesHere) multSourceToTargetMax)
                             <$> shuffle candidateSourcesHere
                 )
-            return $ nubSort $ concat $ sourceToTarget ++ targetToSource
+            return $ nubOrd $ concat $ sourceToTarget ++ targetToSource
 
     in do
         _ <- return theAssociations
