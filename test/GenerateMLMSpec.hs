@@ -61,7 +61,7 @@ spec = do
             forAll reasonableConfigs $ \config@Config{multiplicitySpecAssociations} ->
             forAll (generateMLM config) $ \MLM{associations} ->
               let
-                multiplicities = concatMap (\Association{multTargetToSource, multSourceToTarget} -> [multTargetToSource, multSourceToTarget]) associations
+                multiplicities = concatMap (\Association{multSource, multTarget} -> [multSource, multTarget]) associations
                 probability =
                   fromIntegral (length (filter (\(Multiplicity (_, upper)) -> isJust upper) multiplicities))
                   / fromIntegral (length multiplicities)
@@ -72,7 +72,7 @@ spec = do
             forAll reasonableConfigs $ \config@Config{chanceVisibleAssociation} ->
             forAll (generateMLM config) $ \MLM{associations} ->
               let
-                visibilities = concatMap (\Association{sourceVisibleFromTarget, targetVisibleFromSource} -> [sourceVisibleFromTarget, targetVisibleFromSource]) associations
+                visibilities = concatMap (\Association{visibleSource, visibleTarget} -> [visibleSource, visibleTarget]) associations
                 probability =
                   fromIntegral (length (filter id visibilities))
                   / fromIntegral (length visibilities)
