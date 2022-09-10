@@ -164,46 +164,73 @@ instance Validatable () MLM where
     inScope = generateInScopeFinder classes
 
     -- whether an association multiplicity is violated:
-    candidates :: Name -> Level -> [Class]
-    candidates className lvl =
-      filter (\Class{level, name} -> level == lvl && name \/ className) classes
+    occurrencesAsSource :: Class -> Association -> Int
+    occurrencesAsSource Class{name = className} Association{name = associationName} =
+      length $ filter (\Link{name = linkName, source} ->
+          linkName == associationName && source == className
+        ) links
 
-    numOfTimesAsSource :: Name -> Class -> Int
-    numOfTimesAsSource associationName Class{name = className} =
-      length $ filter (\Link{name, source} ->
-        name == associationName &&
-        source == className
-      ) links
+    occurrencesAsTarget :: Class -> Association -> Int
+    occurrencesAsTarget Class{name = className} Association{name = associationName}  =
+      length $ filter (\Link{name = linkName, target} ->
+          linkName == associationName && target == className
+        ) links
 
-    numOfTimesAsTarget :: Name -> Class -> Int
-    numOfTimesAsTarget associationName Class{name = className} =
-      length $ filter (\Link{name, target} ->
-        name == associationName &&
-        target == className
-      ) links
+    inRangeOfMult :: Int -> Multiplicity -> Bool
+    inRangeOfMult x (Multiplicity (a, Nothing)) = x >= a
+    inRangeOfMult x (Multiplicity (a, Just b)) = inRange (a, b) x
 
-    inRangeOfMult :: Multiplicity -> Int -> Bool
-    inRangeOfMult (Multiplicity (a, Nothing)) x = x >= a
-    inRangeOfMult (Multiplicity (a, Just b)) x = inRange (a, b) x
+    participationDoesNotViolateMultiplicity :: Association -> Class -> Bool
+    participationDoesNotViolateMultiplicity association'@Association{multSource, multTarget} class' =
+        (class' `occurrencesAsSource` association') `inRangeOfMult` multTarget &&
+        (class' `occurrencesAsTarget` association') `inRangeOfMult` multSource
 
-    allSourcesAreLinkedAccordingToMultiplicity :: Association -> Bool
-    allSourcesAreLinkedAccordingToMultiplicity Association{name = associationName, source, multSourceToTarget, lvlSource} = let
-      candidatesHere :: [Class]
-      candidatesHere = candidates source lvlSource
-      numOfTimes :: Class -> Int
-      numOfTimes = numOfTimesAsSource associationName
-      in all (inRangeOfMult multSourceToTarget . numOfTimes) candidatesHere
+    associationMultiplicityNotViolated :: Association -> Bool
+    associationMultiplicityNotViolated association' =
+      all (participationDoesNotViolateMultiplicity association') classes || error (show (#name association'))
 
-    allTargetsAreLinkedAccordingToMultiplicity :: Association -> Bool
-    allTargetsAreLinkedAccordingToMultiplicity Association{name = associationName, target, multTargetToSource, lvlTarget} = let
-      candidatesHere :: [Class]
-      candidatesHere = candidates target lvlTarget
-      numOfTimes :: Class -> Int
-      numOfTimes = numOfTimesAsTarget associationName
-      in all (inRangeOfMult multTargetToSource . numOfTimes) candidatesHere
+    -- candidates :: Name -> Level -> [Class]
+    -- candidates className lvl =
+    --   filter (\Class{level, name} -> level == lvl && name \/ className) classes
 
-    multNotViolated :: Association -> Bool
-    multNotViolated a = allTargetsAreLinkedAccordingToMultiplicity a && allSourcesAreLinkedAccordingToMultiplicity a
+    -- numOfTimesAsSource :: Name -> Class -> Int
+    -- numOfTimesAsSource associationName Class{name = className} =
+    --   length $ filter (\Link{name, source} ->
+    --     name == associationName &&
+    --     source == className
+    --   ) links
+
+    -- numOfTimesAsTarget :: Name -> Class -> Int
+    -- numOfTimesAsTarget associationName Class{name = className} =
+    --   length $ filter (\Link{name, target} ->
+    --     name == associationName &&
+    --     target == className
+    --   ) links
+
+    -- inRangeOfMult :: Multiplicity -> Int -> Bool
+    -- inRangeOfMult (Multiplicity (a, Nothing)) x = x >= a
+    -- inRangeOfMult (Multiplicity (a, Just b)) x = inRange (a, b) x
+
+    -- allSourcesAreLinkedAccordingToMultiplicity :: Association -> Bool
+    -- allSourcesAreLinkedAccordingToMultiplicity Association{name = associationName, source, multTarget, lvlSource} = let
+    --   candidatesHere :: [Class]
+    --   candidatesHere = candidates source lvlSource
+    --   numOfTimes :: Class -> Int
+    --   numOfTimes = numOfTimesAsSource associationName
+    --   inRangeOfThisMultiplicity :: Int -> Bool
+    --   inRangeOfThisMultiplicity = inRangeOfMult multTarget
+    --   in all (\x -> inRangeOfThisMultiplicity (numOfTimes  x )|| error (show (#name x) ++ "\n" ++ show (#level x) ++ "\n" ++ show associationName ++ "\n" ++ show source ++ "\n" ++ "linked to many targets!!!")) candidatesHere
+
+    -- allTargetsAreLinkedAccordingToMultiplicity :: Association -> Bool
+    -- allTargetsAreLinkedAccordingToMultiplicity Association{name = associationName, target, multSource, lvlTarget} = let
+    --   candidatesHere :: [Class]
+    --   candidatesHere = candidates target lvlTarget
+    --   numOfTimes :: Class -> Int
+    --   numOfTimes = numOfTimesAsTarget associationName
+    --   in all (\x -> inRangeOfMult multSource (numOfTimes x) || error (show (#name x) ++ "\n" ++ show (#level x) ++ "\n" ++ show associationName ++ "\n" ++ show target ++ "\n" ++ "linked to too many sources!!!")) candidatesHere
+
+    -- multNotViolated :: Association -> Bool
+    -- multNotViolated a = allTargetsAreLinkedAccordingToMultiplicity a && allSourcesAreLinkedAccordingToMultiplicity a
 
     -- whether a class does not concretize a class whose level is not higher by 1
     lvlIsClassifierLvlMinusOne class' =
@@ -250,30 +277,30 @@ instance Validatable () MLM where
     allClassifiers = nubOrd $ mapMaybe #classifier classes
 
     in and [
-      not (null classes),
-      valid () projectName,
-      allUnique (map #name classes),
-      allUnique (map #name associations),
-      noCycles dict,
-      all lvlIsClassifierLvlMinusOne classes,
-      all instantiatesSomethingOrIsMetaClass classes,
-      allUnique links,
-      all (allUnique . map (\Attribute{name, level} -> (name, level)) . allAttributesInScope) classes,
-      all (allUnique . map #name . #attributes) classes,
+      not (null classes) || error "1",
+      valid () projectName || error "2",
+      allUnique (map #name classes) || error "3",
+      allUnique (map #name associations) || error "4",
+      noCycles dict || error "5",
+      all lvlIsClassifierLvlMinusOne classes || error "6",
+      all instantiatesSomethingOrIsMetaClass classes || error "7",
+      allUnique links || error "8",
+      all (allUnique . map (\Attribute{name, level} -> (name, level)) . allAttributesInScope) classes || error "9",
+      -- all (allUnique . map #name . #attributes) classes,
       -- all (allUnique . map (\Operation{name, level} -> (name, level)) . allOperationsInScope) classes,
-      all (allUnique . map #name . #operations) classes,
-      all instantiatableAttributesAreInstantiated classes,
-      all (allUnique . map #name . #slots) classes,
-      all (\Class{classifier = c, name} -> all ((== c) . getClassifier) (parentDict ! name) ) classes,
-      all (\x -> valid (inScope x, map getClass (#parents x)) x) classes,
-      all (\x -> valid (getClass (#source x), getClass (#target x)) x) associations,
-      all multNotViolated associations,
-      all checkSourceAndTarget links,
+      -- all (allUnique . map #name . #operations) classes,
+      all instantiatableAttributesAreInstantiated classes || error "10",
+      -- all (allUnique . map #name . #slots) classes,
+      all (\Class{classifier = c, name} -> all ((== c) . getClassifier) (parentDict ! name) ) classes || error "11",
+      all (\x -> valid (inScope x, map getClass (#parents x)) x) classes || error "12",
+      all (\x -> valid (getClass (#source x), getClass (#target x)) x) associations || error "13",
+      all associationMultiplicityNotViolated associations || error "14",
+      all checkSourceAndTarget links || error "15",
       all (\x -> valid
           (getClass (#source x),getClass (#target x))
           (getAssociation x)
-        ) links,
-      all (\Class{name, isAbstract} -> not isAbstract || name `notElem` allClassifiers) classes
+        ) links || error "16",
+      all (\Class{name, isAbstract} -> not isAbstract || name `notElem` allClassifiers) classes || error "17"
     ]
 
 data Class = Class {
@@ -317,6 +344,9 @@ instance Validatable ([Class], [Maybe Class]) Class where
         valid () level',
         all (maybe False ((== level') . #level)) parentsClasses,
         allUnique parents,
+        allUnique (map #name attributes'),
+        allUnique (map #name slots),
+        allUnique (map #name operations),
         level' > 0 || (null attributes' && null operations && null parents),
         all (valid level') attributes',
         all (valid level') operations,
@@ -385,23 +415,23 @@ data Association = Association {
   target :: Name,
   lvlSource :: Level,
   lvlTarget :: Level,
-  multTargetToSource :: Multiplicity,
-  multSourceToTarget :: Multiplicity,
-  sourceVisibleFromTarget :: Bool,
-  targetVisibleFromSource :: Bool
+  multSource :: Multiplicity,
+  multTarget :: Multiplicity,
+  visibleSource :: Bool,
+  visibleTarget :: Bool
 } deriving (Show, Read, Eq)
 
 emptyAssociation :: Association
 emptyAssociation = Association emptyName emptyName emptyName 0 0 emptyMultiplicity emptyMultiplicity False False
 
 instance Validatable (Maybe Class, Maybe Class) Association where
-  valid (sourceClass, targetClass) Association{lvlSource, lvlTarget, multTargetToSource, multSourceToTarget, name} =
+  valid (sourceClass, targetClass) Association{lvlSource, lvlTarget, multSource, multTarget, name} =
     and [
       valid () name,
       maybe False ((> lvlSource) . #level) sourceClass,
       maybe False ((> lvlTarget) . #level) targetClass,
-      valid () multTargetToSource,
-      valid () multSourceToTarget
+      valid () multSource,
+      valid () multTarget
       ]
 
 data Link = Link {

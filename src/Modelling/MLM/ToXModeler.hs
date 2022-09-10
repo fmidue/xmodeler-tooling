@@ -123,8 +123,8 @@ instance XModelerable (Name, Name) Slot where
 
 -- Association
 instance XModelerable Name Association where
-  get (Name projectName) Association{name, source, target, lvlSource, lvlTarget, multSourceToTarget, multTargetToSource, sourceVisibleFromTarget, targetVisibleFromSource} =
-    [i|    <addAssociation accessSourceFromTargetName="#{nameString name}_#{from}" accessTargetFromSourceName="#{nameString name}_#{to}" classSource="Root::#{projectName}::#{from}" classTarget="Root::#{projectName}::#{to}" fwName="#{nameString name}" instLevelSource="#{lvlSource}" instLevelTarget="#{lvlTarget}" isSymmetric="false" isTransitive="false" multSourceToTarget="#{get () multSourceToTarget}" multTargetToSource="#{get () multTargetToSource}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="#{get () sourceVisibleFromTarget}" targetVisibleFromSource="#{get () targetVisibleFromSource}"/>\n|]
+  get (Name projectName) Association{name, source, target, lvlSource, lvlTarget, multTarget, multSource, visibleSource, visibleTarget} =
+    [i|    <addAssociation accessSourceFromTargetName="#{nameString name}_#{from}" accessTargetFromSourceName="#{nameString name}_#{to}" classSource="Root::#{projectName}::#{from}" classTarget="Root::#{projectName}::#{to}" fwName="#{nameString name}" instLevelSource="#{lvlSource}" instLevelTarget="#{lvlTarget}" isSymmetric="false" isTransitive="false" multSourceToTarget="#{get () multTarget}" multTargetToSource="#{get () multSource}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="#{get () visibleSource}" targetVisibleFromSource="#{get () visibleTarget}"/>\n|]
    where
      from = nameString source
      to = nameString target

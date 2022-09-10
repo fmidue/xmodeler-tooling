@@ -218,7 +218,7 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
                 lvlSource' <- randomLevelGen sourceClass
                 lvlTarget' <- randomLevelGen targetClass
                 multTargetToSource' <- randomMultGen'
-                multSourceToTarget' <- randomMultGen'
+                multTarget' <- randomMultGen'
                 sourceVisibleFromTarget' <- randomVisibilityGen
                 targetVisibleFromSource' <- randomVisibilityGen
                 return $ x
@@ -227,7 +227,7 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
                     <<< (Source, lvlSource')
                     <<< (Target, lvlTarget')
                     <<< (Source, multTargetToSource')
-                    <<< (Target, multSourceToTarget')
+                    <<< (Target, multTarget')
                     <<< (Source, sourceVisibleFromTarget')
                     <<< (Target, targetVisibleFromSource')
             )
@@ -243,41 +243,27 @@ addLinks theClasses theAssociations = let
 
     candidateSources :: Association -> [Class]
     candidateSources Association{source, lvlSource} =
-        maybe []
-            (filter ((== lvlSource) . #level) . scope)
-            (getClass source)
+        maybe [] (filter ((== lvlSource) . #level) . scope) (getClass source)
 
     candidateTargets :: Association -> [Class]
     candidateTargets Association{target, lvlTarget} =
-        maybe []
-            (filter ((== lvlTarget) . #level) . scope)
-            (getClass target)
+        maybe [] (filter ((== lvlTarget) . #level) . scope) (getClass target)
 
     addLinksForOneAssociation :: Association -> Gen [Link]
-    addLinksForOneAssociation a@Association{name = associationName, multTargetToSource = Multiplicity (_, multTargetToSourceMax), multSourceToTarget = Multiplicity (_, multSourceToTargetMax)} = let
+    addLinksForOneAssociation a@Association{name = associationName, multSource = Multiplicity (_, multSourceMax0), multTarget = Multiplicity (_, multTargetMax0)} = let
+
         candidateTargetsHere = candidateTargets a :: [Class]
         candidateSourcesHere = candidateSources a :: [Class]
-        in do
-            sourceToTarget <- forM candidateSourcesHere (\Class{name = sourceClassName} -> do
-                    map (\Class{name = targetClassName} -> Link associationName sourceClassName targetClassName)
-                        . take (fromMaybe (length candidateTargetsHere) multTargetToSourceMax)
-                            <$> shuffle candidateTargetsHere
-                )
-            targetToSource <- forM candidateTargetsHere (\Class{name = targetClassName} -> do
-                    map (\Class{name = sourceClassName} -> Link associationName sourceClassName targetClassName)
-                        . take (fromMaybe (length candidateSourcesHere) multSourceToTargetMax)
-                            <$> shuffle candidateSourcesHere
-                )
-            return $ nubOrd $ concat $ sourceToTarget ++ targetToSource
 
-    in do
-        -- _ <- return theAssociations
-        -- _ <- return $ scope $ head theClasses
-        -- _ <- return $ getClass $ Name ""
-        -- _ <- return $ candidateSources $ head theAssociations
-        -- _ <- return $ candidateTargets $ head theAssociations
-        concatMapM addLinksForOneAssociation theAssociations
+        multSourceMax = fromMaybe (length candidateTargetsHere) multSourceMax0 :: Int
+        multTargetMax = fromMaybe (length candidateSourcesHere) multTargetMax0 :: Int
 
+        readySources = concatMap (replicate multTargetMax . #name) candidateSourcesHere :: [Name]
+        readyTargets = concatMap (replicate multSourceMax . #name) candidateTargetsHere :: [Name]
+
+        in zipWith (Link associationName) readySources <$> shuffle readyTargets
+
+    in nubOrd <$> concatMapM addLinksForOneAssociation theAssociations
 
 
 generateMLM :: Config -> Gen MLM
