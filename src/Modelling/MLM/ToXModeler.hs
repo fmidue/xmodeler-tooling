@@ -113,8 +113,8 @@ instance XModelerable (Name, Name) Attribute where
 
 -- Operation
 instance XModelerable (Name, Name) Operation where
-  get (Name projectName, Name attributeClass) Operation{body, level, isMonitored, name, dataType} =
-    [i|    <addOperation body="#{body}" class="Root::#{projectName}::#{attributeClass}" level="#{level}" monitored="#{get () isMonitored}" name="#{nameString name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () dataType}"/>\n|]
+  get (Name projectName, Name className) Operation{body, level, isMonitored, name, dataType} =
+    [i|    <addOperation body="#{body}" class="Root::#{projectName}::#{className}" level="#{level}" monitored="#{get () isMonitored}" name="#{nameString name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () dataType}"/>\n|]
 
 -- Slot
 instance XModelerable (Name, Name) Slot where
