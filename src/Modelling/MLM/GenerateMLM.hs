@@ -218,7 +218,7 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
                 lvlSource' <- randomLevelGen sourceClass
                 lvlTarget' <- randomLevelGen targetClass
                 multTargetToSource' <- randomMultGen'
-                multTarget' <- randomMultGen'
+                multSourceToTarget' <- randomMultGen'
                 sourceVisibleFromTarget' <- randomVisibilityGen
                 targetVisibleFromSource' <- randomVisibilityGen
                 return $ x
@@ -227,7 +227,7 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
                     <<< (Source, lvlSource')
                     <<< (Target, lvlTarget')
                     <<< (Source, multTargetToSource')
-                    <<< (Target, multTarget')
+                    <<< (Target, multSourceToTarget')
                     <<< (Source, sourceVisibleFromTarget')
                     <<< (Target, targetVisibleFromSource')
             )

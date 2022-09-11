@@ -198,12 +198,12 @@ fromXModeler inputXML = let
     associationNames <- map Name <$> extract "addAssociation" "fwName" :: IO [Name]
     associationSourceLevels <- map read <$> extract "addAssociation" "instLevelSource" :: IO [Level]
     associationTargetLevels <- map read <$> extract "addAssociation" "instLevelTarget" :: IO [Level]
-    associationMultTarget <- map getMult <$> extract "addAssociation" "multSourceToTarget" :: IO [Multiplicity]
+    associationMultSourceToTarget <- map getMult <$> extract "addAssociation" "multSourceToTarget" :: IO [Multiplicity]
     associationMultTargetToSource <- map getMult <$> extract "addAssociation" "multTargetToSource" :: IO [Multiplicity]
     associationVisibilitySource <- map getBool <$> extract "addAssociation" "sourceVisibleFromTarget" :: IO [Bool]
     associationVisibilityTarget <- map getBool <$> extract "addAssociation" "targetVisibleFromSource" :: IO [Bool]
 
-    let readyAssociations = repeat emptyAssociation |<<<| zip (repeat Source) associationSources |<<<| zip (repeat Target) associationTargets |<<<| associationNames |<<<| zip (repeat Source) associationSourceLevels |<<<| zip (repeat Target) associationTargetLevels |<<<| zip (repeat Target) associationMultTarget |<<<| zip (repeat Source) associationMultTargetToSource |<<<| zip (repeat Source) associationVisibilitySource |<<<| zip (repeat Target) associationVisibilityTarget
+    let readyAssociations = repeat emptyAssociation |<<<| zip (repeat Source) associationSources |<<<| zip (repeat Target) associationTargets |<<<| associationNames |<<<| zip (repeat Source) associationSourceLevels |<<<| zip (repeat Target) associationTargetLevels |<<<| zip (repeat Target) associationMultSourceToTarget |<<<| zip (repeat Source) associationMultTargetToSource |<<<| zip (repeat Source) associationVisibilitySource |<<<| zip (repeat Target) associationVisibilityTarget
     -----------------------------------------------------------------------------------------------
     linkNames <- map getName <$> extract "addLink" "name" :: IO [Name]
     linkSources <- map getName <$> extract "addLink" "classSource" :: IO [Name]
