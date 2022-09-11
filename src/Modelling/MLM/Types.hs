@@ -84,9 +84,9 @@ data MLM = MLM {
 
 instance Eq MLM where
   (==) MLM{classes = c1, associations = a1, links = l1} MLM{classes = c2, associations = a2, links = l2} =
-    sortOn #name c1 == sortOn #name c2 &&
-    sortOn #name a1 == sortOn #name a2 &&
-    sort l1 == sort l2
+    eqBy c1 c2 (sortOn #name) &&
+    eqBy a1 a2 (sortOn #name) &&
+    eqBy l1 l2 sort
 
 emptyMLM :: MLM
 emptyMLM = MLM emptyName [] [] []
@@ -267,11 +267,11 @@ instance Eq Class where
       eqBy x y #isAbstract,
       eqBy x y #level,
       eqBy x y #name,
-      eqBy (#parents x) (#parents y) sort,
+      eqBy x y (sort . #parents),
       eqBy x y #classifier,
-      sortOn #name (#attributes x) == sortOn #name (#attributes y),
-      sortOn #name (#operations x) == sortOn #name (#operations y),
-      sortOn #name (#slots x) == sortOn #name (#slots y)
+      eqBy x y (sortOn #name . #attributes),
+      eqBy x y (sortOn #name . #operations),
+      eqBy x y (sortOn #name . #slots)
     ]
 
 emptyClass :: Class
