@@ -204,12 +204,13 @@ instance Validatable () MLM where
     instantiatableOperations :: Class -> [Operation]
     instantiatableOperations = generateInstantiatableOperationsFinder classes
 
-    instantiatesSomethingOrIsMetaClass :: Class -> Bool
-    instantiatesSomethingOrIsMetaClass c@Class{slots, classifier, name} =
+    instantiatesSomethingOrCanDoSoOrIsAMetaClass :: Class -> Bool
+    instantiatesSomethingOrCanDoSoOrIsAMetaClass c@Class{classifier, name} =
       isNothing classifier ||
       isLinked name ||
-      not (null slots) ||
+      not (null (instantiatableAttributes c)) ||
       not (null (instantiatableOperations c))
+
 
 
     -- whether source of link concretizes or inherits from source of association of that link and
@@ -235,7 +236,7 @@ instance Validatable () MLM where
       allUnique (map #name associations),
       noCycles dict,
       all lvlIsClassifierLvlMinusOne classes,
-      all instantiatesSomethingOrIsMetaClass classes,
+      all instantiatesSomethingOrCanDoSoOrIsAMetaClass classes,
       allUnique links,
       all instantiatableAttributesAreInstantiated classes,
       all (\Class{classifier = c, name} -> all ((== c) . getClassifier) (parentDict ! name) ) classes,
@@ -288,6 +289,9 @@ instance Validatable ([Class], [Maybe Class]) Class where
     allAttributesOfClassesInWhoseScopeThisOneLies :: [Attribute]
     allAttributesOfClassesInWhoseScopeThisOneLies = attributes' ++ concatMap #attributes inWhoseScopeThisLies
 
+    instantiatableAttributesHere :: [Attribute]
+    instantiatableAttributesHere = filter ((== level') . #level) (concatMap #attributes inWhoseScopeThisLies)
+
     in
     and [
         valid () className,
@@ -298,6 +302,7 @@ instance Validatable ([Class], [Maybe Class]) Class where
         allUnique (map #name slots),
         allUnique (map #name operations),
         allUnique (map (\Attribute{name, level} -> (name, level)) allAttributesOfClassesInWhoseScopeThisOneLies),
+        all (\Attribute{multiplicity = Multiplicity (lower, _), name} -> lower < 1 || name `elem` map #name slots) instantiatableAttributesHere,
         level' > 0 || (null attributes' && null operations && null parents),
         all (valid level') attributes',
         all (valid level') operations,
