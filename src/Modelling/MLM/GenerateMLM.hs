@@ -261,9 +261,9 @@ addLinks theClasses theAssociations = let
         readySources = concatMap (replicate multTargetMax . #name) candidateSourcesHere :: [Name]
         readyTargets = concatMap (replicate multSourceMax . #name) candidateTargetsHere :: [Name]
 
-        in zipWith (Link associationName) readySources <$> shuffle readyTargets
+        in nubOrd . zipWith (Link associationName) readySources <$> shuffle readyTargets
 
-    in nubOrd <$> concatMapM addLinksForOneAssociation theAssociations
+    in concatMapM addLinksForOneAssociation theAssociations
 
 
 generateMLM :: Config -> Gen MLM
