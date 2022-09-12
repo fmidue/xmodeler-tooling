@@ -22,11 +22,12 @@ import Modelling.MLM.Types (
   generateInstantiatableAttributesFinder
   )
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
-import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, shuffle, Gen)
+import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, Gen)
 import Control.Monad.Extra (concatMapM)
 import Control.Monad (forM, foldM)
 import Data.Maybe (fromMaybe)
-import Data.List.Extra (nubOrd)
+import Data.Map.Strict (Map, keys, (!), delete, fromList, adjust)
+import qualified Data.Map.Strict as M
 
 abcCapital :: [String]
 abcCapital = map (:[]) ['A'..'Z']
@@ -232,8 +233,8 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
                     <<< (Target, targetVisibleFromSource')
             )
 
-addLinks :: [Class] -> [Association] -> Gen [Link]
-addLinks theClasses theAssociations = let
+addLinks :: Float -> [Class] -> [Association] -> Gen [Link]
+addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
 
     scope :: Class -> [Class]
     scope = generateScopeFinder theClasses
@@ -249,25 +250,51 @@ addLinks theClasses theAssociations = let
     candidateTargets Association{target, lvlTarget} =
         maybe [] (filter ((== lvlTarget) . #level) . scope) (getClass target)
 
+    consume :: Name -> Map Name Int -> Map Name Int
+    consume k map' = if map' ! k < 2
+        then delete k map'
+        else adjust (subtract 1) k map'
+
+    marryCoupleNoDuplicate :: Name -> (Map Name Int, Map Name Int, Map Name [Name], [Link]) -> Gen [Link]
+    marryCoupleNoDuplicate associationName (maleAvailability, femaleAvailability, marriageDict, linksSofar) =
+        if M.null maleAvailability || M.null femaleAvailability then return linksSofar else do
+            m <- elements $ keys maleAvailability :: Gen Name
+            let fs = filter (`notElem` marriageDict ! m) $ keys femaleAvailability :: [Name]
+            if null fs then return linksSofar else do
+                f <- elements fs :: Gen Name
+                marryCoupleNoDuplicate associationName (
+                    consume m maleAvailability,
+                    consume f femaleAvailability,
+                    adjust (f :) m marriageDict,
+                    Link associationName m f : linksSofar
+                    )
+
     addLinksForOneAssociation :: Association -> Gen [Link]
     addLinksForOneAssociation a@Association{name = associationName, multSource = Multiplicity (_, multSourceMax0), multTarget = Multiplicity (_, multTargetMax0)} = let
 
         candidateTargetsHere = candidateTargets a :: [Class]
         candidateSourcesHere = candidateSources a :: [Class]
 
-        multSourceMax = fromMaybe (length candidateTargetsHere) multSourceMax0 :: Int
-        multTargetMax = fromMaybe (length candidateSourcesHere) multTargetMax0 :: Int
+        multSourceMax = fromMaybe (length candidateSourcesHere) multSourceMax0 :: Int
+        multTargetMax = fromMaybe (length candidateTargetsHere) multTargetMax0 :: Int
 
-        readySources = concatMap (replicate multTargetMax . #name) candidateSourcesHere :: [Name]
-        readyTargets = concatMap (replicate multSourceMax . #name) candidateTargetsHere :: [Name]
+        sourcesNames = map #name candidateSourcesHere :: [Name]
+        targetsNames = map #name candidateTargetsHere :: [Name]
 
-        in nubOrd . zipWith (Link associationName) readySources <$> shuffle readyTargets
+        targetsAvailability = fromList $ map ( , multSourceMax) targetsNames :: Map Name Int
+        sourcesAvailability = fromList $ map ( , multTargetMax) sourcesNames :: Map Name Int
 
-    in concatMapM addLinksForOneAssociation theAssociations
+        emptyDictForSources = fromList $ map ( , []) sourcesNames :: Map Name [Name]
 
+        in marryCoupleNoDuplicate associationName (sourcesAvailability, targetsAvailability, emptyDictForSources, [])
+
+    in do
+        allPossibleLinks <- concatMapM addLinksForOneAssociation theAssociations
+        let numberOfLinksToKeep = round $ portionOfPossibleLinksToKeep * fromIntegral (length allPossibleLinks) :: Int
+        return $ take numberOfLinksToKeep allPossibleLinks
 
 generateMLM :: Config -> Gen MLM
-generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfAssociations, chanceToConcretize, chanceToInherit, multiplicitySpecAttributes, multiplicitySpecAssociations, chanceVisibleAssociation, chanceAbstractClass } = let
+generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfAssociations, chanceToConcretize, chanceToInherit, multiplicitySpecAttributes, multiplicitySpecAssociations, chanceVisibleAssociation, chanceAbstractClass, portionOfPossibleLinksToKeep } = let
 
     projectName = Name projectNameString :: Name
 
@@ -290,6 +317,6 @@ generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfA
 
         readyAssociations <- addAssociations multiplicitySpecAssociations chanceVisibleAssociation withAttributes emptyAssociations :: Gen [Association]
 
-        readyLinks <- addLinks readyClasses readyAssociations
+        readyLinks <- addLinks portionOfPossibleLinksToKeep readyClasses readyAssociations
 
         return $ MLM projectName readyClasses readyAssociations readyLinks

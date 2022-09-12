@@ -11,6 +11,7 @@ data Config = Config
   , multiplicitySpecAssociations :: (Float, Int) -- same as above, but for associations
   , chanceVisibleAssociation :: Float -- the chance for an association to have visibility of True
   , chanceAbstractClass :: Float -- the chance for a class to be abstract
+  , portionOfPossibleLinksToKeep :: Float
   } deriving Show
 
 defaultConfig :: Config
@@ -25,4 +26,5 @@ defaultConfig = Config
   , multiplicitySpecAssociations = (0.5, 2)
   , chanceVisibleAssociation = 0.5
   , chanceAbstractClass = 0.2
+  , portionOfPossibleLinksToKeep = 0.8
   }

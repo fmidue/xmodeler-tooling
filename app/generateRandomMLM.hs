@@ -53,6 +53,7 @@ determineConfig = do
   multiplicitySpecAssociations' <- offerChange "multiplicitySpecAssociations" multiplicitySpecAssociations
   chanceVisibleAssociation' <- offerChange "chanceVisibleAssociation" chanceVisibleAssociation
   chanceAbstractClass' <- offerChange "chanceAbstractClass" chanceAbstractClass
+  portionOfPossibleLinksToKeep' <- offerChange "portionOfPossibleLinksToKeep" portionOfPossibleLinksToKeep
   let newConfig = Config
         { projectNameString = projectNameString'
         , maxClassLevel = maxClassLevel'
@@ -64,6 +65,7 @@ determineConfig = do
         , multiplicitySpecAssociations = multiplicitySpecAssociations'
         , chanceVisibleAssociation = chanceVisibleAssociation'
         , chanceAbstractClass = chanceAbstractClass'
+        , portionOfPossibleLinksToKeep = portionOfPossibleLinksToKeep'
         }
   return newConfig
 
