@@ -204,8 +204,8 @@ instance Validatable () MLM where
     instantiatableOperations :: Class -> [Operation]
     instantiatableOperations = generateInstantiatableOperationsFinder classes
 
-    instantiatesSomethingOrCanDoSoOrIsAMetaClass :: Class -> Bool
-    instantiatesSomethingOrCanDoSoOrIsAMetaClass c@Class{classifier, name} =
+    instantiatesSomethingOrCanDoSoOrIsMetaClass :: Class -> Bool
+    instantiatesSomethingOrCanDoSoOrIsMetaClass c@Class{classifier, name, slots} =
       isNothing classifier ||
       isLinked name ||
       not (null (instantiatableAttributes c)) ||
