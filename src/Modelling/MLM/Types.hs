@@ -208,7 +208,7 @@ instance Validatable () MLM where
     instantiatesSomethingOrCanDoSoOrIsMetaClass c@Class{classifier, name, slots} =
       isNothing classifier ||
       isLinked name ||
-      not (null (instantiatableAttributes c)) ||
+      not (null slots) ||
       not (null (instantiatableOperations c))
 
 
@@ -220,12 +220,6 @@ instance Validatable () MLM where
         #source x \/ #source a && #target x \/ #target a
       ) (getAssociation x)
 
-    instantiatableAttributes :: Class -> [Attribute]
-    instantiatableAttributes = generateInstantiatableAttributesFinder classes
-
-    instantiatableAttributesAreInstantiated :: Class -> Bool
-    instantiatableAttributesAreInstantiated c@Class{slots} = all ((`elem` map #name slots) . #name) (instantiatableAttributes c)
-
     allClassifiers :: [Name]
     allClassifiers = nubOrd $ mapMaybe #classifier classes
 
@@ -236,9 +230,8 @@ instance Validatable () MLM where
       allUnique (map #name associations),
       noCycles dict,
       all lvlIsClassifierLvlMinusOne classes,
-      all instantiatesSomethingOrCanDoSoOrIsAMetaClass classes,
+      all instantiatesSomethingOrCanDoSoOrIsMetaClass classes,
       allUnique links,
-      all instantiatableAttributesAreInstantiated classes,
       all (\Class{classifier = c, name} -> all ((== c) . getClassifier) (parentDict ! name) ) classes,
       all (\x -> valid (inScope x, map getClass (#parents x)) x) classes,
       all (\x -> valid (getClass (#source x), getClass (#target x)) x) associations,
@@ -289,8 +282,9 @@ instance Validatable ([Class], [Maybe Class]) Class where
     allAttributesOfClassesInWhoseScopeThisOneLies :: [Attribute]
     allAttributesOfClassesInWhoseScopeThisOneLies = attributes' ++ concatMap #attributes inWhoseScopeThisLies
 
-    instantiatableAttributesHere :: [Attribute]
-    instantiatableAttributesHere = filter ((== level') . #level) (concatMap #attributes inWhoseScopeThisLies)
+    instantiatableAttributesHere = filter ((== level') . #level) (concatMap #attributes inWhoseScopeThisLies) :: [Attribute]
+
+    slotsNames = map #name slots :: [Name]
 
     in
     and [
@@ -302,7 +296,8 @@ instance Validatable ([Class], [Maybe Class]) Class where
         allUnique (map #name slots),
         allUnique (map #name operations),
         allUnique (map (\Attribute{name, level} -> (name, level)) allAttributesOfClassesInWhoseScopeThisOneLies),
-        all (\Attribute{multiplicity = Multiplicity (lower, _), name} -> lower < 1 || name `elem` map #name slots) instantiatableAttributesHere,
+        -- pretending that all attributes multiplicities are (1, Just 1)
+        all (( `elem` slotsNames) . #name) instantiatableAttributesHere,
         level' > 0 || (null attributes' && null operations && null parents),
         all (valid level') attributes',
         all (valid level') operations,

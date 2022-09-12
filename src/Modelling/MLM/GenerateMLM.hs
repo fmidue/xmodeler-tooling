@@ -171,12 +171,12 @@ addAttributes multSpecs theClasses = let
         (c <<<) <$>
         mapM (\lvl -> do
                 randomType <- elements attributeTypeSpace
-                randomMult <- randomMultGen multSpecs
+                _ <- randomMultGen multSpecs
                 return $ Attribute
                     lvl
                     (attributeNameSpace !! (i + lvl))
                     randomType
-                    randomMult
+                    (Multiplicity (1, Just 1))--randomMult
             ) [0..level - 1]
 
     classLvls :: [Level]
