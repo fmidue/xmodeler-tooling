@@ -6,9 +6,10 @@ import Test.QuickCheck (forAll)
 import Config (reasonableConfigs)
 
 import Modelling.MLM.GenerateMLM (generateMLM)
-import Modelling.MLM.Types (valid, MLM(..), Class(..), Attribute(..), Association(..), Multiplicity(..))
+-- import Modelling.MLM.Types
+import Modelling.MLM.Types (valid, MLM(..), Class(..), Attribute(..), Association(..), Multiplicity(..), Name(..), Link(..))
 import Modelling.MLM.Config (Config(..))
-
+import Control.Monad (filterM)
 import Data.Maybe (isJust)
 
 spec :: Spec
@@ -78,6 +79,27 @@ spec = do
                   / fromIntegral (length visibilities)
               in
                 probability `shouldSatisfy` within 0.2 chanceVisibleAssociation
+        describe "generateMLM" $
+          it "can generate a valid MLM with the maximum number of links (instances of associations) possible" $
+            forAll reasonableConfigs $ \config ->
+              forAll (generateMLM config{portionOfPossibleLinksToKeep = 1.0}) $ \mlm@MLM{classes, links} -> let
+                  cartesianProductOfClasses = [(x, y) | x <- classes, y <- classes] :: [(Class, Class)]
+                  endlessSupplyOfNames = map (Name . ("newLink" ++) . show) ([1..] :: [Int]) :: [Name]
+                  linksInfo = zip endlessSupplyOfNames cartesianProductOfClasses :: [(Name, (Class, Class))]
+                  newLinks = map (\(linkName, (class1, class2)) -> Link linkName (#name class1) (#name class2)) linksInfo :: [Link]
+                in do
+                  possibleLinksTooAdd <- filterM (\x -> do
+                      let mlmWithTheNewLink = mlm{links = x : links} :: MLM
+                      if valid () mlmWithTheNewLink
+                        then do
+                          print x
+                          return True
+                        else
+                          return False
+                    ) newLinks :: IO [Link]
+                  possibleLinksTooAdd `shouldSatisfy` null
+
+
 
 within :: Float -> Float -> Float -> Bool
 within m p q = abs (p - q) < m
