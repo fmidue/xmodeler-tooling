@@ -2,11 +2,9 @@ module GenerateMLMSpec (spec) where
 
 import Test.Hspec (Spec, describe, it, shouldSatisfy)
 import Test.QuickCheck (forAll)
-
-import Config (reasonableConfigs)
-
+import Config (reasonableConfigs, smallConfigs)
+import Test.Hspec.QuickCheck (modifyMaxSuccess)
 import Modelling.MLM.GenerateMLM (generateMLM)
--- import Modelling.MLM.Types
 import Modelling.MLM.Types (valid, MLM(..), Class(..), Attribute(..), Association(..), Multiplicity(..), Name(..), Link(..))
 import Modelling.MLM.Config (Config(..))
 import Control.Monad (filterM)
@@ -80,12 +78,13 @@ spec = do
               in
                 probability `shouldSatisfy` within 0.2 chanceVisibleAssociation
         describe "generateMLM" $
+          modifyMaxSuccess (const 1) $
           it "can generate a valid MLM with the maximum number of links (instances of associations) possible" $
-            forAll reasonableConfigs $ \config ->
-              forAll (generateMLM config{portionOfPossibleLinksToKeep = 1.0}) $ \mlm@MLM{classes, links} -> let
-                  cartesianProductOfClasses = [(x, y) | x <- classes, y <- classes] :: [(Class, Class)]
-                  endlessSupplyOfNames = map (Name . ("newLink" ++) . show) ([1..] :: [Int]) :: [Name]
-                  linksInfo = zip endlessSupplyOfNames cartesianProductOfClasses :: [(Name, (Class, Class))]
+            forAll smallConfigs $ \config ->
+              forAll (generateMLM config{portionOfPossibleLinksToKeep = 1.0}) $ \mlm@MLM{classes, links, associations} -> let
+                  cartesianProductOfClasses = cartesianProduct classes classes :: [(Class, Class)]
+                  associationsNames = map #name associations :: [Name]
+                  linksInfo = cartesianProduct associationsNames cartesianProductOfClasses :: [(Name, (Class, Class))]
                   newLinks = map (\(linkName, (class1, class2)) -> Link linkName (#name class1) (#name class2)) linksInfo :: [Link]
                 in do
                   possibleLinksTooAdd <- filterM (\x -> do
@@ -99,7 +98,8 @@ spec = do
                     ) newLinks :: IO [Link]
                   possibleLinksTooAdd `shouldSatisfy` null
 
-
+cartesianProduct :: [a] -> [b] -> [(a, b)]
+cartesianProduct xs ys = [(x, y) | x <- xs, y <- ys]
 
 within :: Float -> Float -> Float -> Bool
 within m p q = abs (p - q) < m
