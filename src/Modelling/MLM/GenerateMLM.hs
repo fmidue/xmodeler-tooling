@@ -118,6 +118,8 @@ addAbstractions maxLevel chanceAbstract theClasses = let
                 )
             meat
 
+----------------------------------------------------------
+
 addConcretizations :: Level -> Float -> [Class] -> Gen [Class]
 addConcretizations maxLevel chanceToConcretize theClasses = let
     concretizing :: Class -> Maybe Class -> Gen Class
@@ -145,7 +147,7 @@ addConcretizations maxLevel chanceToConcretize theClasses = let
             ) :: Gen [Class]
         return $ normalizeClassLevels torso
 
-
+----------------------------------------------------------
 
 addInheritances :: Float -> [Class] -> Gen [Class]
 addInheritances chanceToInherit theClasses = let
@@ -162,6 +164,7 @@ addInheritances chanceToInherit theClasses = let
             return $ x <<< (toInheritFrom :: [Name])
             )
 
+----------------------------------------------------------
 
 addAttributes :: (Float, Int) -> [Class] -> Gen [Class]
 addAttributes multSpecs theClasses = let
@@ -191,6 +194,7 @@ addAttributes multSpecs theClasses = let
     in if null theClasses then error "Cannot add attributes. You have no classes!!!" else
         mapM addAttribute theClasses'
 
+----------------------------------------------------------
 
 addSlotValues :: [Class] -> Gen [Class]
 addSlotValues theClasses = let
@@ -204,6 +208,7 @@ addSlotValues theClasses = let
 
     in mapM addSlotValue theClasses
 
+----------------------------------------------------------
 
 addAssociations :: (Float, Int) -> Float -> [Class] -> [Association] -> Gen [Association]
 addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAssociations = let
@@ -232,6 +237,8 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
                     <<< (Source, sourceVisibleFromTarget')
                     <<< (Target, targetVisibleFromSource')
             )
+
+----------------------------------------------------------
 
 addLinks :: Float -> [Class] -> [Association] -> Gen [Link]
 addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
@@ -296,6 +303,8 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
         allPossibleLinks <- concat <$> forM theAssociations addLinksForOneAssociation :: Gen [Link]
         let numberOfLinksToKeep = round $ portionOfPossibleLinksToKeep * fromIntegral (length allPossibleLinks) :: Int
         return $ take numberOfLinksToKeep allPossibleLinks
+
+----------------------------------------------------------
 
 generateMLM :: Config -> Gen MLM
 generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfAssociations, chanceToConcretize, chanceToInherit, multiplicitySpecAttributes, multiplicitySpecAssociations, chanceVisibleAssociation, chanceAbstractClass, portionOfPossibleLinksToKeep } = let
