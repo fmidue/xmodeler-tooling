@@ -23,11 +23,11 @@ import Modelling.MLM.Types (
   )
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, Gen)
-import Control.Monad.Extra (concatMapM)
 import Control.Monad (forM, foldM)
 import Data.Maybe (fromMaybe)
-import Data.Map.Strict (Map, keys, (!), delete, fromList, adjust)
-import qualified Data.Map.Strict as M
+import Data.List (delete)
+import Data.Tuple (swap)
+import Data.List.Extra (nubOrd)
 
 abcCapital :: [String]
 abcCapital = map (:[]) ['A'..'Z']
@@ -242,54 +242,58 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
     getClass :: Name -> Maybe Class
     getClass = generateClassFinder theClasses
 
-    candidateSources :: Association -> [Class]
-    candidateSources Association{source, lvlSource} =
+    getCandidateSources :: Association -> [Class]
+    getCandidateSources Association{source, lvlSource} =
         maybe [] (filter ((== lvlSource) . #level) . scope) (getClass source)
 
-    candidateTargets :: Association -> [Class]
-    candidateTargets Association{target, lvlTarget} =
+    getCandidateTargets :: Association -> [Class]
+    getCandidateTargets Association{target, lvlTarget} =
         maybe [] (filter ((== lvlTarget) . #level) . scope) (getClass target)
 
-    consume :: Name -> Map Name Int -> Map Name Int
-    consume k map' = if map' ! k < 2
-        then delete k map'
-        else adjust (subtract 1) k map'
+    addLinksForOneAssociation theAssociation@Association{name = associationName, multSource = Multiplicity (_, multSourceMaxMaybe), multTarget = Multiplicity (_, multTargetMaxMaybe)} = let
 
-    marryCoupleNoDuplicate :: Name -> (Map Name Int, Map Name Int, Map Name [Name], [Link]) -> Gen [Link]
-    marryCoupleNoDuplicate associationName (maleAvailability, femaleAvailability, marriageDict, linksSofar) =
-        if M.null maleAvailability || M.null femaleAvailability then return linksSofar else do
-            m <- elements $ keys maleAvailability :: Gen Name
-            let fs = filter (`notElem` marriageDict ! m) $ keys femaleAvailability :: [Name]
-            if null fs then return linksSofar else do
-                f <- elements fs :: Gen Name
-                marryCoupleNoDuplicate associationName (
-                    consume m maleAvailability,
-                    consume f femaleAvailability,
-                    adjust (f :) m marriageDict,
-                    Link associationName m f : linksSofar
-                    )
+        constructLinks :: [Name] -> [Name] -> [Link]
+        constructLinks = zipWith (Link associationName)
 
-    addLinksForOneAssociation :: Association -> Gen [Link]
-    addLinksForOneAssociation a@Association{name = associationName, multSource = Multiplicity (_, multSourceMax0), multTarget = Multiplicity (_, multTargetMax0)} = let
+        candidateTargets = map #name $ getCandidateTargets theAssociation :: [Name]
+        candidateSources = map #name $ getCandidateSources theAssociation :: [Name]
 
-        candidateTargetsHere = candidateTargets a :: [Class]
-        candidateSourcesHere = candidateSources a :: [Class]
+        numberOfSources = length candidateSources :: Int
+        numberOfTargets = length candidateTargets :: Int
 
-        multSourceMax = fromMaybe (length candidateSourcesHere) multSourceMax0 :: Int
-        multTargetMax = fromMaybe (length candidateTargetsHere) multTargetMax0 :: Int
+        multSourceMax = fromMaybe numberOfSources multSourceMaxMaybe :: Int
+        multTargetMax = fromMaybe numberOfTargets multTargetMaxMaybe :: Int
 
-        sourcesNames = map #name candidateSourcesHere :: [Name]
-        targetsNames = map #name candidateTargetsHere :: [Name]
+        multSourceMaxPossible = min multSourceMax numberOfSources :: Int
+        multTargetMaxPossible = min multTargetMax numberOfTargets :: Int
 
-        targetsAvailability = fromList $ map ( , multSourceMax) targetsNames :: Map Name Int
-        sourcesAvailability = fromList $ map ( , multTargetMax) sourcesNames :: Map Name Int
+        representedSources = concatMap (replicate multTargetMaxPossible) candidateSources :: [Name]
+        representedTargets = concatMap (replicate multSourceMaxPossible) candidateTargets :: [Name]
 
-        emptyDictForSources = fromList $ map ( , []) sourcesNames :: Map Name [Name]
+        mustSwap = length representedSources < length representedTargets :: Bool
 
-        in marryCoupleNoDuplicate associationName (sourcesAvailability, targetsAvailability, emptyDictForSources, [])
+        (toBeTrimmed, asItIs) = (if mustSwap then swap else id) (representedSources, representedTargets) :: ([Name], [Name])
 
+        achievableNumberOfLinks = length asItIs :: Int
+
+        bundleFull = if mustSwap then multTargetMaxPossible else multSourceMaxPossible  :: Int
+
+        in do
+            ( _ , _ , trimmed) <-
+                foldM (\(remaining, current0, result) _ -> let
+                        current = if length current0 == bundleFull then [] else current0
+                        canChooseFrom = filter (`notElem` current) remaining
+                        in if null canChooseFrom then return (remaining, current0, result) else do
+                            new <- elements canChooseFrom
+                            return (delete new remaining, new : current, new : result)
+                ) (toBeTrimmed, [], []) [1 .. achievableNumberOfLinks]
+
+            return $ nubOrd $
+                    if mustSwap
+                        then constructLinks asItIs trimmed
+                        else constructLinks trimmed asItIs
     in do
-        allPossibleLinks <- concatMapM addLinksForOneAssociation theAssociations
+        allPossibleLinks <- concat <$> forM theAssociations addLinksForOneAssociation :: Gen [Link]
         let numberOfLinksToKeep = round $ portionOfPossibleLinksToKeep * fromIntegral (length allPossibleLinks) :: Int
         return $ take numberOfLinksToKeep allPossibleLinks
 
