@@ -211,8 +211,6 @@ instance Validatable () MLM where
       not (null slots) ||
       not (null (instantiatableOperations c))
 
-
-
     -- whether source of link concretizes or inherits from source of association of that link and
     -- whether target of link concretizes or inherits from target of association of that link
     checkSourceAndTarget :: Link -> Bool
@@ -389,24 +387,10 @@ data Link = Link {
   name :: Name,
   source :: Name,
   target :: Name
-} deriving (Show, Read)
+} deriving (Show, Read, Eq, Ord)
 
 emptyLink :: Link
 emptyLink = Link emptyName emptyName emptyName
-
-instance Eq Link where
-  (==) x y = eqBy x y #name && (
-      (eqBy x y #source && eqBy x y #target)
-        ||
-      (#source x == #target y && #target x == #source y)
-    )
-
-instance Ord Link where
-  (<=) x y = x == y
-    || #name x <= #name y
-    || (eqBy' #name && #source x <= #source y)
-    || (eqBy' #name && eqBy' #source && #target x <= #target y)
-    where eqBy' = eqBy x y
 
 instance Validatable (Maybe Class, Maybe Class) (Maybe Association) where
   valid (linkSource0, linkTarget0) =
