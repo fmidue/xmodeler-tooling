@@ -204,8 +204,8 @@ instance Validatable () MLM where
     instantiatableOperations :: Class -> [Operation]
     instantiatableOperations = generateInstantiatableOperationsFinder classes
 
-    instantiatesSomethingOrCanDoSoOrIsMetaClass :: Class -> Bool
-    instantiatesSomethingOrCanDoSoOrIsMetaClass c@Class{classifier, name, slots} =
+    instantiatesSomethingOrIsMetaClass :: Class -> Bool
+    instantiatesSomethingOrIsMetaClass c@Class{classifier, name, slots} =
       isNothing classifier ||
       isLinked name ||
       not (null slots) ||
@@ -228,7 +228,7 @@ instance Validatable () MLM where
       allUnique (map #name associations),
       noCycles dict,
       all lvlIsClassifierLvlMinusOne classes,
-      all instantiatesSomethingOrCanDoSoOrIsMetaClass classes,
+      all instantiatesSomethingOrIsMetaClass classes,
       allUnique links,
       all (\Class{classifier = c, name} -> all ((== c) . getClassifier) (parentDict ! name) ) classes,
       all (\x -> valid (inScope x, map getClass (#parents x)) x) classes,
