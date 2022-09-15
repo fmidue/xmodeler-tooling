@@ -5,7 +5,7 @@ import Test.QuickCheck (forAll)
 import Config (reasonableConfigs, smallConfigs)
 import Test.Hspec.QuickCheck (modifyMaxSuccess)
 import Modelling.MLM.GenerateMLM (generateMLM)
-import Modelling.MLM.Types (valid, MLM(..), Class(..), Attribute(..), Association(..), Multiplicity(..), Name(..), Link(..))
+import Modelling.MLM.Types (valid, MLM(..), Class(..), Association(..), Multiplicity(..), Name(..), Link(..))
 import Modelling.MLM.Config (Config(..))
 import Control.Monad (filterM)
 import Data.Maybe (isJust)
@@ -44,17 +44,17 @@ spec = do
                   / fromIntegral (length classes)
               in
                 probability `shouldSatisfy` within 0.4 chanceToConcretize
-        describe "generateMLM" $
-          it "respects multiplicitySpecAttributes" $
-            forAll reasonableConfigs $ \config@Config{multiplicitySpecAttributes} ->
-            forAll (generateMLM config) $ \MLM{classes} ->
-              let
-                theAttributes = concatMap (\Class{attributes} -> attributes) classes
-                probability =
-                  fromIntegral (length (filter (\Attribute{multiplicity = Multiplicity (_, upper)} -> isJust upper) theAttributes))
-                  / fromIntegral (length theAttributes)
-              in
-                probability `shouldSatisfy` within 0.2 (fst multiplicitySpecAttributes)
+        -- describe "generateMLM" $
+        --   it "respects multiplicitySpecAttributes" $
+        --     forAll reasonableConfigs $ \config@Config{multiplicitySpecAttributes} ->
+        --     forAll (generateMLM config) $ \MLM{classes} ->
+        --       let
+        --         theAttributes = concatMap (\Class{attributes} -> attributes) classes
+        --         probability =
+        --           fromIntegral (length (filter (\Attribute{multiplicity = Multiplicity (_, upper)} -> isJust upper) theAttributes))
+        --           / fromIntegral (length theAttributes)
+        --       in
+        --         probability `shouldSatisfy` within 0.2 (fst multiplicitySpecAttributes)
         describe "generateMLM" $
           it "respects multiplicitySpecAssociations" $
             forAll reasonableConfigs $ \config@Config{multiplicitySpecAssociations} ->
