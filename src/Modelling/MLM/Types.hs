@@ -389,18 +389,40 @@ data Link = Link {
   name :: Name,
   source :: Name,
   target :: Name
-} deriving (Show, Read, Ord, Eq)
+} deriving (Show, Read)
 
 emptyLink :: Link
 emptyLink = Link emptyName emptyName emptyName
+
+instance Eq Link where
+  (==) x y = eqBy x y #name && (
+      (eqBy x y #source && eqBy x y #target)
+        ||
+      (#source x == #target y && #target x == #source y)
+    )
+
+instance Ord Link where
+  (<=) x y = x == y
+    || #name x <= #name y
+    || (eqBy' #name && #source x <= #source y)
+    || (eqBy' #name && eqBy' #source && #target x <= #target y)
+    where eqBy' = eqBy x y
 
 instance Validatable (Maybe Class, Maybe Class) (Maybe Association) where
   valid (linkSource0, linkTarget0) =
     maybe False (\linkAssociation ->
       maybe False (\linkSource ->
-        maybe False (\linkTarget ->
-          #lvlSource linkAssociation == #level linkSource &&
-          #lvlTarget linkAssociation == #level linkTarget
+        maybe False (\linkTarget -> let
+            associationSourceLevel = #lvlSource linkAssociation :: Level
+            associationTargetLevel = #lvlTarget linkAssociation :: Level
+            in
+              (
+                associationSourceLevel == #level linkSource &&
+                associationTargetLevel == #level linkTarget
+              ) || (
+                associationSourceLevel == #level linkTarget &&
+                associationTargetLevel == #level linkSource
+              )
         ) linkTarget0
       ) linkSource0
     )
