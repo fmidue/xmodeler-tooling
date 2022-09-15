@@ -23,6 +23,7 @@ reasonableConfigs = do
   chanceVisibleAssociation <- choose (0.0, 1.0)
   chanceAbstractClass <- choose (0.0, 1.0)
   portionOfPossibleLinksToKeep <- choose (0.0, 1.0)
+  minNumberOfAttributesPerClass <- choose (1,6)
   return $ Config {..}
 
 smallConfigs :: Gen Config
@@ -41,4 +42,5 @@ smallConfigs = do
   let chanceVisibleAssociation  = 0.0
   let chanceAbstractClass = 0.0
   portionOfPossibleLinksToKeep <- choose (0.7, 1.0)
+  minNumberOfAttributesPerClass <- choose (1,2)
   return $ Config {..}

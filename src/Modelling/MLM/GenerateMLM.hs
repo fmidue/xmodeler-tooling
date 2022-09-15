@@ -24,7 +24,7 @@ import Modelling.MLM.Types (
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, Gen)
 import Control.Monad (forM, foldM)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, catMaybes)
 import Data.List (delete)
 import Data.Tuple (swap)
 import Data.List.Extra (nubOrd)
@@ -166,33 +166,47 @@ addInheritances chanceToInherit theClasses = let
 
 ----------------------------------------------------------
 
-addAttributes :: (Float, Int) -> [Class] -> Gen [Class]
-addAttributes multSpecs theClasses = let
+addAttributes :: Int -> (Float, Int) -> [Class] -> Gen [Class]
+addAttributes minNumberOfAttributesPerClass multSpecs theClasses = let
 
-    addAttribute :: (Class, Int) -> Gen Class
-    addAttribute (c@Class {level}, i) =
-        (c <<<) <$>
-        mapM (\lvl -> do
+    instantiatableAttributes :: Class -> [Attribute]
+    instantiatableAttributes = generateInstantiatableAttributesFinder theClasses
+
+    addAttributesForOneAssociation :: (Class, Int) -> Gen (Class, Int)
+    addAttributesForOneAssociation (c@Class{level}, i) = if level < 1 then return (c, i) else do
+        c' <- (c <<<) <$> forM [1 .. minNumberOfAttributesPerClass] (\j -> do
+                randomLevel <- chooseInt (0, level - 1)
+                let nextAvailableName = attributeNameSpace !! (i + j)
                 randomType <- elements attributeTypeSpace
+                -- not using this for now.
                 _ <- randomMultGen multSpecs
-                return $ Attribute
-                    lvl
-                    (attributeNameSpace !! (i + lvl))
-                    randomType
-                    (Multiplicity (1, Just 1))--randomMult
-            ) [0..level - 1]
+                let randomMult = Multiplicity (1, Just 1)
+                return $ Attribute randomLevel nextAvailableName randomType randomMult
+            )
+        return (c', i + minNumberOfAttributesPerClass)
 
-    classLvls :: [Level]
-    classLvls = map #level theClasses
+    in do
+        (resultNotFinal, numberOfAttributesAddedSoFar) <- foldM (\(soFar, i) c -> do
+                (c', i') <- addAttributesForOneAssociation (c, i)
+                return (soFar ++ [c'], i')
+            ) ([], 0) theClasses
 
-    startIndices :: [Int]
-    startIndices = foldl (\soFar x -> soFar ++ [last soFar + x]) [0] classLvls
+        stillToBeAdded <- catMaybes <$> mapM (\(class'@Class{classifier, level}, i) ->
+                maybe (return Nothing) (\classifier' ->
+                        if null (instantiatableAttributes class')
+                            then do
+                                randomType <- elements attributeTypeSpace
+                                -- not using this for now.
+                                _ <- randomMultGen multSpecs
+                                let randomMult = Multiplicity (1, Just 1)
+                                return $ Just (classifier', Attribute level (attributeNameSpace !! i) randomType randomMult)
+                            else return Nothing
+                    ) classifier
+            ) (zip resultNotFinal [numberOfAttributesAddedSoFar ..]) :: Gen [(Name, Attribute)]
 
-    theClasses' :: [(Class, Int)]
-    theClasses' = zip theClasses startIndices
-
-    in if null theClasses then error "Cannot add attributes. You have no classes!!!" else
-        mapM addAttribute theClasses'
+        return $ map (\c@Class{name} ->
+                maybe c (c <<<) (lookup name stillToBeAdded)
+            ) resultNotFinal
 
 ----------------------------------------------------------
 
@@ -307,7 +321,7 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
 ----------------------------------------------------------
 
 generateMLM :: Config -> Gen MLM
-generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfAssociations, chanceToConcretize, chanceToInherit, multiplicitySpecAttributes, multiplicitySpecAssociations, chanceVisibleAssociation, chanceAbstractClass, portionOfPossibleLinksToKeep } = let
+generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfAssociations, chanceToConcretize, chanceToInherit, multiplicitySpecAttributes, multiplicitySpecAssociations, chanceVisibleAssociation, chanceAbstractClass, portionOfPossibleLinksToKeep, minNumberOfAttributesPerClass } = let
 
     projectName = Name projectNameString :: Name
 
@@ -325,7 +339,7 @@ generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfA
         withAbstractions <- addAbstractions maxClassLevelSafe chanceAbstractClass emptyClasses :: Gen [Class]
         withConcretizations <- addConcretizations maxClassLevelSafe chanceToConcretize withAbstractions :: Gen [Class]
         withInheritances <- addInheritances chanceToInherit withConcretizations :: Gen [Class]
-        withAttributes <- addAttributes multiplicitySpecAttributes withInheritances :: Gen [Class]
+        withAttributes <- addAttributes minNumberOfAttributesPerClass multiplicitySpecAttributes withInheritances :: Gen [Class]
         readyClasses <- addSlotValues withAttributes :: Gen [Class]
 
         readyAssociations <- addAssociations multiplicitySpecAssociations chanceVisibleAssociation withAttributes emptyAssociations :: Gen [Association]

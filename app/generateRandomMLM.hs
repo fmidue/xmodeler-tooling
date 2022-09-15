@@ -54,6 +54,7 @@ determineConfig = do
   chanceVisibleAssociation' <- offerChange "chanceVisibleAssociation" chanceVisibleAssociation
   chanceAbstractClass' <- offerChange "chanceAbstractClass" chanceAbstractClass
   portionOfPossibleLinksToKeep' <- offerChange "portionOfPossibleLinksToKeep" portionOfPossibleLinksToKeep
+  minNumberOfAttributesPerClass' <- offerChange "minNumberOfAttributesPerClass" minNumberOfAttributesPerClass
   let newConfig = Config
         { projectNameString = projectNameString'
         , maxClassLevel = maxClassLevel'
@@ -66,6 +67,7 @@ determineConfig = do
         , chanceVisibleAssociation = chanceVisibleAssociation'
         , chanceAbstractClass = chanceAbstractClass'
         , portionOfPossibleLinksToKeep = portionOfPossibleLinksToKeep'
+        , minNumberOfAttributesPerClass = minNumberOfAttributesPerClass'
         }
   return newConfig
 
