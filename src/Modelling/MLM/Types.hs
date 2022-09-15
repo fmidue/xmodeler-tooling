@@ -396,17 +396,9 @@ instance Validatable (Maybe Class, Maybe Class) (Maybe Association) where
   valid (linkSource0, linkTarget0) =
     maybe False (\linkAssociation ->
       maybe False (\linkSource ->
-        maybe False (\linkTarget -> let
-            associationSourceLevel = #lvlSource linkAssociation :: Level
-            associationTargetLevel = #lvlTarget linkAssociation :: Level
-            in
-              (
-                associationSourceLevel == #level linkSource &&
-                associationTargetLevel == #level linkTarget
-              ) || (
-                associationSourceLevel == #level linkTarget &&
-                associationTargetLevel == #level linkSource
-              )
+        maybe False (\linkTarget ->
+          #lvlSource linkAssociation == #level linkSource &&
+          #lvlTarget linkAssociation == #level linkTarget
         ) linkTarget0
       ) linkSource0
     )
