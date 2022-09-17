@@ -49,7 +49,6 @@ determineConfig = do
   numberOfAssociations' <- offerChange "numberOfAssociations" numberOfAssociations
   chanceToConcretize' <- offerChange "chanceToConcretize" chanceToConcretize
   chanceToInherit' <- offerChange "chanceToInherit" chanceToInherit
-  multiplicitySpecAttributes' <- offerChange "multiplicitySpecAttributes" multiplicitySpecAttributes
   multiplicitySpecAssociations' <- offerChange "multiplicitySpecAssociations" multiplicitySpecAssociations
   chanceVisibleAssociation' <- offerChange "chanceVisibleAssociation" chanceVisibleAssociation
   chanceAbstractClass' <- offerChange "chanceAbstractClass" chanceAbstractClass
@@ -63,7 +62,6 @@ determineConfig = do
         , numberOfAssociations = numberOfAssociations'
         , chanceToConcretize = chanceToConcretize'
         , chanceToInherit = chanceToInherit'
-        , multiplicitySpecAttributes = multiplicitySpecAttributes'
         , multiplicitySpecAssociations = multiplicitySpecAssociations'
         , chanceVisibleAssociation = chanceVisibleAssociation'
         , chanceAbstractClass = chanceAbstractClass'

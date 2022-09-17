@@ -7,8 +7,7 @@ data Config = Config
   , numberOfAssociations :: Int -- number of associations to generate
   , chanceToConcretize :: Float -- the chance for a generated class to be an instance
   , chanceToInherit :: Float -- the chance for a generated class to have parents
-  , multiplicitySpecAttributes :: (Float, Int) -- (chance for an attribute to have an upper bound, max value of upper bound of a multiplicity of an attribute)
-  , multiplicitySpecAssociations :: (Float, Int) -- same as above, but for associations
+  , multiplicitySpecAssociations :: (Float, Int) -- (chance for an association to have an upper bound, max value of upper bound of a multiplicity of an association)
   , chanceVisibleAssociation :: Float -- the chance for an association to have visibility of True
   , chanceAbstractClass :: Float -- the chance for a class to be abstract
   , portionOfPossibleLinksToKeep :: Float
@@ -24,7 +23,6 @@ defaultConfig = Config
   , numberOfAssociations = 30
   , chanceToConcretize = 0.5
   , chanceToInherit = 0.5
-  , multiplicitySpecAttributes = (0.5, 2)
   , multiplicitySpecAssociations = (0.5, 2)
   , chanceVisibleAssociation = 0.5
   , chanceAbstractClass = 0.2

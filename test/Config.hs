@@ -18,7 +18,6 @@ reasonableConfigs = do
   numberOfAssociations <- choose (25,35)
   chanceToConcretize <- choose (0.0, 1.0)
   chanceToInherit <- choose (0.0, 1.0)
-  multiplicitySpecAttributes <- randomMultSpec
   multiplicitySpecAssociations <- randomMultSpec
   chanceVisibleAssociation <- choose (0.0, 1.0)
   chanceAbstractClass <- choose (0.0, 1.0)
@@ -39,7 +38,6 @@ smallConfigs = do
     rc <- choose (0.0, 0.6) :: Gen Float
     m <- chooseInt (1,3) :: Gen Int
     return (rc, m)
-  let multiplicitySpecAttributes = (1.0, 1)
   let chanceVisibleAssociation  = 0.0
   let chanceAbstractClass = 0.0
   portionOfPossibleLinksToKeep <- choose (0.7, 1.0)
