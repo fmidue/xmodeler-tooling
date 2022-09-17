@@ -1,4 +1,11 @@
-module Modelling.MLM.GenerateMLM (generateMLM) where
+module Modelling.MLM.GenerateMLM (
+    generateMLM,
+    classNameSpace,
+    attributeNameSpace,
+    associationNameSpace,
+    operationNameSpace,
+    randomSlotValue
+    ) where
 
 import Modelling.MLM.Config (Config(..))
 import Modelling.MLM.Types (
