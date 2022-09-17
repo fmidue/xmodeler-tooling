@@ -139,8 +139,8 @@ instance Validatable () MLM where
   valid () MLM{name = projectName, classes, associations, links} = let
 
     -- navigation
-    getClass :: Name -> Maybe Class
-    getClass = generateClassFinder classes
+    findClass :: Name -> Maybe Class
+    findClass = generateClassFinder classes
 
     getAssociation :: Link -> Maybe Association
     getAssociation Link{name = linkName} = find ((== linkName) . #name) associations
@@ -195,7 +195,7 @@ instance Validatable () MLM where
       maybe True
         (maybe False
           (\classifierExisting -> #level classifierExisting == #level class' + 1)
-          . getClass
+          . findClass
       ) (#classifier class')
 
     isLinked :: Name -> Bool
@@ -231,12 +231,12 @@ instance Validatable () MLM where
       all instantiatesSomethingOrIsMetaClass classes,
       allUnique links,
       all (\Class{classifier = c, name} -> all ((== c) . getClassifier) (parentDict ! name) ) classes,
-      all (\x -> valid (inScope x, map getClass (#parents x)) x) classes,
-      all (\x -> valid (getClass (#source x), getClass (#target x)) x) associations,
+      all (\x -> valid (inScope x, map findClass (#parents x)) x) classes,
+      all (\x -> valid (findClass (#source x), findClass (#target x)) x) associations,
       all associationMultiplicityNotViolated associations,
       all checkSourceAndTarget links,
       all (\x -> valid
-          (getClass (#source x),getClass (#target x))
+          (findClass (#source x),findClass (#target x))
           (getAssociation x)
         ) links,
       all (\Class{name, isAbstract} -> not isAbstract || name `notElem` allClassifiers) classes
