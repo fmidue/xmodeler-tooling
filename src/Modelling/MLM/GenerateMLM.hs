@@ -54,6 +54,9 @@ attributeNameSpace = map Name $ getNameSpaceWithPrefix "attribute"
 associationNameSpace :: [Name]
 associationNameSpace = map Name $ getNameSpaceABC abcSmall
 
+operationNameSpace :: [Name]
+operationNameSpace = map Name $ getNameSpaceWithPrefix "operation"
+
 nonLevelZero :: [Class] -> [Class]
 nonLevelZero = filter ((>0) . #level)
 
