@@ -48,8 +48,10 @@ instance Modifiable Class Attribute where
     (<<<) y@Class{attributes} x = y{attributes = attributes ++ [x]}
 instance Modifiable Class [Attribute] where
     (<<<) y@Class{attributes} x = y{attributes = attributes ++ x}
+instance Modifiable Class Operation where
+    (<<<) y@Class{operations} x = y{operations = operations ++ [x]}
 instance Modifiable Class [Operation] where
-    (<<<) y x = y{operations = x}
+    (<<<) y@Class{operations} x = y{operations = operations ++ x}
 instance Modifiable Class Slot where
     (<<<) y@Class{slots} x = y{slots = slots ++ [x]}
 instance Modifiable Class [Slot] where

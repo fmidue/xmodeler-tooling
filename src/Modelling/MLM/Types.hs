@@ -26,7 +26,7 @@ module Modelling.MLM.Types(
   emptyAttribute,
   emptySlot,
   emptyOperation,
-  attributeTypeSpace,
+  typeSpace,
   generateClassDict,
   generateClassifierDict,
   generateParentDict,
@@ -142,8 +142,8 @@ instance Validatable () MLM where
     findClass :: Name -> Maybe Class
     findClass = generateClassFinder classes
 
-    findAssociation :: Link -> Maybe Association
-    findAssociation Link{name = linkName} = find ((== linkName) . #name) associations
+    findAssociationOfLink :: Link -> Maybe Association
+    findAssociationOfLink Link{name = linkName} = find ((== linkName) . #name) associations
 
     parentDict :: Map Name [Name]
     parentDict = generateParentDict classes
@@ -220,7 +220,7 @@ instance Validatable () MLM where
               maybe False ((== lvlSource) . #level) (findClass linkSource),
               maybe False ((== lvlTarget) . #level) (findClass linkTarget)
             ]
-        ) (findAssociation link)
+        ) (findAssociationOfLink link)
 
     allClassifiers :: [Name]
     allClassifiers = nubOrd $ mapMaybe #classifier classes
@@ -426,8 +426,8 @@ data Value =
 emptyValue :: Value
 emptyValue = VBoolean False
 
-attributeTypeSpace :: [Type]
-attributeTypeSpace = [minBound .. maxBound]
+typeSpace :: [Type]
+typeSpace = [minBound .. maxBound]
 
 equalType :: Type -> Value -> Bool
 equalType Boolean (VBoolean _) = True

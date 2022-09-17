@@ -16,11 +16,12 @@ import Modelling.MLM.Types (
   XModelerCurrency (..),
   emptyClass,
   emptyAssociation,
-  attributeTypeSpace,
+  typeSpace,
   generateScopeFinder,
   generateClassFinder,
   generateInstantiatableAttributesFinder
   )
+
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, Gen)
 import Control.Monad (forM, foldM)
@@ -173,7 +174,7 @@ addAttributes :: Int -> Float -> [Class] -> Gen [Class]
 addAttributes averageNumberOfAttributesPerClass tendencyToDistanceAttributeFromItsInstantiation theClasses = let
 
     getRandomType :: Gen Type
-    getRandomType = elements attributeTypeSpace
+    getRandomType = elements typeSpace
 
     getName :: Int -> Name
     getName = (attributeNameSpace !!)
