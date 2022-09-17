@@ -29,13 +29,13 @@ reasonableConfigs = do
 smallConfigs :: Gen Config
 smallConfigs = do
   let projectNameString = "randomMLM"
-  maxClassLevel <- choose (2,4)
+  maxClassLevel <- choose (1,4)
   numberOfClasses <- choose (5,12)
   numberOfAssociations <- choose (5,8)
-  chanceToConcretize <- choose (0.4, 0.7)
-  chanceToInherit <- choose (0.2, 0.5)
+  chanceToConcretize <- choose (0.4, 1.0)
+  chanceToInherit <- choose (0.0, 0.5)
   multiplicitySpecAssociations <- do
-    rc <- choose (0.0, 0.6) :: Gen Float
+    rc <- choose (0.0, 1.0) :: Gen Float
     m <- chooseInt (1,3) :: Gen Int
     return (rc, m)
   let chanceVisibleAssociation  = 0.0

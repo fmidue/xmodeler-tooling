@@ -78,7 +78,7 @@ spec = do
               in
                 probability `shouldSatisfy` within 0.2 chanceVisibleAssociation
         describe "generateMLM" $
-          modifyMaxSuccess (const 1) $
+          modifyMaxSuccess (const 500) $
           it "can generate a valid MLM with the maximum number of links (instances of associations) possible" $
             forAll smallConfigs $ \config ->
               forAll (generateMLM config{portionOfPossibleLinksToKeep = 1.0}) $ \mlm@MLM{classes, links, associations} -> let
