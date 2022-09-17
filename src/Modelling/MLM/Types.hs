@@ -33,7 +33,8 @@ module Modelling.MLM.Types(
   (\?/),
   generateScopeFinder,
   generateClassFinder,
-  generateInstantiatableAttributesFinder
+  generateInstantiatableAttributesFinder,
+  generateAssociationFinder
 ) where
 
 import Data.List.UniqueStrict (allUnique)
@@ -122,6 +123,10 @@ generateScopeFinder theClasses x = let
 
 generateClassFinder :: [Class] -> (Name -> Maybe Class)
 generateClassFinder theClasses x = find ((== x) . #name) theClasses
+
+generateAssociationFinder :: [Association] -> (Name -> Maybe Association)
+generateAssociationFinder theAssociations x = find ((== x) . #name) theAssociations
+
 
 generateInstantiatableAttributesFinder :: [Class] -> (Class -> [Attribute])
 generateInstantiatableAttributesFinder theClasses c@Class{level = classLevel} = let
