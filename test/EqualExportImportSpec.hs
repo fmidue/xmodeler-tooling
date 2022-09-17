@@ -29,14 +29,6 @@ spec = do
               writeFile "exportedForTesting.xml" =<< toXModeler (Neato, (**1.135), 1.1, 163) mlm
               importedMLM <- fromXModeler "exportedForTesting.xml"
               return $ (mlm, importedMLM) `shouldSatisfy` uncurry (==)
-         describe "Roundtripping of exporting and importing an MLM" $
-          it "works on a specific MLM that contains an operation" $
-            ioProperty $ do
-              let file = "should_pass/exporting_operations.hs"
-              mlm <- (read :: String -> MLM) <$> readFile file
-              writeFile "testing.xml" =<< toXModeler (Neato, (**1.2), 1.1, 163) mlm
-              importedMLM <- fromXModeler "testing.xml"
-              return $ (mlm, importedMLM) `shouldSatisfy` uncurry (==)
 
 anMLM :: MLM
 anMLM = MLM { name = Name "someMLM"
