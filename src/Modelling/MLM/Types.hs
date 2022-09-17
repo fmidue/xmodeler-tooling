@@ -142,8 +142,8 @@ instance Validatable () MLM where
     findClass :: Name -> Maybe Class
     findClass = generateClassFinder classes
 
-    getAssociation :: Link -> Maybe Association
-    getAssociation Link{name = linkName} = find ((== linkName) . #name) associations
+    findAssociation :: Link -> Maybe Association
+    findAssociation Link{name = linkName} = find ((== linkName) . #name) associations
 
     parentDict :: Map Name [Name]
     parentDict = generateParentDict classes
