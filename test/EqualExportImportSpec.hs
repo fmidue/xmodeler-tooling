@@ -1,11 +1,11 @@
 module EqualExportImportSpec (spec) where
 
 import Test.Hspec (Spec, describe, it, shouldSatisfy)
-import Test.QuickCheck (ioProperty, forAll)
+import Test.QuickCheck (ioProperty, forAll, oneof)
 import Test.Hspec.QuickCheck (modifyMaxSuccess)
 
 import Data.GraphViz (GraphvizCommand(..))
-import Config (reasonableConfigs)
+import Config (reasonableConfigs, smallConfigs)
 import Modelling.MLM.Types
 import Modelling.MLM.FromXModeler (fromXModeler)
 import Modelling.MLM.ToXModeler (toXModeler)
@@ -16,7 +16,7 @@ spec = do
          describe "Exporting an MLM and then importing it and comparing to the original." $
            modifyMaxSuccess (const 5) $
             it "correctly judges some randomly generated MLM to be equal to the same MLM after being exported and then imported. \n So, importing and exporting an MLM does not change it." $
-                forAll reasonableConfigs $ \config ->
+                forAll (oneof [reasonableConfigs, smallConfigs]) $ \config ->
                     forAll (generateMLM config) $
                     \randomMLM -> ioProperty $ do
                         x <- toXModeler (Neato, (**1.135), 1.1, 163) randomMLM

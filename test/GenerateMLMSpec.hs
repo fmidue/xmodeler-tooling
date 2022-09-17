@@ -1,7 +1,7 @@
 module GenerateMLMSpec (spec) where
 
 import Test.Hspec (Spec, describe, it, shouldSatisfy)
-import Test.QuickCheck (forAll)
+import Test.QuickCheck (forAll, oneof)
 import Config (reasonableConfigs, smallConfigs)
 import Test.Hspec.QuickCheck (modifyMaxSuccess)
 import Modelling.MLM.GenerateMLM (generateMLM)
@@ -14,12 +14,12 @@ spec :: Spec
 spec = do
         describe "generateMLM" $
           it "creates valid MLMs" $
-            forAll reasonableConfigs $ \config ->
+            forAll (oneof [reasonableConfigs, smallConfigs]) $ \config ->
             forAll (generateMLM config) $
             valid ()
         describe "generateMLM" $
           it "respects certain configuration parameters" $
-            forAll reasonableConfigs $ \config@Config{maxClassLevel, numberOfClasses, numberOfAssociations} ->
+            forAll (oneof [reasonableConfigs, smallConfigs]) $ \config@Config{maxClassLevel, numberOfClasses, numberOfAssociations} ->
             forAll (generateMLM config) $ \MLM{classes, associations} ->
               maximum (map (\Class{level} -> level) classes) == maxClassLevel &&
               length classes == numberOfClasses &&
