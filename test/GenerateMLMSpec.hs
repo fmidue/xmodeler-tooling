@@ -80,8 +80,8 @@ spec = do
         describe "generateMLM" $
           modifyMaxSuccess (const 500) $
           it "can generate a valid MLM with the maximum number of links (instances of associations) possible" $
-            forAll smallConfigs $ \config ->
-              forAll (generateMLM config{portionOfPossibleLinksToKeep = 1.0}) $ \mlm@MLM{classes, links, associations} -> let
+            forAll (fmap (\config -> config{portionOfPossibleLinksToKeep = 1.0}) smallConfigs) $ \config ->
+              forAll (generateMLM config) $ \mlm@MLM{classes, links, associations} -> let
                   cartesianProductOfClasses = cartesianProduct classes classes :: [(Class, Class)]
                   associationsNames = map #name associations :: [Name]
                   linksInfo = cartesianProduct associationsNames cartesianProductOfClasses :: [(Name, (Class, Class))]
