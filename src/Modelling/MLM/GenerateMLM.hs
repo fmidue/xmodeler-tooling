@@ -216,11 +216,11 @@ addSlotValues theClasses = let
     instantiatable :: Class -> [Attribute]
     instantiatable = generateInstantiatableAttributesFinder theClasses
 
-    addSlotValue :: Class -> Gen Class
-    addSlotValue c =
+    addSlotValuesForOneClass :: Class -> Gen Class
+    addSlotValuesForOneClass c =
         (c <<<) <$> mapM randomSlotValue (instantiatable c)
 
-    in mapM addSlotValue theClasses
+    in mapM addSlotValuesForOneClass theClasses
 
 ----------------------------------------------------------
 
