@@ -211,12 +211,16 @@ instance Validatable () MLM where
       not (null slots) ||
       not (null (instantiatableOperations c))
 
-    -- whether source of link concretizes or inherits from source of association of that link and
-    -- whether target of link concretizes or inherits from target of association of that link
-    checkSourceAndTarget :: Link -> Bool
-    checkSourceAndTarget x = maybe False (\a ->
-        #source x \/ #source a && #target x \/ #target a
-      ) (getAssociation x)
+    validLink :: Link -> Bool
+    validLink link@Link{source = linkSource, target = linkTarget} =
+      maybe False (\Association{source = associationSource, target = associationTarget, lvlSource, lvlTarget} ->
+          and [
+              linkSource \/ associationSource,
+              linkTarget \/ associationTarget,
+              maybe False ((== lvlSource) . #level) (findClass linkSource),
+              maybe False ((== lvlTarget) . #level) (findClass linkTarget)
+            ]
+        ) (findAssociation link)
 
     allClassifiers :: [Name]
     allClassifiers = nubOrd $ mapMaybe #classifier classes
@@ -234,11 +238,7 @@ instance Validatable () MLM where
       all (\x -> valid (inScope x, map findClass (#parents x)) x) classes,
       all (\x -> valid (findClass (#source x), findClass (#target x)) x) associations,
       all associationMultiplicityNotViolated associations,
-      all checkSourceAndTarget links,
-      all (\x -> valid
-          (findClass (#source x),findClass (#target x))
-          (getAssociation x)
-        ) links,
+      all validLink links,
       all (\Class{name, isAbstract} -> not isAbstract || name `notElem` allClassifiers) classes
     ]
 
@@ -393,17 +393,6 @@ data Link = Link {
 
 emptyLink :: Link
 emptyLink = Link emptyName emptyName emptyName
-
-instance Validatable (Maybe Class, Maybe Class) (Maybe Association) where
-  valid (linkSource0, linkTarget0) =
-    maybe False (\linkAssociation ->
-      maybe False (\linkSource ->
-        maybe False (\linkTarget ->
-          #lvlSource linkAssociation == #level linkSource &&
-          #lvlTarget linkAssociation == #level linkTarget
-        ) linkTarget0
-      ) linkSource0
-    )
 
 newtype Multiplicity = Multiplicity (Int, Maybe Int) deriving (Eq, Show, Read)
 
