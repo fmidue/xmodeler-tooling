@@ -24,10 +24,13 @@ import Modelling.MLM.Types (
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, Gen)
 import Control.Monad (forM, foldM)
-import Data.Maybe (fromMaybe, catMaybes)
+import Data.Maybe (fromMaybe)
 import Data.List (delete)
 import Data.Tuple (swap)
 import Data.List.Extra (nubOrd)
+import Data.Map (Map, fromList, insertWith, (!?))
+
+
 
 abcCapital :: [String]
 abcCapital = map (:[]) ['A'..'Z']
@@ -166,47 +169,65 @@ addInheritances chanceToInherit theClasses = let
 
 ----------------------------------------------------------
 
-addAttributes :: Int -> (Float, Int) -> [Class] -> Gen [Class]
-addAttributes minNumberOfAttributesPerClass multSpecs theClasses = let
+addAttributes :: Int -> Float -> [Class] -> Gen [Class]
+addAttributes averageNumberOfAttributesPerClass tendencyToDistanceAttributeFromItsInstantiation theClasses = let
 
-    instantiatableAttributes :: Class -> [Attribute]
-    instantiatableAttributes = generateInstantiatableAttributesFinder theClasses
+    getRandomType :: Gen Type
+    getRandomType = elements attributeTypeSpace
 
-    addAttributesForOneAssociation :: (Class, Int) -> Gen (Class, Int)
-    addAttributesForOneAssociation (c@Class{level}, i) = if level < 1 then return (c, i) else do
-        c' <- (c <<<) <$> forM [1 .. minNumberOfAttributesPerClass] (\j -> do
-                randomLevel <- chooseInt (0, level - 1)
-                let nextAvailableName = attributeNameSpace !! (i + j)
-                randomType <- elements attributeTypeSpace
-                -- not using this for now.
-                _ <- randomMultGen multSpecs
-                let randomMult = Multiplicity (1, Just 1)
-                return $ Attribute randomLevel nextAvailableName randomType randomMult
-            )
-        return (c', i + minNumberOfAttributesPerClass)
+    getName :: Int -> Name
+    getName = (attributeNameSpace !!)
+
+    thePresetMultiplicity = Multiplicity (1, Just 1) :: Multiplicity
+
+    getRandomAttribute :: Level -> Int -> Gen Attribute
+    getRandomAttribute classLevel i = do
+        randomLevel <- chooseInt (0, classLevel) :: Gen Level
+        let name' = getName i
+        randomType <- getRandomType
+        return $ Attribute randomLevel name' randomType thePresetMultiplicity
+
+    getRandomAttributeSetLevel :: Level -> Int -> Gen Attribute
+    getRandomAttributeSetLevel level' i = do
+        let name' = getName i
+        randomType <- getRandomType
+        return $ Attribute level' name' randomType thePresetMultiplicity
+
+    findClass :: Name -> Maybe Class
+    findClass = generateClassFinder theClasses
+
+    tryToDelegateAttributeToClassifier :: Name -> Gen Name
+    tryToDelegateAttributeToClassifier x =
+        randomWeightedXOr
+            tendencyToDistanceAttributeFromItsInstantiation
+            (return (maybe x (\Class{classifier} -> fromMaybe x classifier) (findClass x)))
+            (return x)
+
+    addAttributesForOneClass :: (Map Name [Attribute], Int) -> Class -> Gen (Map Name [Attribute], Int)
+    addAttributesForOneClass (soFar, i) Class{classifier = Nothing} = return (soFar, i)
+    addAttributesForOneClass (soFar, i) Class{classifier = Just classifier', level} = do
+
+        -- one attribute to guarantee the class will have something to instantiate
+        oneAttribute <- getRandomAttributeSetLevel level i
+
+        moreAttributes <- forM
+            [1 .. (averageNumberOfAttributesPerClass - 1)]
+            (getRandomAttribute level . (i + ))
+
+        containingClass <- tryToDelegateAttributeToClassifier classifier'
+
+        return (insertWith (++) containingClass (oneAttribute : moreAttributes) soFar
+                , i + max 1 averageNumberOfAttributesPerClass)
+
 
     in do
-        (resultNotFinal, numberOfAttributesAddedSoFar) <- foldM (\(soFar, i) c -> do
-                (c', i') <- addAttributesForOneAssociation (c, i)
-                return (soFar ++ [c'], i')
-            ) ([], 0) theClasses
+        let emptyRequestMap = fromList $ map (( , []) . #name) theClasses :: Map Name [Attribute]
 
-        stillToBeAdded <- catMaybes <$> mapM (\(class'@Class{classifier, level}, i) ->
-                maybe (return Nothing) (\classifier' ->
-                        if null (instantiatableAttributes class')
-                            then do
-                                randomType <- elements attributeTypeSpace
-                                -- not using this for now.
-                                _ <- randomMultGen multSpecs
-                                let randomMult = Multiplicity (1, Just 1)
-                                return $ Just (classifier', Attribute level (attributeNameSpace !! i) randomType randomMult)
-                            else return Nothing
-                    ) classifier
-            ) (zip resultNotFinal [numberOfAttributesAddedSoFar ..]) :: Gen [(Name, Attribute)]
+        requestDict <- fst <$> foldM addAttributesForOneClass (emptyRequestMap, 0) theClasses :: Gen (Map Name [Attribute])
 
-        return $ map (\c@Class{name} ->
-                maybe c (c <<<) (lookup name stillToBeAdded)
-            ) resultNotFinal
+        return $ map (\class'@Class{name} ->
+                maybe class' (class' <<<) (requestDict !? name)
+            ) theClasses
 
 ----------------------------------------------------------
 
@@ -321,7 +342,7 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
 ----------------------------------------------------------
 
 generateMLM :: Config -> Gen MLM
-generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfAssociations, chanceToConcretize, chanceToInherit, multiplicitySpecAttributes, multiplicitySpecAssociations, chanceVisibleAssociation, chanceAbstractClass, portionOfPossibleLinksToKeep, minNumberOfAttributesPerClass } = let
+generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfAssociations, chanceToConcretize, chanceToInherit, multiplicitySpecAssociations, chanceVisibleAssociation, chanceAbstractClass, portionOfPossibleLinksToKeep, averageNumberOfAttributesPerClass, tendencyToDistanceAttributeFromItsInstantiation } = let
 
     projectName = Name projectNameString :: Name
 
@@ -339,7 +360,7 @@ generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfA
         withAbstractions <- addAbstractions maxClassLevelSafe chanceAbstractClass emptyClasses :: Gen [Class]
         withConcretizations <- addConcretizations maxClassLevelSafe chanceToConcretize withAbstractions :: Gen [Class]
         withInheritances <- addInheritances chanceToInherit withConcretizations :: Gen [Class]
-        withAttributes <- addAttributes minNumberOfAttributesPerClass multiplicitySpecAttributes withInheritances :: Gen [Class]
+        withAttributes <- addAttributes averageNumberOfAttributesPerClass tendencyToDistanceAttributeFromItsInstantiation withInheritances :: Gen [Class]
         readyClasses <- addSlotValues withAttributes :: Gen [Class]
 
         readyAssociations <- addAssociations multiplicitySpecAssociations chanceVisibleAssociation withAttributes emptyAssociations :: Gen [Association]
