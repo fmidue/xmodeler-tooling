@@ -24,7 +24,7 @@ import Modelling.MLM.Types (
   emptyClass,
   emptyAssociation,
   typeSpace,
-  generateScopeFinder,
+  generateBelowFinder,
   generateClassFinder,
   generateInstantiatableAttributesFinder
   )
@@ -90,13 +90,13 @@ normalizeClassLevels :: [Class] -> [Class]
 normalizeClassLevels classes = let lowest = minimum $ map #level classes in
     map (\x -> x <<< (#level x - lowest)) classes
 
-randomMultGen :: (Float, Int) -> Gen Multiplicity
-randomMultGen (chance, max') = do
+randomMult :: (Float, Int) -> Gen Multiplicity
+randomMult (chance, max') = do
     b <- randomWeightedXOr chance (Just <$> chooseInt (1, max')) (return Nothing)
     return $ Multiplicity (0, b)
 
-randomSlotValue :: Attribute -> Gen Slot
-randomSlotValue Attribute{name, dataType} = let
+randomSlot :: Attribute -> Gen Slot
+randomSlot Attribute{name, dataType} = let
     anyFloat :: Gen Float
     anyFloat = (/100) . (fromIntegral :: Int -> Float) . round . (*100) <$> (choose (0.0,10.0) :: Gen Float)
     in do
@@ -250,7 +250,7 @@ addSlotValues theClasses = let
 
     addSlotValuesForOneClass :: Class -> Gen Class
     addSlotValuesForOneClass c =
-        (c <<<) <$> mapM randomSlotValue (instantiatable c)
+        (c <<<) <$> mapM randomSlot (instantiatable c)
 
     in mapM addSlotValuesForOneClass theClasses
 
@@ -261,7 +261,7 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
     theClasses = nonLevelZero theClassesIncludingLevelZero :: [Class]
     randomClassGen = elements theClasses :: Gen Class
     randomLevelGen x = chooseInt (0, #level x - 1) :: Gen Level
-    randomMultGen' = randomMultGen multSpecs
+    randomMult' = randomMult multSpecs
     randomVisibilityGen = randomWeightedXOr
         visibilityChance (return True) (return False) :: Gen Bool
     in forM emptyAssociations (\x -> do
@@ -269,8 +269,8 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
                 targetClass <- randomClassGen
                 lvlSource' <- randomLevelGen sourceClass
                 lvlTarget' <- randomLevelGen targetClass
-                multTargetToSource' <- randomMultGen'
-                multSourceToTarget' <- randomMultGen'
+                multTargetToSource' <- randomMult'
+                multSourceToTarget' <- randomMult'
                 sourceVisibleFromTarget' <- randomVisibilityGen
                 targetVisibleFromSource' <- randomVisibilityGen
                 return $ x
@@ -289,19 +289,19 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
 addLinks :: Float -> [Class] -> [Association] -> Gen [Link]
 addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
 
-    scope :: Class -> [Class]
-    scope = generateScopeFinder theClasses
+    below :: Class -> [Class]
+    below = generateBelowFinder theClasses
 
     getClass :: Name -> Maybe Class
     getClass = generateClassFinder theClasses
 
     getCandidateSources :: Association -> [Class]
     getCandidateSources Association{source, lvlSource} =
-        maybe [] (filter ((== lvlSource) . #level) . scope) (getClass source)
+        maybe [] (filter ((== lvlSource) . #level) . below) (getClass source)
 
     getCandidateTargets :: Association -> [Class]
     getCandidateTargets Association{target, lvlTarget} =
-        maybe [] (filter ((== lvlTarget) . #level) . scope) (getClass target)
+        maybe [] (filter ((== lvlTarget) . #level) . below) (getClass target)
 
     addLinksForOneAssociation theAssociation@Association{name = associationName, multSource = Multiplicity (_, multSourceMaxMaybe), multTarget = Multiplicity (_, multTargetMaxMaybe)} = let
 

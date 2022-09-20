@@ -31,7 +31,7 @@ module Modelling.MLM.Types(
   generateClassifierDict,
   generateParentDict,
   (\?/),
-  generateScopeFinder,
+  generateBelowFinder,
   generateClassFinder,
   generateInstantiatableAttributesFinder,
   generateAssociationFinder
@@ -109,14 +109,14 @@ generateClassDict = fromList . map (\Class{name, classifier, parents} -> (name, 
     in y `elem` list || any (`f` y) list
   in f a b
 
-generateInScopeFinder :: [Class] -> (Class -> [Class])
-generateInScopeFinder theClasses x = let
+generateAboveFinder :: [Class] -> (Class -> [Class])
+generateAboveFinder theClasses x = let
   (\/) :: Name -> Name -> Bool
   (\/) = (\?/) theClasses
   in filter ((#name x \/) . #name) theClasses
 
-generateScopeFinder :: [Class] -> (Class -> [Class])
-generateScopeFinder theClasses x = let
+generateBelowFinder :: [Class] -> (Class -> [Class])
+generateBelowFinder theClasses x = let
   (\/) :: Name -> Name -> Bool
   (\/) = (\?/) theClasses
   in filter ((\/ #name x) . #name) theClasses
@@ -130,15 +130,15 @@ generateAssociationFinder theAssociations x = find ((== x) . #name) theAssociati
 
 generateInstantiatableAttributesFinder :: [Class] -> (Class -> [Attribute])
 generateInstantiatableAttributesFinder theClasses c@Class{level = classLevel} = let
-  inScope :: Class -> [Class]
-  inScope = generateInScopeFinder theClasses
-  in filter ((== classLevel) . #level) $ concatMap #attributes $ inScope c
+  above :: Class -> [Class]
+  above = generateAboveFinder theClasses
+  in filter ((== classLevel) . #level) $ concatMap #attributes $ above c
 
 generateInstantiatableOperationsFinder :: [Class] -> (Class -> [Operation])
 generateInstantiatableOperationsFinder theClasses c@Class{level = classLevel} = let
-  inScope :: Class -> [Class]
-  inScope = generateInScopeFinder theClasses
-  in filter ((== classLevel) . #level) $ concatMap #operations $ inScope c
+  above :: Class -> [Class]
+  above = generateAboveFinder theClasses
+  in filter ((== classLevel) . #level) $ concatMap #operations $ above c
 
 instance Validatable () MLM where
   valid () MLM{name = projectName, classes, associations, links} = let
@@ -165,8 +165,8 @@ instance Validatable () MLM where
     (\/) :: Name -> Name -> Bool
     (\/) = (\?/) classes
 
-    inScope :: Class -> [Class]
-    inScope = generateInScopeFinder classes
+    above :: Class -> [Class]
+    above = generateAboveFinder classes
 
     -- whether an association multiplicity is violated:
     occurrencesAsSource :: Class -> Association -> Int
@@ -240,7 +240,7 @@ instance Validatable () MLM where
       all instantiatesSomethingOrIsMetaClass classes,
       allUnique links,
       all (\Class{classifier = c, name} -> all ((== c) . getClassifier) (parentDict ! name) ) classes,
-      all (\x -> valid (inScope x, map findClass (#parents x)) x) classes,
+      all (\x -> valid (above x, map findClass (#parents x)) x) classes,
       all (\x -> valid (findClass (#source x), findClass (#target x)) x) associations,
       all associationMultiplicityNotViolated associations,
       all validLink links,
@@ -274,18 +274,18 @@ emptyClass :: Class
 emptyClass = Class False 0 emptyName [] Nothing [] [] []
 
 instance Validatable ([Class], [Maybe Class]) Class where
-  valid (inWhoseScopeThisLies, parentsClasses) Class{name = className, level = level', attributes = attributes', slots, operations, parents} = let
+  valid (aboveThis, parentsClasses) Class{isAbstract, name = className, level = level', attributes = attributes', slots, operations, parents} = let
 
     getAttributeClass :: Name -> Maybe Class
-    getAttributeClass x = find (elem x . map #name . #attributes) inWhoseScopeThisLies
+    getAttributeClass x = find (elem x . map #name . #attributes) aboveThis
 
     getAttribute :: Name -> Maybe Attribute
     getAttribute x = ((find ((== x) . #name) . #attributes) =<< getAttributeClass x)
 
-    allAttributesOfClassesInWhoseScopeThisOneLies :: [Attribute]
-    allAttributesOfClassesInWhoseScopeThisOneLies = attributes' ++ concatMap #attributes inWhoseScopeThisLies
+    allAttributesOfClassesAbove :: [Attribute]
+    allAttributesOfClassesAbove = attributes' ++ concatMap #attributes aboveThis
 
-    instantiatableAttributesHere = filter ((== level') . #level) (concatMap #attributes inWhoseScopeThisLies) :: [Attribute]
+    instantiatableAttributesHere = filter ((== level') . #level) (concatMap #attributes aboveThis) :: [Attribute]
 
     slotsNames = map #name slots :: [Name]
 
@@ -298,7 +298,7 @@ instance Validatable ([Class], [Maybe Class]) Class where
         allUnique (map #name attributes'),
         allUnique (map #name slots),
         allUnique (map #name operations),
-        allUnique (map (\Attribute{name, level} -> (name, level)) allAttributesOfClassesInWhoseScopeThisOneLies),
+        allUnique (map (\Attribute{name, level} -> (name, level)) allAttributesOfClassesAbove),
         -- pretending that all attributes multiplicities are (1, Just 1)
         all (( `elem` slotsNames) . #name) instantiatableAttributesHere,
         level' > 0 || (null attributes' && null operations && null parents),
@@ -337,7 +337,9 @@ emptySlot = Slot emptyName emptyValue
 
 instance Validatable (Maybe Attribute, Level) Slot where
   valid (slotAttribute, slotClassLvl) Slot{value} =
-      maybe False (\x -> slotClassLvl == #level x && equalType (#dataType x) value) slotAttribute
+      maybe False (\x ->
+          slotClassLvl == #level x && equalType (#dataType x) value
+        ) slotAttribute
 
 data Operation = Operation {
   level :: Int,
