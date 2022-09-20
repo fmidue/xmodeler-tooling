@@ -22,7 +22,7 @@ reasonableConfigs = do
   chanceVisibleAssociation <- choose (0.0, 1.0)
   chanceAbstractClass <- choose (0.0, 1.0)
   portionOfPossibleLinksToKeep <- choose (0.0, 1.0)
-  averageNumberOfAttributesPerClass <- choose (1,6)
+  averageNumberOfAttributesPerClass <- choose (0,6)
   tendencyToDistanceAttributeFromItsInstantiation <- choose (0.0, 1.0)
   return $ Config {..}
 

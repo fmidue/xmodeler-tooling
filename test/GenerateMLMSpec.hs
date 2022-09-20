@@ -29,6 +29,17 @@ spec = do
               length classes == numberOfClasses &&
               length associations == numberOfAssociations
         describe "generateMLM" $
+          it "respects averageNumberOfAttributesPerClass" $
+            forAll (oneof [reasonableConfigs, smallConfigs]) $ \config@Config{averageNumberOfAttributesPerClass} ->
+            forAll (generateMLM config) $ \MLM{classes} ->
+              let
+                (average,0) =
+                  divMod
+                    (sum (map (\Class{attributes} -> length attributes) classes))
+                    (length (filter (\Class{classifier} -> isJust classifier) classes))
+              in
+                average `shouldSatisfy` (== (max 1 averageNumberOfAttributesPerClass))
+        describe "generateMLM" $
           it "respects chanceAbstractClass" $
             forAll reasonableConfigs $ \config@Config{chanceAbstractClass} ->
             forAll (generateMLM config) $ \MLM{classes} ->
