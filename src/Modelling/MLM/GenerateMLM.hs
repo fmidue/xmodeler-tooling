@@ -4,7 +4,10 @@ module Modelling.MLM.GenerateMLM (
     attributeNameSpace,
     associationNameSpace,
     operationNameSpace,
-    randomSlotValue
+    randomSlot,
+    randomMult,
+    randomWeightedXOr,
+    addSlotValues
     ) where
 
 import Modelling.MLM.Config (Config(..))
