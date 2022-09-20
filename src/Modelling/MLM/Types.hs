@@ -45,7 +45,7 @@ import Data.Maybe (isNothing, maybeToList, mapMaybe)
 import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
 import qualified Data.Map.Strict as M
-import Data.Map.Strict (Map, member, (!), fromList)
+import Data.Map.Strict (Map, member, (!?), fromList)
 import Data.List.Extra (replace, nubOrd)
 
 noCycles :: (Eq a, Ord a) => Map a [a] -> Bool
@@ -95,17 +95,18 @@ emptyMLM = MLM emptyName [] [] []
 generateParentDict :: [Class] -> Map Name [Name]
 generateParentDict = fromList . map (\Class{name, parents} -> (name, parents))
 
-generateClassifierDict :: [Class] -> Map Name (Maybe Name)
-generateClassifierDict = fromList . map (\Class{name, classifier} -> (name, classifier))
+generateClassifierDict :: [Class] -> Map Name Name
+generateClassifierDict = fromList . concatMap (\Class{name, classifier} -> maybe [] ((:[]) . (name , )) classifier)
 
 generateClassDict :: [Class] -> Map Name [Name]
-generateClassDict = fromList . map (\Class{name, classifier, parents} -> (name, maybeToList classifier ++ parents))
+generateClassDict theClasses = let x = fromList $ map (\Class{name, classifier, parents} -> (name, maybeToList classifier ++ parents)) theClasses
+  in if M.size x /= length theClasses then error "Something is wrong with Map library" else x
 
 (\?/) :: [Class] -> (Name -> Name -> Bool)
 (\?/) theClasses a b = let
   classDict = generateClassDict theClasses :: Map Name [Name]
   f :: Name -> Name -> Bool
-  f x y = let list = classDict ! x
+  f x y = let list = fromMaybe (error "There must be an entry in the dictionary, even if it is just an empty list. Maybe you are looking up a class that is not in the MLM!!!") (classDict !? x)
     in y `elem` list || any (`f` y) list
   in f a b
 
@@ -153,14 +154,14 @@ instance Validatable () MLM where
     parentDict :: Map Name [Name]
     parentDict = generateParentDict classes
 
-    classifierDict :: Map Name (Maybe Name)
+    classifierDict :: Map Name Name
     classifierDict = generateClassifierDict classes
 
     dict :: Map Name [Name]
     dict = generateClassDict classes
 
     getClassifier :: Name -> Maybe Name
-    getClassifier = (classifierDict !)
+    getClassifier = (classifierDict !?)
 
     (\/) :: Name -> Name -> Bool
     (\/) = (\?/) classes
@@ -239,7 +240,7 @@ instance Validatable () MLM where
       all lvlIsClassifierLvlMinusOne classes,
       all instantiatesSomethingOrIsMetaClass classes,
       allUnique links,
-      all (\Class{classifier = c, name} -> all ((== c) . getClassifier) (parentDict ! name) ) classes,
+      all (\Class{classifier = c, name} -> all ((== c) . getClassifier) (fromMaybe [] (parentDict !? name)) ) classes,
       all (\x -> valid (above x, map findClass (#parents x)) x) classes,
       all (\x -> valid (findClass (#source x), findClass (#target x)) x) associations,
       all associationMultiplicityNotViolated associations,
@@ -280,7 +281,7 @@ instance Validatable ([Class], [Maybe Class]) Class where
     getAttributeClass x = find (elem x . map #name . #attributes) aboveThis
 
     getAttribute :: Name -> Maybe Attribute
-    getAttribute x = ((find ((== x) . #name) . #attributes) =<< getAttributeClass x)
+    getAttribute x = find ((== x) . #name) . #attributes =<< getAttributeClass x
 
     allAttributesOfClassesAbove :: [Attribute]
     allAttributesOfClassesAbove = attributes' ++ concatMap #attributes aboveThis
