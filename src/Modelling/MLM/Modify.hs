@@ -1,4 +1,9 @@
-module Modelling.MLM.Modify ((<<<), (|<<<|), SourceOrTarget(..)) where
+module Modelling.MLM.Modify (
+    (<<<),
+    (|<<<|),
+    SourceOrTarget(..),
+    insert
+    ) where
 
 import Modelling.MLM.Types (
   MLM (..),
@@ -17,6 +22,18 @@ import Modelling.MLM.Types (
 
 class Modifiable a b where
     (<<<) :: a -> b -> a
+class CanBeInsertedInto a i b where
+    insert :: a -> i -> b -> a
+
+instance CanBeInsertedInto MLM Name Attribute where
+    insert mlm@MLM{classes} classToInsertInto attribute =
+        mlm{classes = map (\class' -> if #name class' == classToInsertInto then class' <<< attribute else class') classes}
+instance CanBeInsertedInto MLM Name Slot where
+    insert mlm@MLM{classes} classToInsertInto slot =
+        mlm{classes = map (\class' -> if #name class' == classToInsertInto then class' <<< slot else class') classes}
+instance CanBeInsertedInto MLM Name Operation where
+    insert mlm@MLM{classes} classToInsertInto operation =
+        mlm{classes = map (\class' -> if #name class' == classToInsertInto then class' <<< operation else class') classes}
 
 (|<<<|) :: Modifiable a b => [a] -> [b] -> [a]
 (|<<<|) = zipWith (<<<)
@@ -113,14 +130,3 @@ instance Modifiable Link (SourceOrTarget, Name) where
             Source -> y{source = x}
             Target -> y{target = x}
 
--- class V a b where
---     (<?<) :: a -> b -> Maybe a
-
--- instance V MLM (Name, Level, Bool, [Name]) where
---     (<?<) mlm@(MLM {classes, associations, links}) (n, l, a, ps) = let
---         in
---             if all []
---                 then
---                     Just (mlm <<< Class a l n ps [] [] [])
---                 else
---                     Nothing
