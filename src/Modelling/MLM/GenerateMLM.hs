@@ -162,7 +162,8 @@ addConcretizations maxLevel chanceToConcretize theClasses = let
                     (return Nothing)
                 x `concretizing` toConcretize
             ) :: Gen [Class]
-        return $ normalizeClassLevels torso
+        let normalized = normalizeClassLevels torso
+        return $ map (\x -> if #level x < 1 then x <<< False else x) normalized
 
 ----------------------------------------------------------
 

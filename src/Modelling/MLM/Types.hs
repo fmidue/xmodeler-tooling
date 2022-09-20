@@ -296,6 +296,7 @@ instance Validatable ([Class], [Maybe Class]) Class where
 
     in
     and [
+        not isAbstract || level' > 0,
         valid () className,
         valid () level',
         all (maybe False ((== level') . #level)) parentsClasses,
