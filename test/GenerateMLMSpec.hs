@@ -7,7 +7,6 @@ import Test.Hspec.QuickCheck (modifyMaxSuccess)
 import Modelling.MLM.GenerateMLM (generateMLM)
 import Modelling.MLM.Types (valid, MLM(..), Class(..), Association(..), Multiplicity(..), Name(..), Link(..))
 import Modelling.MLM.Config (Config(..))
-import Control.Monad (filterM)
 import Data.Maybe (isJust)
 
 spec :: Spec
@@ -86,17 +85,12 @@ spec = do
                   associationsNames = map #name associations :: [Name]
                   linksInfo = cartesianProduct associationsNames cartesianProductOfClasses :: [(Name, (Class, Class))]
                   newLinks = map (\(linkName, (class1, class2)) -> Link linkName (#name class1) (#name class2)) linksInfo :: [Link]
-                in do
-                  possibleLinksTooAdd <- filterM (\x -> do
-                      let mlmWithTheNewLink = mlm{links = x : links} :: MLM
-                      if valid () mlmWithTheNewLink
-                        then do
-                          print x
-                          return True
-                        else
-                          return False
-                    ) newLinks :: IO [Link]
-                  possibleLinksTooAdd `shouldSatisfy` null
+                  possibleLinksToAdd = filter (\x ->
+                                                  let mlmWithTheNewLink = mlm{links = x : links} :: MLM
+                                                  in valid () mlmWithTheNewLink
+                                              ) newLinks :: [Link]
+                  in
+                    possibleLinksToAdd `shouldSatisfy` null
 
 cartesianProduct :: [a] -> [b] -> [(a, b)]
 cartesianProduct xs ys = [(x, y) | x <- xs, y <- ys]
