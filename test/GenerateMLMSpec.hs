@@ -46,7 +46,7 @@ spec = do
               let
                 probability =
                   fromIntegral (length (filter (\Class{isAbstract} -> isAbstract) classes))
-                  / fromIntegral (length classes) :: Float
+                  / fromIntegral (length (filter (\Class{level} -> level > 0) classes)) :: Float
               in
                 probability `shouldSatisfy` within 0.4 chanceAbstractClass
         describe "generateMLM" $
