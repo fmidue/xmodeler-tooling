@@ -26,6 +26,7 @@ module Modelling.MLM.Types(
   emptyAttribute,
   emptySlot,
   emptyOperation,
+  emptyOperationBody,
   typeSpace,
   generateClassDict,
   generateClassifierDict,
@@ -34,14 +35,16 @@ module Modelling.MLM.Types(
   generateBelowFinder,
   generateClassFinder,
   generateInstantiatableAttributesFinder,
-  generateAssociationFinder
+  generateAssociationFinder,
+  generateOccurrencesCounter,
+  inRangeOfMult
 ) where
 
 import Data.List.UniqueStrict (allUnique)
 import Data.Char (isDigit)
 import Data.List (find, sort, sortOn)
 import Data.Ix (inRange)
-import Data.Maybe (isNothing, maybeToList, mapMaybe)
+import Data.Maybe (isNothing, maybeToList, mapMaybe, fromMaybe)
 import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
 import qualified Data.Map.Strict as M
@@ -141,6 +144,17 @@ generateInstantiatableOperationsFinder theClasses c@Class{level = classLevel} = 
   above = generateAboveFinder theClasses
   in filter ((== classLevel) . #level) $ concatMap #operations $ above c
 
+generateOccurrencesCounter :: Bool -> [Link] -> (Class -> Association -> Int)
+generateOccurrencesCounter asSourceRatherThanAsTarget theLinks Class{name = className} Association{name = associationName} = let
+  toLookFor = if asSourceRatherThanAsTarget then #source else #target in
+    length $ filter (\link ->
+        #name link == associationName && toLookFor link == className
+      ) theLinks
+
+inRangeOfMult :: Int -> Multiplicity -> Bool
+inRangeOfMult x (Multiplicity (a, Nothing)) = x >= a
+inRangeOfMult x (Multiplicity (a, Just b)) = inRange (a, b) x
+
 instance Validatable () MLM where
   valid () MLM{name = projectName, classes, associations, links} = let
 
@@ -171,20 +185,10 @@ instance Validatable () MLM where
 
     -- whether an association multiplicity is violated:
     occurrencesAsSource :: Class -> Association -> Int
-    occurrencesAsSource Class{name = className} Association{name = associationName} =
-      length $ filter (\Link{name = linkName, source} ->
-          linkName == associationName && source == className
-        ) links
+    occurrencesAsSource = generateOccurrencesCounter True links
 
     occurrencesAsTarget :: Class -> Association -> Int
-    occurrencesAsTarget Class{name = className} Association{name = associationName}  =
-      length $ filter (\Link{name = linkName, target} ->
-          linkName == associationName && target == className
-        ) links
-
-    inRangeOfMult :: Int -> Multiplicity -> Bool
-    inRangeOfMult x (Multiplicity (a, Nothing)) = x >= a
-    inRangeOfMult x (Multiplicity (a, Just b)) = inRange (a, b) x
+    occurrencesAsTarget = generateOccurrencesCounter False links
 
     participationDoesNotViolateMultiplicity :: Association -> Class -> Bool
     participationDoesNotViolateMultiplicity association'@Association{multSource, multTarget, source, target, lvlSource, lvlTarget} class'@Class{name, level} =
@@ -349,6 +353,9 @@ data Operation = Operation {
   isMonitored :: Bool,
   body :: String
 } deriving (Show, Read)
+
+emptyOperationBody :: Name -> String
+emptyOperationBody (Name name') = "@Operation " ++ name' ++ "[monitor=false]():XCore::Integer&#99;  0&#10;end"
 
 instance Eq Operation where
   (==) x y = and [
