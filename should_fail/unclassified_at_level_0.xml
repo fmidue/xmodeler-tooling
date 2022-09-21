@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<XModeler>
+    
+  <Version>2</Version>
+    
+  <Categories/>
+    
+  <Projects>
+    <Project name="Root::a"/>
+  </Projects>
+    
+  <Diagrams>
+    <Diagram label="b" package_path="Root::a" showDerivedAttributes="true" showDerivedOperations="true" showGettersAndSetters="true" showOperationValues="true" showOperations="true" showSlots="true">
+      <Categories/>
+      <Owners/>
+      <Objects>
+        <Object hidden="false" ref="Root::a::A" x="216" y="136"/>
+      </Objects>
+      <Edges/>
+      <Labels/>
+      <Preferences/>
+      <View name="Main View" tx="0.0" ty="0.0" xx="1.0"/>
+    </Diagram>
+  </Diagrams>
+    
+  <Logs>
+    <addMetaClass abstract="false" level="0" name="A" package="Root::a" parents=""/>
+  </Logs>
+  
+</XModeler>
