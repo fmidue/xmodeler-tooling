@@ -70,9 +70,6 @@ operationNameSpace = map Name $ getNameSpaceWithPrefix "operation"
 nonLevelZero :: [Class] -> [Class]
 nonLevelZero = filter ((>0) . #level)
 
-nonAbstract :: [Class] -> [Class]
-nonAbstract = filter (not . #isAbstract)
-
 accumulate :: [a] -> [b] -> ([a] -> b -> Gen a) -> Gen [a]
 accumulate start list f = foldM (\soFar x -> do
         new <- f soFar x
@@ -116,22 +113,6 @@ randomSlot Attribute{name, dataType} = let
 -- ADDING COMPONENTS
 ----------------------------------------------------------
 
-addAbstractions :: Level -> Float -> [Class] -> Gen [Class]
-addAbstractions maxLevel chanceAbstract theClasses = let
-    -- spine is a chain of classes from level 0 to maxLevel that will be concretized later by other classes.
-    -- This is why they must be concrete (not abstract):
-    spine = map (<<< False) $ take (maxLevel + 1) theClasses :: [Class]
-    meat = drop (maxLevel + 1) theClasses :: [Class]
-    in (++) spine <$>
-        mapM
-            (\c -> do
-                abstractOrNot <- randomWeightedXOr chanceAbstract (return True) (return False)
-                return $ c <<< abstractOrNot
-                )
-            meat
-
-----------------------------------------------------------
-
 addConcretizations :: Level -> Float -> [Class] -> Gen [Class]
 addConcretizations maxLevel chanceToConcretize theClasses = let
     concretizing :: Class -> Maybe Class -> Gen Class
@@ -149,14 +130,22 @@ addConcretizations maxLevel chanceToConcretize theClasses = let
         -- if there is a class of level n, then there has to be at least a class of level n-1.
         spine <- accumulate [initial] vertebras (\soFar x -> x `concretizing` Just (last soFar))
             :: Gen [Class]
-        torso <- accumulate spine meat (\soFar x -> do
-                let canConcretize = nonAbstract $ nonLevelZero soFar :: [Class]
+        accumulate spine meat (\soFar x -> do
+                let canConcretize = nonLevelZero soFar :: [Class]
                 toConcretize <- randomWeightedXOr
                     chanceToConcretize
                     (if null canConcretize then return Nothing else  Just <$> elements canConcretize)
                     (return Nothing)
                 x `concretizing` toConcretize
             ) :: Gen [Class]
+
+
+----------------------------------------------------------
+
+addAbstractions :: Float -> [Class] -> Gen [Class]
+addAbstractions tendency theClasses = let
+    allClassifiers = map #classifier theClasses :: [Maybe Name]
+    in mapM (\x -> if Just (#name x) `elem` allClassifiers || #level x < 1 then return x else (x <<<) <$> randomWeightedXOr tendency (return False) (return True)) theClasses
 
 ----------------------------------------------------------
 
