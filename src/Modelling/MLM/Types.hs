@@ -19,12 +19,10 @@ module Modelling.MLM.Types(
   relativeToEur,
   currencySymbol,
   emptyName,
-  emptyMLM,
   emptyClass,
   emptyAssociation,
   emptyLink,
   emptyAttribute,
-  emptySlot,
   emptyOperation,
   emptyOperationBody,
   typeSpace,
@@ -35,7 +33,6 @@ module Modelling.MLM.Types(
   generateBelowFinder,
   generateClassFinder,
   generateInstantiatableAttributesFinder,
-  generateAssociationFinder,
   generateOccurrencesCounter,
   inRangeOfMult
 ) where
@@ -92,9 +89,6 @@ instance Eq MLM where
     eqBy a1 a2 (sortOn #name) &&
     eqBy l1 l2 sort
 
-emptyMLM :: MLM
-emptyMLM = MLM emptyName [] [] []
-
 generateParentDict :: [Class] -> Map Name [Name]
 generateParentDict = fromList . map (\Class{name, parents} -> (name, parents))
 
@@ -127,10 +121,6 @@ generateBelowFinder theClasses x = let
 
 generateClassFinder :: [Class] -> (Name -> Maybe Class)
 generateClassFinder theClasses x = find ((== x) . #name) theClasses
-
-generateAssociationFinder :: [Association] -> (Name -> Maybe Association)
-generateAssociationFinder theAssociations x = find ((== x) . #name) theAssociations
-
 
 generateInstantiatableAttributesFinder :: [Class] -> (Class -> [Attribute])
 generateInstantiatableAttributesFinder theClasses c@Class{level = classLevel} = let
@@ -338,9 +328,6 @@ data Slot = Slot {
   value :: Value
 } deriving (Show, Read, Eq)
 
-emptySlot :: Slot
-emptySlot = Slot emptyName emptyValue
-
 instance Validatable (Maybe Attribute, Level) Slot where
   valid (slotAttribute, slotClassLvl) Slot{value} =
       maybe False (\x ->
@@ -438,9 +425,6 @@ data Value =
   VComplex String |
   VAuxiliaryClass String
   deriving (Eq, Show, Read)
-
-emptyValue :: Value
-emptyValue = VBoolean False
 
 typeSpace :: [Type]
 typeSpace = [minBound .. maxBound]

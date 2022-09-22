@@ -117,7 +117,6 @@ editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, mult
                     then return soFar
                     else (soFar <<<) <$> randomSlot attribute
             ) class' (instantiatableAttributes mlm' class')
-        -- foldM (\soFar attribute -> (soFar <<<) <$> randomSlot attribute) class' $ instantiatableAttributes mlm' class'
 
     refreshInstantiationAllClasses :: MLM -> Gen MLM
     refreshInstantiationAllClasses mlm'@MLM{classes = classes'} = do

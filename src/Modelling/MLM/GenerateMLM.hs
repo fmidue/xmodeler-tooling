@@ -88,11 +88,6 @@ randomWeightedXOr chance f g = if chance < 0 || chance > 1
     in
         frequency [(chanceTo, f), (chanceNotTo, g)]
 
--- there must be at least one class of level 0.
-normalizeClassLevels :: [Class] -> [Class]
-normalizeClassLevels classes = let lowest = minimum $ map #level classes in
-    map (\x -> x <<< (#level x - lowest)) classes
-
 randomMult :: (Float, Int) -> Gen Multiplicity
 randomMult (chance, max') = do
     b <- randomWeightedXOr chance (Just <$> chooseInt (1, max')) (return Nothing)
@@ -162,8 +157,6 @@ addConcretizations maxLevel chanceToConcretize theClasses = let
                     (return Nothing)
                 x `concretizing` toConcretize
             ) :: Gen [Class]
-        let normalized = normalizeClassLevels torso
-        return $ map (\x -> if #level x < 1 then x <<< False else x) normalized
 
 ----------------------------------------------------------
 
