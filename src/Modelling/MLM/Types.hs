@@ -239,7 +239,8 @@ instance Validatable () MLM where
       all (\x -> valid (findClass (#source x), findClass (#target x)) x) associations,
       all associationMultiplicityNotViolated associations,
       all validLink links,
-      all (\Class{name, isAbstract} -> not isAbstract || name `notElem` allClassifiers) classes
+      all (\Class{name, isAbstract} -> not isAbstract || name `notElem` allClassifiers) classes,
+      all (\x -> not (any (\y -> #name x == #name y && #source x == #target y && #target x == #source y && #source x /= #source y) links)) links
     ]
 
 data Class = Class {
