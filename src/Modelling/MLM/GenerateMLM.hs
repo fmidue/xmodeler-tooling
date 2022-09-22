@@ -321,44 +321,6 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
                             else (link : soFar, adjust (+1) theSource occurrencesAsSource, adjust (+1) theTarget occurrencesAsTarget)
                     ) ([], occurrencesAsSourceEmpty, occurrencesAsTargetEmpty) shuffled
             return result
-        -- constructLinks :: [(Name, Name)] -> [Link]
-        -- constructLinks = map (uncurry (Link associationName))
-
-        -- candidateTargets = map #name $ getCandidateTargets theAssociation :: [Name]
-        -- candidateSources = map #name $ getCandidateSources theAssociation :: [Name]
-
-        -- numberOfSources = length candidateSources :: Int
-        -- numberOfTargets = length candidateTargets :: Int
-
-        -- occurrencesSource = maybe numberOfTargets (min numberOfTargets) multTargetMaxMaybe
-        -- occurrencesTarget = maybe numberOfSources (min numberOfSources) multSourceMaxMaybe
-
-        -- representedSources = concatMap (replicate occurrencesSource) candidateSources
-        -- representedTargets = concatMap (replicate occurrencesTarget) candidateTargets
-
-        -- mustSwap = length representedSources > length representedTargets :: Bool
-
-        -- (short, long) = (if mustSwap then swap else id) (representedSources, representedTargets) :: ([Name], [Name])
-
-        -- -- achievableNumberOfLinks = length short :: Int
-
-        -- bundleSize = if mustSwap then occurrencesTarget else occurrencesSource  :: Int
-
-        -- in do
-        --     ( _ , _ , ready) <-
-        --         foldM (\(remaining, current0, result) s -> let
-        --                 current = if length current0 == bundleSize
-        --                     then []
-        --                     else current0
-        --                 canChooseFrom = filter (\x -> (s, x) `notElem` current && (x, s) `notElem` current) remaining
-        --                 in if null canChooseFrom
-        --                     then return (remaining, current, result)
-        --                     else do
-        --                         new <- elements canChooseFrom
-        --                         return (delete new remaining, (s, new) : current, (s, new) : result)
-        --         ) (long, [], []) short
-
-        --     return $ nubOrd $ constructLinks $ (if mustSwap then map swap else id) ready
 
     in do
         allPossibleLinks <- concat <$> forM theAssociations addLinksForOneAssociation :: Gen [Link]
