@@ -168,7 +168,7 @@ addConcretizations maxLevel chanceToConcretize theClasses = let
 ----------------------------------------------------------
 
 addInheritances :: Float -> [Class] -> Gen [Class]
-addInheritances chanceToInherit theClasses = let
+addInheritances tendency theClasses = let
 
     sameAs :: Class -> Class -> Bool
     sameAs Class{level = l1, classifier = c1}
@@ -176,7 +176,7 @@ addInheritances chanceToInherit theClasses = let
 
     in accumulate [head theClasses] (tail theClasses) (\soFar x -> do
             toInheritFrom <- randomWeightedXOr
-                chanceToInherit
+                tendency
                 (if #level x > 0 then sublistOf (map #name (filter (sameAs x) soFar)) else return [])
                 (return [])
             return $ x <<< (toInheritFrom :: [Name])
@@ -185,7 +185,7 @@ addInheritances chanceToInherit theClasses = let
 ----------------------------------------------------------
 
 addAttributes :: Int -> Float -> [Class] -> Gen [Class]
-addAttributes averageNumberOfAttributesPerClass tendencyToDistanceAttributeFromItsInstantiation theClasses = let
+addAttributes averageNumberOfAttributesPerClass tendency theClasses = let
 
     getRandomType :: Gen Type
     getRandomType = elements typeSpace
@@ -214,7 +214,7 @@ addAttributes averageNumberOfAttributesPerClass tendencyToDistanceAttributeFromI
     tryToDelegateAttributeToClassifier :: Name -> Gen Name
     tryToDelegateAttributeToClassifier x =
         randomWeightedXOr
-            tendencyToDistanceAttributeFromItsInstantiation
+            tendency
             (return (maybe x (\Class{classifier} -> fromMaybe x classifier) (findClass x)))
             (return x)
 
@@ -357,7 +357,7 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
 ----------------------------------------------------------
 
 generateMLM :: Config -> Gen MLM
-generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfAssociations, chanceToConcretize, chanceToInherit, multiplicitySpecAssociations, chanceVisibleAssociation, chanceAbstractClass, portionOfPossibleLinksToKeep, averageNumberOfAttributesPerClass, tendencyToDistanceAttributeFromItsInstantiation } = let
+generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfAssociations, tendencyToConcretize, tendencyToInherit, multiplicitySpecAssociations, chanceVisibleAssociation, tendencyAbstractClass, portionOfPossibleLinksToKeep, averageNumberOfAttributesPerClass, tendencyToDistanceAttributeFromItsInstantiation } = let
 
     projectName = Name projectNameString :: Name
 
@@ -372,9 +372,9 @@ generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfA
     emptyAssociations = take numberOfAssociationsSafe endlessEmptyAssociations :: [Association]
 
     in do
-        withAbstractions <- addAbstractions maxClassLevelSafe chanceAbstractClass emptyClasses :: Gen [Class]
-        withConcretizations <- addConcretizations maxClassLevelSafe chanceToConcretize withAbstractions :: Gen [Class]
-        withInheritances <- addInheritances chanceToInherit withConcretizations :: Gen [Class]
+        withConcretizations <- addConcretizations maxClassLevelSafe tendencyToConcretize emptyClasses :: Gen [Class]
+        withAbstractions <- addAbstractions tendencyAbstractClass withConcretizations :: Gen [Class]
+        withInheritances <- addInheritances tendencyToInherit withAbstractions :: Gen [Class]
         withAttributes <- addAttributes averageNumberOfAttributesPerClass tendencyToDistanceAttributeFromItsInstantiation withInheritances :: Gen [Class]
         readyClasses <- addSlotValues withAttributes :: Gen [Class]
 

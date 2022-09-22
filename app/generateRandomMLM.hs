@@ -47,11 +47,11 @@ determineConfig = do
   maxClassLevel' <- offerChange "maxClassLevel" maxClassLevel
   numberOfClasses' <- offerChange "numberOfClasses" numberOfClasses
   numberOfAssociations' <- offerChange "numberOfAssociations" numberOfAssociations
-  chanceToConcretize' <- offerChange "chanceToConcretize" chanceToConcretize
-  chanceToInherit' <- offerChange "chanceToInherit" chanceToInherit
+  tendencyToConcretize' <- offerChange "chanceToConcretize" tendencyToConcretize
+  tendencyToInherit' <- offerChange "chanceToInherit" tendencyToInherit
   multiplicitySpecAssociations' <- offerChange "multiplicitySpecAssociations" multiplicitySpecAssociations
   chanceVisibleAssociation' <- offerChange "chanceVisibleAssociation" chanceVisibleAssociation
-  chanceAbstractClass' <- offerChange "chanceAbstractClass" chanceAbstractClass
+  tendencyAbstractClass' <- offerChange "chanceAbstractClass" tendencyAbstractClass
   portionOfPossibleLinksToKeep' <- offerChange "portionOfPossibleLinksToKeep" portionOfPossibleLinksToKeep
   averageNumberOfAttributesPerClass' <- offerChange "averageNumberOfAttributesPerClass" averageNumberOfAttributesPerClass
   tendencyToDistanceAttributeFromItsInstantiation' <- offerChange "tendencyToDistanceAttributeFromItsInstantiation" tendencyToDistanceAttributeFromItsInstantiation
@@ -60,11 +60,11 @@ determineConfig = do
         , maxClassLevel = maxClassLevel'
         , numberOfClasses = numberOfClasses'
         , numberOfAssociations = numberOfAssociations'
-        , chanceToConcretize = chanceToConcretize'
-        , chanceToInherit = chanceToInherit'
+        , tendencyToConcretize = tendencyToConcretize'
+        , tendencyToInherit = tendencyToInherit'
         , multiplicitySpecAssociations = multiplicitySpecAssociations'
         , chanceVisibleAssociation = chanceVisibleAssociation'
-        , chanceAbstractClass = chanceAbstractClass'
+        , tendencyAbstractClass = tendencyAbstractClass'
         , portionOfPossibleLinksToKeep = portionOfPossibleLinksToKeep'
         , averageNumberOfAttributesPerClass = averageNumberOfAttributesPerClass'
         , tendencyToDistanceAttributeFromItsInstantiation = tendencyToDistanceAttributeFromItsInstantiation'

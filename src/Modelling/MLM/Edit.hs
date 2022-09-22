@@ -78,7 +78,7 @@ editRandomlyValidlyN shouldWeForbidDeleteComponents config mlm n = let
     in foldM (\soFar _ -> f soFar) mlm [1 .. n]
 
 editValidly :: Config -> MLM -> Edit -> Gen MLM
-editValidly Config{ maxClassLevel, chanceToConcretize, chanceToInherit, multiplicitySpecAssociations, chanceVisibleAssociation, chanceAbstractClass} mlm@MLM{classes, associations, links} e = let
+editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, multiplicitySpecAssociations, chanceVisibleAssociation, tendencyAbstractClass} mlm@MLM{classes, associations, links} e = let
 
     nextAvailableClassName :: Name
     nextAvailableClassName = generateNextAvailableClassNameFinder mlm
@@ -148,17 +148,17 @@ editValidly Config{ maxClassLevel, chanceToConcretize, chanceToInherit, multipli
             let name' = nextAvailableClassName
             classifierClass <- if null nonAbstractNonLevelZeroClasses
                 then return Nothing
-                else randomWeightedXOr chanceToConcretize
+                else randomWeightedXOr tendencyToConcretize
                     (Just <$> elements nonAbstractNonLevelZeroClasses)
                     (return Nothing)
             let classifier' = #name <$> classifierClass
             level' <- maybe (chooseInt (1, maxClassLevel)) (return . subtract 1 . #level) classifierClass
             isAbstract' <- if level' < 1
                 then return False
-                else randomWeightedXOr chanceAbstractClass (return True) (return False)
+                else randomWeightedXOr tendencyAbstractClass (return True) (return False)
             parents' <- if level' < 1
                 then return []
-                else randomWeightedXOr chanceToInherit
+                else randomWeightedXOr tendencyToInherit
                     (map #name <$> sublistOf (filter (\x -> #level x == level' && #classifier x == classifier') classes))
                     (return [])
             let classToBeAdded = Class isAbstract' level' name' parents' classifier' [] [] []
