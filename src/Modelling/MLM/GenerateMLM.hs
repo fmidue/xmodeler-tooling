@@ -33,13 +33,10 @@ import Modelling.MLM.Types (
   )
 
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
-import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, Gen)
+import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, shuffle, Gen)
 import Control.Monad (forM, foldM)
 import Data.Maybe (fromMaybe)
-import Data.List (delete)
-import Data.Tuple (swap)
-import Data.List.Extra (nubOrd)
-import Data.Map (Map, fromList, insertWith, (!?))
+import Data.Map (Map, fromList, insertWith, (!?), (!), adjust)
 
 
 
@@ -282,55 +279,87 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
     getClass = generateClassFinder theClasses
 
     getCandidateSources :: Association -> [Class]
-    getCandidateSources Association{source, lvlSource} =
-        maybe [] (filter ((== lvlSource) . #level) . below) (getClass source)
+    getCandidateSources Association{source, lvlSource} = maybe
+        (error "An association is referring to a non-existent class as its source!!!")
+        (filter ((== lvlSource) . #level)  .  below)
+        (getClass source)
 
     getCandidateTargets :: Association -> [Class]
-    getCandidateTargets Association{target, lvlTarget} =
-        maybe [] (filter ((== lvlTarget) . #level) . below) (getClass target)
+    getCandidateTargets Association{target, lvlTarget} = maybe
+        (error "An association is referring to a non-existent class as its target!!!")
+        (filter ((== lvlTarget) . #level) . below)
+        (getClass target)
+
+    inverted :: Link -> Link
+    inverted Link{name, source, target} = Link name target source
 
     addLinksForOneAssociation theAssociation@Association{name = associationName, multSource = Multiplicity (_, multSourceMaxMaybe), multTarget = Multiplicity (_, multTargetMaxMaybe)} = let
 
-        constructLinks :: [Name] -> [Name] -> [Link]
-        constructLinks = zipWith (Link associationName)
+        candidateSources = map #name $ getCandidateSources theAssociation
+        candidateTargets = map #name $ getCandidateTargets theAssociation
 
-        candidateTargets = map #name $ getCandidateTargets theAssociation :: [Name]
-        candidateSources = map #name $ getCandidateSources theAssociation :: [Name]
+        numberOfSources = length candidateSources
+        numberOfTargets = length candidateTargets
 
-        numberOfSources = length candidateSources :: Int
-        numberOfTargets = length candidateTargets :: Int
+        allPossibleLinks =  [ Link associationName i j | i <- candidateSources , j <- candidateTargets]
 
-        multSourceMax = fromMaybe numberOfSources multSourceMaxMaybe :: Int
-        multTargetMax = fromMaybe numberOfTargets multTargetMaxMaybe :: Int
-
-        multSourceMaxPossible = min multSourceMax numberOfSources :: Int
-        multTargetMaxPossible = min multTargetMax numberOfTargets :: Int
-
-        representedSources = concatMap (replicate multTargetMaxPossible) candidateSources :: [Name]
-        representedTargets = concatMap (replicate multSourceMaxPossible) candidateTargets :: [Name]
-
-        mustSwap = length representedSources < length representedTargets :: Bool
-
-        (toBeTrimmed, asItIs) = (if mustSwap then swap else id) (representedSources, representedTargets) :: ([Name], [Name])
-
-        achievableNumberOfLinks = length asItIs :: Int
-
-        bundleFull = if mustSwap then multTargetMaxPossible else multSourceMaxPossible  :: Int
+        multSourceMax = maybe numberOfTargets (min numberOfTargets) multTargetMaxMaybe
+        multTargetMax = maybe numberOfSources (min numberOfSources) multSourceMaxMaybe
 
         in do
-            ( _ , _ , trimmed) <-
-                foldM (\(remaining, current0, result) _ -> let
-                        current = if length current0 == bundleFull then [] else current0
-                        canChooseFrom = filter (`notElem` current) remaining
-                        in if null canChooseFrom then return (remaining, current0, result) else do
-                            new <- elements canChooseFrom
-                            return (delete new remaining, new : current, new : result)
-                ) (toBeTrimmed, [], []) [1 .. achievableNumberOfLinks]
+            let occurrencesAsSourceEmpty = fromList $ map (( , 0) . #name) theClasses :: Map Name Int
+            let occurrencesAsTargetEmpty = fromList $ map (( , 0) . #name) theClasses :: Map Name Int
+            shuffled <- shuffle allPossibleLinks
+            let (result, _ , _ ) = foldl (\(soFar, occurrencesAsSource, occurrencesAsTarget) link@Link{source = theSource, target = theTarget} ->
+                        if or
+                            [ link `elem` soFar
+                            , inverted link `elem` soFar
+                            , occurrencesAsSource ! theSource >= multSourceMax
+                            , occurrencesAsTarget ! theTarget >= multTargetMax
+                            ]
+                            then (soFar, occurrencesAsSource, occurrencesAsTarget)
+                            else (link : soFar, adjust (+1) theSource occurrencesAsSource, adjust (+1) theTarget occurrencesAsTarget)
+                    ) ([], occurrencesAsSourceEmpty, occurrencesAsTargetEmpty) shuffled
+            return result
+        -- constructLinks :: [(Name, Name)] -> [Link]
+        -- constructLinks = map (uncurry (Link associationName))
 
-            return $ nubOrd $
-                    if mustSwap
-                        then constructLinks asItIs trimmed
-                        else constructLinks trimmed asItIs
+        -- candidateTargets = map #name $ getCandidateTargets theAssociation :: [Name]
+        -- candidateSources = map #name $ getCandidateSources theAssociation :: [Name]
+
+        -- numberOfSources = length candidateSources :: Int
+        -- numberOfTargets = length candidateTargets :: Int
+
+        -- occurrencesSource = maybe numberOfTargets (min numberOfTargets) multTargetMaxMaybe
+        -- occurrencesTarget = maybe numberOfSources (min numberOfSources) multSourceMaxMaybe
+
+        -- representedSources = concatMap (replicate occurrencesSource) candidateSources
+        -- representedTargets = concatMap (replicate occurrencesTarget) candidateTargets
+
+        -- mustSwap = length representedSources > length representedTargets :: Bool
+
+        -- (short, long) = (if mustSwap then swap else id) (representedSources, representedTargets) :: ([Name], [Name])
+
+        -- -- achievableNumberOfLinks = length short :: Int
+
+        -- bundleSize = if mustSwap then occurrencesTarget else occurrencesSource  :: Int
+
+        -- in do
+        --     ( _ , _ , ready) <-
+        --         foldM (\(remaining, current0, result) s -> let
+        --                 current = if length current0 == bundleSize
+        --                     then []
+        --                     else current0
+        --                 canChooseFrom = filter (\x -> (s, x) `notElem` current && (x, s) `notElem` current) remaining
+        --                 in if null canChooseFrom
+        --                     then return (remaining, current, result)
+        --                     else do
+        --                         new <- elements canChooseFrom
+        --                         return (delete new remaining, (s, new) : current, (s, new) : result)
+        --         ) (long, [], []) short
+
+        --     return $ nubOrd $ constructLinks $ (if mustSwap then map swap else id) ready
+
     in do
         allPossibleLinks <- concat <$> forM theAssociations addLinksForOneAssociation :: Gen [Link]
         let numberOfLinksToKeep = round $ portionOfPossibleLinksToKeep * fromIntegral (length allPossibleLinks) :: Int
