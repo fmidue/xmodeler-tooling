@@ -295,9 +295,6 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
         (filter ((== lvlTarget) . #level) . below)
         (getClass target)
 
-    inverted :: Link -> Link
-    inverted Link{name, source, target} = Link name target source
-
     addLinksForOneAssociation theAssociation@Association{name = associationName, multSource = Multiplicity (_, multSourceMaxMaybe), multTarget = Multiplicity (_, multTargetMaxMaybe)} = let
 
         candidateSources = map #name $ getCandidateSources theAssociation
@@ -308,20 +305,15 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
 
         allPossibleLinks =  [ Link associationName i j | i <- candidateSources , j <- candidateTargets]
 
-        multSourceMax = maybe numberOfTargets (min numberOfTargets) multTargetMaxMaybe
-        multTargetMax = maybe numberOfSources (min numberOfSources) multSourceMaxMaybe
+        multSourceMax = fromMaybe numberOfTargets multTargetMaxMaybe
+        multTargetMax = fromMaybe numberOfSources multSourceMaxMaybe
 
         in do
-            let occurrencesAsSourceEmpty = fromList $ map (( , 0) . #name) theClasses :: Map Name Int
-            let occurrencesAsTargetEmpty = fromList $ map (( , 0) . #name) theClasses :: Map Name Int
+            let occurrencesAsSourceEmpty = fromList $ map ( , 0) candidateSources :: Map Name Int
+            let occurrencesAsTargetEmpty = fromList $ map ( , 0) candidateTargets :: Map Name Int
             shuffled <- shuffle allPossibleLinks
             let (result, _ , _ ) = foldl (\(soFar, occurrencesAsSource, occurrencesAsTarget) link@Link{source = theSource, target = theTarget} ->
-                        if or
-                            [ link `elem` soFar
-                            , inverted link `elem` soFar
-                            , occurrencesAsSource ! theSource >= multSourceMax
-                            , occurrencesAsTarget ! theTarget >= multTargetMax
-                            ]
+                        if  occurrencesAsSource ! theSource >=  multSourceMax || occurrencesAsTarget ! theTarget >= multTargetMax
                             then (soFar, occurrencesAsSource, occurrencesAsTarget)
                             else (link : soFar, adjust (+1) theSource occurrencesAsSource, adjust (+1) theTarget occurrencesAsTarget)
                     ) ([], occurrencesAsSourceEmpty, occurrencesAsTargetEmpty) shuffled
