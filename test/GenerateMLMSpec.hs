@@ -7,7 +7,7 @@ import Test.Hspec.QuickCheck (modifyMaxSuccess)
 import Modelling.MLM.GenerateMLM (generateMLM)
 import Modelling.MLM.Types (valid, MLM(..), Class(..), Association(..), Multiplicity(..), Name(..), Link(..))
 import Modelling.MLM.Config (Config(..))
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, mapMaybe)
 
 spec :: Spec
 spec = do
@@ -40,36 +40,26 @@ spec = do
               in
                 average `shouldSatisfy` (== max 1 numberOfAttributesPerConcretization)
         describe "generateMLM" $
-          it "respects chanceAbstractClass" $
-            forAll reasonableConfigs $ \config@Config{chanceAbstractClass} ->
+          it "respects tendencyAbstractClass" $
+            forAll reasonableConfigs $ \config@Config{tendencyAbstractClass} ->
             forAll (generateMLM config) $ \MLM{classes} ->
               let
+                allClassifiers = mapMaybe #classifier classes :: [Name]
                 probability =
                   fromIntegral (length (filter (\Class{isAbstract} -> isAbstract) classes))
-                  / fromIntegral (length (filter (\Class{level} -> level > 0) classes)) :: Float
+                  / fromIntegral (length (filter (\Class{level, name} -> level > 0 && name `notElem` allClassifiers) classes)) :: Float
               in
-                probability `shouldSatisfy` within 0.4 chanceAbstractClass
+                probability `shouldSatisfy` within 0.4 tendencyAbstractClass
         describe "generateMLM" $
-          it "respects chanceToConcretize" $
-            forAll reasonableConfigs $ \config@Config{chanceToConcretize} ->
+          it "respects tendencyConcretize" $
+            forAll reasonableConfigs $ \config@Config{tendencyToConcretize} ->
             forAll (generateMLM config) $ \MLM{classes} ->
               let
                 probability =
                   fromIntegral (length (filter (\Class{classifier} -> isJust classifier) classes))
                   / fromIntegral (length classes)
               in
-                probability `shouldSatisfy` within 0.4 chanceToConcretize
-        -- describe "generateMLM" $
-        --   it "respects multiplicitySpecAttributes" $
-        --     forAll reasonableConfigs $ \config@Config{multiplicitySpecAttributes} ->
-        --     forAll (generateMLM config) $ \MLM{classes} ->
-        --       let
-        --         theAttributes = concatMap (\Class{attributes} -> attributes) classes
-        --         probability =
-        --           fromIntegral (length (filter (\Attribute{multiplicity = Multiplicity (_, upper)} -> isJust upper) theAttributes))
-        --           / fromIntegral (length theAttributes)
-        --       in
-        --         probability `shouldSatisfy` within 0.2 (fst multiplicitySpecAttributes)
+                probability `shouldSatisfy` within 0.4 tendencyToConcretize
         describe "generateMLM" $
           it "respects multiplicitySpecAssociations" $
             forAll reasonableConfigs $ \config@Config{multiplicitySpecAssociations} ->
