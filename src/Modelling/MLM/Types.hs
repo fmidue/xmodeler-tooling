@@ -41,12 +41,12 @@ import Data.List.UniqueStrict (allUnique)
 import Data.Char (isDigit)
 import Data.List (find, sort, sortOn)
 import Data.Ix (inRange)
-import Data.Maybe (isNothing, maybeToList, mapMaybe, fromMaybe)
+import Data.Maybe (isNothing, isJust, maybeToList, fromMaybe)
 import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
 import qualified Data.Map.Strict as M
 import Data.Map.Strict (Map, member, (!?), fromList)
-import Data.List.Extra (replace, nubOrd)
+import Data.List.Extra (replace)
 
 noCycles :: (Eq a, Ord a) => Map a [a] -> Bool
 noCycles x = M.null x || peeled /= x && noCycles peeled
@@ -155,17 +155,8 @@ instance Validatable () MLM where
     findAssociationOfLink :: Link -> Maybe Association
     findAssociationOfLink Link{name = linkName} = find ((== linkName) . #name) associations
 
-    parentDict :: Map Name [Name]
-    parentDict = generateParentDict classes
-
-    classifierDict :: Map Name Name
-    classifierDict = generateClassifierDict classes
-
     dict :: Map Name [Name]
     dict = generateClassDict classes
-
-    getClassifier :: Name -> Maybe Name
-    getClassifier = (classifierDict !?)
 
     (\/) :: Name -> Name -> Bool
     (\/) = (\?/) classes
@@ -189,14 +180,6 @@ instance Validatable () MLM where
     associationMultiplicityNotViolated :: Association -> Bool
     associationMultiplicityNotViolated association' =
       all (participationDoesNotViolateMultiplicity association') classes
-
-    -- whether a class does not concretize a class whose level is not higher by 1
-    lvlIsClassifierLvlMinusOne class' =
-      maybe True
-        (maybe False
-          (\classifierExisting -> #level classifierExisting == #level class' + 1)
-          . findClass
-      ) (#classifier class')
 
     isLinked :: Name -> Bool
     isLinked className = any (\Link{source, target} -> source == className || target == className) links
@@ -222,25 +205,18 @@ instance Validatable () MLM where
             ]
         ) (findAssociationOfLink link)
 
-    allClassifiers :: [Name]
-    allClassifiers = nubOrd $ mapMaybe #classifier classes
-
     in and [
       not (null classes),
       valid () projectName,
       allUnique (map #name classes),
       allUnique (map #name associations),
       noCycles dict,
-      all lvlIsClassifierLvlMinusOne classes,
       all instantiatesSomethingOrIsMetaClass classes,
       allUnique links,
-      all (\Class{classifier = c, name} -> all ((== c) . getClassifier) (fromMaybe [] (parentDict !? name)) ) classes,
-      all (\x -> valid (above x, map findClass (#parents x)) x) classes,
+      all (\x -> valid (above x) x) classes,
       all (\x -> valid (findClass (#source x), findClass (#target x)) x) associations,
       all associationMultiplicityNotViolated associations,
-      all validLink links,
-      all (\Class{name, isAbstract} -> not isAbstract || name `notElem` allClassifiers) classes,
-      all (\x -> not (any (\y -> #name x == #name y && #source x == #target y && #target x == #source y && #source x /= #source y) links)) links
+      all validLink links
     ]
 
 data Class = Class {
@@ -269,39 +245,42 @@ instance Eq Class where
 emptyClass :: Class
 emptyClass = Class False 0 emptyName [] Nothing [] [] []
 
-instance Validatable ([Class], [Maybe Class]) Class where
-  valid (aboveThis, parentsClasses) Class{isAbstract, name = className, level = level', attributes = attributes', slots, operations, parents} = let
+instance Validatable [Class] Class where
+  valid aboveThis Class{isAbstract = thisAbstract, name = thisName, level = thisLevel, classifier = thisClassifier, attributes = thisAttributes, slots = thisSlots, operations = thisOperations, parents = thisParents} = let
 
-    getAttributeClass :: Name -> Maybe Class
-    getAttributeClass x = find (elem x . map #name . #attributes) aboveThis
+    findClass :: Name -> Maybe Class
+    findClass = generateClassFinder aboveThis
 
-    getAttribute :: Name -> Maybe Attribute
-    getAttribute x = find ((== x) . #name) . #attributes =<< getAttributeClass x
+    allAttributesAbove = concatMap #attributes aboveThis :: [Attribute]
 
-    allAttributesOfClassesAbove :: [Attribute]
-    allAttributesOfClassesAbove = attributes' ++ concatMap #attributes aboveThis
+    allAttributesAboveAndHere = allAttributesAbove ++ thisAttributes :: [Attribute]
 
-    instantiatableAttributesHere = filter ((== level') . #level) (concatMap #attributes aboveThis) :: [Attribute]
+    instantiatableAttributesHere = filter ((== thisLevel) . #level) (concatMap #attributes aboveThis) :: [Attribute]
 
-    slotsNames = map #name slots :: [Name]
+    thisAttributesNames = map #name thisAttributes :: [Name]
+    thisSlotsNames = map #name thisSlots :: [Name]
+    thisOperationsNames = map #name thisOperations :: [Name]
+
+    getAttributeOfSlot :: Slot -> Maybe Attribute
+    getAttributeOfSlot Slot{name} = find ((== name) . #name) allAttributesAbove
 
     in
     and [
-        not isAbstract || level' > 0,
-        valid () className,
-        valid () level',
-        all (maybe False ((== level') . #level)) parentsClasses,
-        allUnique parents,
-        allUnique (map #name attributes'),
-        allUnique (map #name slots),
-        allUnique (map #name operations),
-        allUnique (map (\Attribute{name, level} -> (name, level)) allAttributesOfClassesAbove),
+        valid () thisName,
+        valid () thisLevel,
+        all (maybe False (\Class{level, classifier} -> level == thisLevel && classifier == thisClassifier) . findClass) thisParents,
+        maybe True (maybe False (\Class{level, isAbstract} -> level == thisLevel + 1 && not isAbstract) . findClass) thisClassifier,
+        allUnique thisParents,
+        allUnique thisAttributesNames,
+        allUnique thisSlotsNames,
+        allUnique thisOperationsNames,
+        allUnique (map (\Attribute{name, level} -> (name, level)) allAttributesAboveAndHere),
         -- pretending that all attributes multiplicities are (1, Just 1)
-        all (( `elem` slotsNames) . #name) instantiatableAttributesHere,
-        level' > 0 || (null attributes' && null operations && null parents),
-        all (valid level') attributes',
-        all (valid level') operations,
-        all (\x -> valid (getAttribute (#name x) , level') x) slots
+        all (( `elem` thisSlotsNames) . #name) instantiatableAttributesHere,
+        thisLevel > 0 || (null thisAttributes && null thisOperations && null thisParents && not thisAbstract && isJust thisClassifier),
+        all (valid thisLevel) thisAttributes,
+        all (valid thisLevel) thisOperations,
+        all (\x -> valid (getAttributeOfSlot x, thisLevel) x) thisSlots
         ]
 
 data Attribute = Attribute {
