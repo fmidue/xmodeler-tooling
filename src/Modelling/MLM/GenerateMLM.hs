@@ -164,7 +164,7 @@ addInheritances tendency theClasses = let
 ----------------------------------------------------------
 
 addAttributes :: Int -> Float -> [Class] -> Gen [Class]
-addAttributes averageNumberOfAttributesPerClass tendency theClasses = let
+addAttributes numberOfAttributesPerConcretization tendency theClasses = let
 
     getRandomType :: Gen Type
     getRandomType = elements typeSpace
@@ -205,13 +205,13 @@ addAttributes averageNumberOfAttributesPerClass tendency theClasses = let
         oneAttribute <- getRandomAttributeSetLevel level i
 
         moreAttributes <- forM
-            [1 .. (averageNumberOfAttributesPerClass - 1)]
+            [1 .. (numberOfAttributesPerConcretization - 1)]
             (getRandomAttribute level . (i + ))
 
         containingClass <- tryToDelegateAttributeToClassifier classifier'
 
         return (insertWith (++) containingClass (oneAttribute : moreAttributes) soFar
-                , i + max 1 averageNumberOfAttributesPerClass)
+                , i + max 1 numberOfAttributesPerConcretization)
 
 
     in do
@@ -347,8 +347,7 @@ generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfA
     in do
         withConcretizations <- addConcretizations maxClassLevelSafe tendencyToConcretize emptyClasses :: Gen [Class]
         withAbstractions <- addAbstractions tendencyAbstractClass withConcretizations :: Gen [Class]
-        withInheritances <- addInheritances tendencyToInherit withAbstractions :: Gen [Class]
-        withAttributes <- addAttributes averageNumberOfAttributesPerClass tendencyToDistanceAttributeFromItsInstantiation withInheritances :: Gen [Class]
+        withAttributes <- addAttributes numberOfAttributesPerConcretization tendencyToDistanceAttributeFromItsInstantiation withInheritances :: Gen [Class]
         readyClasses <- addSlotValues withAttributes :: Gen [Class]
 
         readyAssociations <- addAssociations multiplicitySpecAssociations chanceVisibleAssociation withAttributes emptyAssociations :: Gen [Association]

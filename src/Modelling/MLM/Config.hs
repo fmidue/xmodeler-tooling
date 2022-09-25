@@ -11,7 +11,7 @@ data Config = Config
   , chanceVisibleAssociation :: Float -- the chance for an association to have visibility of True
   , tendencyAbstractClass :: Float -- the chance for a class to be abstract
   , portionOfPossibleLinksToKeep :: Float
-  , averageNumberOfAttributesPerClass :: Int
+  , numberOfAttributesPerConcretization :: Int
   , tendencyToDistanceAttributeFromItsInstantiation :: Float
   } deriving Show
 
@@ -27,6 +27,6 @@ defaultConfig = Config
   , chanceVisibleAssociation = 0.5
   , tendencyAbstractClass = 0.2
   , portionOfPossibleLinksToKeep = 0.8
-  , averageNumberOfAttributesPerClass = 2
+  , numberOfAttributesPerConcretization = 2
   , tendencyToDistanceAttributeFromItsInstantiation = 0.25
   }

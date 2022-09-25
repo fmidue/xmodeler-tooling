@@ -53,7 +53,7 @@ determineConfig = do
   chanceVisibleAssociation' <- offerChange "chanceVisibleAssociation" chanceVisibleAssociation
   tendencyAbstractClass' <- offerChange "chanceAbstractClass" tendencyAbstractClass
   portionOfPossibleLinksToKeep' <- offerChange "portionOfPossibleLinksToKeep" portionOfPossibleLinksToKeep
-  averageNumberOfAttributesPerClass' <- offerChange "averageNumberOfAttributesPerClass" averageNumberOfAttributesPerClass
+  numberOfAttributesPerConcretization' <- offerChange "numberOfAttributesPerConcretization" numberOfAttributesPerConcretization
   tendencyToDistanceAttributeFromItsInstantiation' <- offerChange "tendencyToDistanceAttributeFromItsInstantiation" tendencyToDistanceAttributeFromItsInstantiation
   let newConfig = Config
         { projectNameString = projectNameString'
@@ -66,7 +66,7 @@ determineConfig = do
         , chanceVisibleAssociation = chanceVisibleAssociation'
         , tendencyAbstractClass = tendencyAbstractClass'
         , portionOfPossibleLinksToKeep = portionOfPossibleLinksToKeep'
-        , averageNumberOfAttributesPerClass = averageNumberOfAttributesPerClass'
+        , numberOfAttributesPerConcretization = numberOfAttributesPerConcretization'
         , tendencyToDistanceAttributeFromItsInstantiation = tendencyToDistanceAttributeFromItsInstantiation'
         }
   return newConfig

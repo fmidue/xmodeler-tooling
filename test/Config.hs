@@ -22,7 +22,7 @@ reasonableConfigs = do
   chanceVisibleAssociation <- choose (0.0, 1.0)
   tendencyAbstractClass <- choose (0.0, 1.0)
   portionOfPossibleLinksToKeep <- choose (0.0, 1.0)
-  averageNumberOfAttributesPerClass <- choose (0,6)
+  numberOfAttributesPerConcretization <- choose (0,6)
   tendencyToDistanceAttributeFromItsInstantiation <- choose (0.0, 1.0)
   return $ Config {..}
 
@@ -41,6 +41,6 @@ smallConfigs = do
   let chanceVisibleAssociation  = 0.0
   let tendencyAbstractClass = 0.0
   portionOfPossibleLinksToKeep <- choose (0.7, 1.0)
-  averageNumberOfAttributesPerClass <- choose (1,2)
+  numberOfAttributesPerConcretization <- choose (1,2)
   tendencyToDistanceAttributeFromItsInstantiation <- choose (0.0, 0.2)
   return $ Config {..}
