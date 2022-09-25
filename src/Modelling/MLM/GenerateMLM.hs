@@ -142,7 +142,7 @@ addConcretizations maxLevel chanceToConcretize theClasses = let
 addAbstractions :: Float -> [Class] -> Gen [Class]
 addAbstractions tendency theClasses = let
     allClassifiers = map #classifier theClasses :: [Maybe Name]
-    in mapM (\x -> if Just (#name x) `elem` allClassifiers || #level x < 1 then return x else (x <<<) <$> randomWeightedXOr tendency (return False) (return True)) theClasses
+    in mapM (\x -> if Just (#name x) `elem` allClassifiers || #level x < 1 then return x else (x <<<) <$> randomWeightedXOr tendency (return True) (return False)) theClasses
 
 ----------------------------------------------------------
 
