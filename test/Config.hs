@@ -1,6 +1,6 @@
 module Config (reasonableConfigs, smallConfigs) where
 
-import Test.QuickCheck (Gen, choose, chooseInt)
+import Test.QuickCheck (Gen, choose, chooseInt, chooseAny)
 
 import Modelling.MLM.Config (Config(..))
 
@@ -24,6 +24,7 @@ reasonableConfigs = do
   portionOfPossibleLinksToKeep <- choose (0.0, 1.0)
   numberOfAttributesPerConcretization <- choose (0,6)
   tendencyToDistanceAttributeFromItsInstantiation <- choose (0.0, 1.0)
+  allowMultipleInheritance <- chooseAny :: Gen Bool
   return $ Config {..}
 
 smallConfigs :: Gen Config
@@ -43,4 +44,5 @@ smallConfigs = do
   portionOfPossibleLinksToKeep <- choose (0.7, 1.0)
   numberOfAttributesPerConcretization <- choose (1,2)
   tendencyToDistanceAttributeFromItsInstantiation <- choose (0.0, 0.2)
+  allowMultipleInheritance <- chooseAny :: Gen Bool
   return $ Config {..}

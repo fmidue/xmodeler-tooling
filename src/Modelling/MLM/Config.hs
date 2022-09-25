@@ -13,6 +13,7 @@ data Config = Config
   , portionOfPossibleLinksToKeep :: Float
   , numberOfAttributesPerConcretization :: Int
   , tendencyToDistanceAttributeFromItsInstantiation :: Float
+  , allowMultipleInheritance :: Bool
   } deriving Show
 
 defaultConfig :: Config
@@ -29,4 +30,5 @@ defaultConfig = Config
   , portionOfPossibleLinksToKeep = 0.8
   , numberOfAttributesPerConcretization = 2
   , tendencyToDistanceAttributeFromItsInstantiation = 0.25
+  , allowMultipleInheritance = True
   }

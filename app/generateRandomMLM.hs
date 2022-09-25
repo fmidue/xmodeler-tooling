@@ -55,6 +55,7 @@ determineConfig = do
   portionOfPossibleLinksToKeep' <- offerChange "portionOfPossibleLinksToKeep" portionOfPossibleLinksToKeep
   numberOfAttributesPerConcretization' <- offerChange "numberOfAttributesPerConcretization" numberOfAttributesPerConcretization
   tendencyToDistanceAttributeFromItsInstantiation' <- offerChange "tendencyToDistanceAttributeFromItsInstantiation" tendencyToDistanceAttributeFromItsInstantiation
+  allowMultipleInheritance' <- offerChange "allowMultipleInheritance" allowMultipleInheritance
   let newConfig = Config
         { projectNameString = projectNameString'
         , maxClassLevel = maxClassLevel'
@@ -68,6 +69,7 @@ determineConfig = do
         , portionOfPossibleLinksToKeep = portionOfPossibleLinksToKeep'
         , numberOfAttributesPerConcretization = numberOfAttributesPerConcretization'
         , tendencyToDistanceAttributeFromItsInstantiation = tendencyToDistanceAttributeFromItsInstantiation'
+        , allowMultipleInheritance = allowMultipleInheritance'
         }
   return newConfig
 

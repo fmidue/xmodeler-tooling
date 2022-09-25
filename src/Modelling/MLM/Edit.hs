@@ -78,7 +78,7 @@ editRandomlyValidlyN shouldWeForbidDeleteComponents config mlm n = let
     in foldM (\soFar _ -> f soFar) mlm [1 .. n]
 
 editValidly :: Config -> MLM -> Edit -> Gen MLM
-editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, multiplicitySpecAssociations, chanceVisibleAssociation, tendencyAbstractClass} mlm@MLM{classes, associations, links} e = let
+editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, multiplicitySpecAssociations, chanceVisibleAssociation, tendencyAbstractClass, allowMultipleInheritance } mlm@MLM{classes, associations, links} e = let
 
     nextAvailableClassName :: Name
     nextAvailableClassName = generateNextAvailableClassNameFinder mlm
@@ -155,11 +155,14 @@ editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, mult
             isAbstract' <- if level' < 1
                 then return False
                 else randomWeightedXOr tendencyAbstractClass (return True) (return False)
-            parents' <- if level' < 1
+            let canBeParents = filter (\x -> #level x == level' && #classifier x == classifier') classes
+            parents' <- if level' < 1 || null canBeParents
                 then return []
-                else randomWeightedXOr tendencyToInherit
-                    (map #name <$> sublistOf (filter (\x -> #level x == level' && #classifier x == classifier') classes))
-                    (return [])
+                else if allowMultipleInheritance
+                    then randomWeightedXOr tendencyToInherit
+                        (map #name <$> sublistOf canBeParents)
+                        (return [])
+                    else (:[]) . #name <$> elements canBeParents
             let classToBeAdded = Class isAbstract' level' name' parents' classifier' [] [] []
             let mlmWithTheClassEvenIfNotReadyYet = mlm <<< classToBeAdded
             -- if it cannot instantiate any attributes and it is not a meta class, then let's add one for it in its classifier (if it exists) and let it instantiate it with the rest of instantiable attributes:
