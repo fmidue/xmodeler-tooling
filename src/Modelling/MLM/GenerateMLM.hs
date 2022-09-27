@@ -35,9 +35,11 @@ import Modelling.MLM.Types (
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, shuffle, Gen)
 import Control.Monad (forM, foldM)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Map (Map, fromList, insertWith, (!?), (!), adjust)
 
+import qualified Data.Set as S (fromList)
+import Data.Set (Set, member)
 
 
 abcCapital :: [String]
@@ -141,8 +143,8 @@ addConcretizations maxLevel chanceToConcretize theClasses = let
 
 addAbstractions :: Float -> [Class] -> Gen [Class]
 addAbstractions tendency theClasses = let
-    allClassifiers = map #classifier theClasses :: [Maybe Name]
-    in mapM (\x -> if Just (#name x) `elem` allClassifiers || #level x < 1 then return x else (x <<<) <$> randomWeightedXOr tendency (return True) (return False)) theClasses
+    allClassifiers = S.fromList $ mapMaybe #classifier theClasses :: Set Name
+    in mapM (\x@Class{name, level} -> if name `member` allClassifiers || level < 1 then return (x <<< False) else (x <<<) <$> randomWeightedXOr tendency (return True) (return False)) theClasses
 
 ----------------------------------------------------------
 
