@@ -30,5 +30,5 @@ defaultConfig = Config
   , portionOfPossibleLinksToKeep = 0.8
   , numberOfAttributesPerConcretization = 2
   , tendencyToDistanceAttributeFromItsInstantiation = 0.25
-  , allowMultipleInheritance = True
+  , allowMultipleInheritance = False
   }
