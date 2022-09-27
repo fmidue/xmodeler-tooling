@@ -297,7 +297,7 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
         (filter ((== lvlTarget) . #level) . below)
         (getClass target)
 
-    addLinksForOneAssociation theAssociation@Association{name = associationName, multSource = Multiplicity (_, multSourceMaxMaybe), multTarget = Multiplicity (_, multTargetMaxMaybe)} = let
+    addLinksForOneAssociation theAssociation@Association{name = associationName, multSource = Multiplicity (0, multSourceMaxMaybe), multTarget = Multiplicity (0, multTargetMaxMaybe)} = let
 
         candidateSources = map #name $ getCandidateSources theAssociation
         candidateTargets = map #name $ getCandidateTargets theAssociation
@@ -320,6 +320,8 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
                             else (link : soFar, adjust (+1) theSource occurrencesAsSource, adjust (+1) theTarget occurrencesAsTarget)
                     ) ([], occurrencesAsSourceEmpty, occurrencesAsTargetEmpty) shuffled
             return result
+
+    addLinksForOneAssociation _ = error "lower multiplicity bounds different from 0 not supported"
 
     in do
         allPossibleLinks <- concat <$> forM theAssociations addLinksForOneAssociation :: Gen [Link]
