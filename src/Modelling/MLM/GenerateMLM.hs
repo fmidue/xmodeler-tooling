@@ -35,6 +35,7 @@ import Modelling.MLM.Types (
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, shuffle, Gen)
 import Control.Monad (forM, foldM)
+import Control.Monad.Extra (concatMapM)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Map (Map, fromList, insertWith, (!?), (!), adjust)
 
@@ -321,7 +322,7 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
     addLinksForOneAssociation _ = error "lower multiplicity bounds different from 0 not supported"
 
     in do
-        allPossibleLinks <- concat <$> forM theAssociations addLinksForOneAssociation :: Gen [Link]
+        allPossibleLinks <- shuffle =<< concatMapM addLinksForOneAssociation theAssociations :: Gen [Link]
         let numberOfLinksToKeep = round $ portionOfPossibleLinksToKeep * fromIntegral (length allPossibleLinks) :: Int
         return $ take numberOfLinksToKeep allPossibleLinks
 
