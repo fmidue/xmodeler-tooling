@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 module Modelling.MLM.Types(
   MLM (..),
@@ -60,7 +61,7 @@ eqBy x y f = f x == f y
 instance HasField x r a => IsLabel x (r -> a) where
   fromLabel = getField @x
 
-class Validatable context a where
+class Validatable context a | a -> context where
   valid :: context -> a -> Bool
 
 newtype Name = Name String deriving (Eq, Ord, Show, Read)

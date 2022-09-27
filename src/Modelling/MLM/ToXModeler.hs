@@ -1,4 +1,4 @@
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes, FunctionalDependencies #-}
 
 module Modelling.MLM.ToXModeler (toXModeler) where
 
@@ -36,7 +36,7 @@ data Object = Object {
   y :: Int
 }
 
-class XModelerable context a where
+class XModelerable context a | a -> context where
   get :: context -> a -> String
 
 -- Name : instead of an XModelerable () instance,
