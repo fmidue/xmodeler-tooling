@@ -48,7 +48,7 @@ spec = do
                   fromIntegral (length (filter (\Class{isAbstract} -> isAbstract) classes))
                   / fromIntegral (length (filter (\Class{level, name} -> level > 0 && name `notElem` allClassifiers) classes)) :: Float
               in
-                probability `shouldSatisfy` within 0.4 tendencyAbstractClass
+                probability `shouldSatisfy` within 0.5 tendencyAbstractClass
         describe "generateMLM" $
           it "respects tendencyConcretize" $
             forAll reasonableConfigs $ \config@Config{tendencyToConcretize} ->
@@ -58,7 +58,7 @@ spec = do
                   fromIntegral (length (filter (\Class{classifier} -> isJust classifier) classes))
                   / fromIntegral (length classes)
               in
-                probability `shouldSatisfy` within 0.4 tendencyToConcretize
+                probability `shouldSatisfy` within 0.5 tendencyToConcretize
         describe "generateMLM" $
           it "respects multiplicitySpecAssociations" $
             forAll reasonableConfigs $ \config@Config{multiplicitySpecAssociations} ->
@@ -69,7 +69,7 @@ spec = do
                   fromIntegral (length (filter (\(Multiplicity (_, upper)) -> isJust upper) multiplicities))
                   / fromIntegral (length multiplicities)
               in
-                probability `shouldSatisfy` within 0.2 (fst multiplicitySpecAssociations)
+                probability `shouldSatisfy` within 0.25 (fst multiplicitySpecAssociations)
         describe "generateMLM" $
           it "respects chanceVisibleAssociation" $
             forAll reasonableConfigs $ \config@Config{chanceVisibleAssociation} ->
@@ -80,7 +80,7 @@ spec = do
                   fromIntegral (length (filter id visibilities))
                   / fromIntegral (length visibilities)
               in
-                probability `shouldSatisfy` within 0.2 chanceVisibleAssociation
+                probability `shouldSatisfy` within 0.25 chanceVisibleAssociation
         describe "generateMLM" $
           it "can generate a valid MLM with the maximum number of links (instances of associations) possible" $
             forAll (fmap (\config -> config{portionOfPossibleLinksToKeep = 1.0}) smallConfigs) $ \config ->
