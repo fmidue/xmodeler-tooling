@@ -302,20 +302,17 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
         candidateSources = map #name $ getCandidateSources theAssociation
         candidateTargets = map #name $ getCandidateTargets theAssociation
 
-        numberOfSources = length candidateSources
-        numberOfTargets = length candidateTargets
-
         allPossibleLinks =  [ Link associationName i j | i <- candidateSources , j <- candidateTargets]
 
-        multSourceMax = fromMaybe numberOfTargets multTargetMaxMaybe
-        multTargetMax = fromMaybe numberOfSources multSourceMaxMaybe
+        usedUpAsSource = maybe (const False) (==) multTargetMaxMaybe
+        usedUpAsTarget = maybe (const False) (==) multSourceMaxMaybe
 
         in do
             let occurrencesAsSourceEmpty = fromList $ map ( , 0) candidateSources :: Map Name Int
             let occurrencesAsTargetEmpty = fromList $ map ( , 0) candidateTargets :: Map Name Int
             shuffled <- shuffle allPossibleLinks
             let (result, _ , _ ) = foldl (\(soFar, occurrencesAsSource, occurrencesAsTarget) link@Link{source = theSource, target = theTarget} ->
-                        if  occurrencesAsSource ! theSource >=  multSourceMax || occurrencesAsTarget ! theTarget >= multTargetMax
+                        if usedUpAsSource (occurrencesAsSource ! theSource) || usedUpAsTarget (occurrencesAsTarget ! theTarget)
                             then (soFar, occurrencesAsSource, occurrencesAsTarget)
                             else (link : soFar, adjust (+1) theSource occurrencesAsSource, adjust (+1) theTarget occurrencesAsTarget)
                     ) ([], occurrencesAsSourceEmpty, occurrencesAsTargetEmpty) shuffled
