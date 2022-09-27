@@ -134,7 +134,7 @@ generateInstantiatableOperationsFinder theClasses c@Class{level = classLevel} = 
   above = generateAboveFinder theClasses
   in filter ((== classLevel) . #level) $ concatMap #operations $ above c
 
-generateOccurrencesCounter :: Bool -> [Link] -> (Class -> Association -> Int)
+generateOccurrencesCounter :: Bool -> [Link] -> Class -> Association -> Int
 generateOccurrencesCounter asSourceRatherThanAsTarget theLinks Class{name = className} Association{name = associationName} = let
   toLookFor = if asSourceRatherThanAsTarget then #source else #target in
     length $ filter (\link ->
@@ -253,9 +253,7 @@ instance Validatable [Class] Class where
 
     allAttributesAbove = concatMap #attributes aboveThis :: [Attribute]
 
-    allAttributesAboveAndHere = allAttributesAbove ++ thisAttributes :: [Attribute]
-
-    instantiatableAttributesHere = filter ((== thisLevel) . #level) (concatMap #attributes aboveThis) :: [Attribute]
+    instantiatableAttributesHere = filter ((== thisLevel) . #level) allAttributesAbove :: [Attribute]
 
     thisAttributesNames = map #name thisAttributes :: [Name]
     thisSlotsNames = map #name thisSlots :: [Name]
@@ -274,7 +272,7 @@ instance Validatable [Class] Class where
         allUnique thisAttributesNames,
         allUnique thisSlotsNames,
         allUnique thisOperationsNames,
-        allUnique (map (\Attribute{name, level} -> (name, level)) allAttributesAboveAndHere),
+        allUnique (map (\Attribute{name, level} -> (name, level)) $ thisAttributes ++ allAttributesAbove),
         -- pretending that all attributes multiplicities are (1, Just 1)
         all (( `elem` thisSlotsNames) . #name) instantiatableAttributesHere,
         thisLevel > 0 || (null thisAttributes && null thisOperations && null thisParents && not thisAbstract && isJust thisClassifier),
