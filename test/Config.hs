@@ -22,7 +22,7 @@ reasonableConfigs = do
   chanceVisibleAssociation <- choose (0.0, 1.0)
   tendencyAbstractClass <- choose (0.0, 1.0)
   portionOfPossibleLinksToKeep <- choose (0.0, 1.0)
-  numberOfAttributesPerConcretization <- choose (0,6)
+  numberOfAttributesPerConcretization <- choose (1,6)
   tendencyToDistanceAttributeFromItsInstantiation <- choose (0.0, 1.0)
   allowMultipleInheritance <- chooseAny :: Gen Bool
   return $ Config {..}

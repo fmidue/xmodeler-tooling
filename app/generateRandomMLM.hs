@@ -4,7 +4,7 @@ module Main (main) where
 
 import Modelling.MLM.ToXModeler (toXModeler)
 import Data.GraphViz (GraphvizCommand(..))
-import Modelling.MLM.Config (Config(..), defaultConfig)
+import Modelling.MLM.Config (Config(..), defaultConfig, checkConfig)
 import Modelling.MLM.Types (MLM (..), Name (..))
 import Modelling.MLM.GenerateMLM (generateMLM)
 import Test.QuickCheck (generate)
@@ -47,11 +47,11 @@ determineConfig = do
   maxClassLevel' <- offerChange "maxClassLevel" maxClassLevel
   numberOfClasses' <- offerChange "numberOfClasses" numberOfClasses
   numberOfAssociations' <- offerChange "numberOfAssociations" numberOfAssociations
-  tendencyToConcretize' <- offerChange "chanceToConcretize" tendencyToConcretize
-  tendencyToInherit' <- offerChange "chanceToInherit" tendencyToInherit
+  tendencyToConcretize' <- offerChange "tendencyToConcretize" tendencyToConcretize
+  tendencyToInherit' <- offerChange "tendencyToInherit" tendencyToInherit
   multiplicitySpecAssociations' <- offerChange "multiplicitySpecAssociations" multiplicitySpecAssociations
   chanceVisibleAssociation' <- offerChange "chanceVisibleAssociation" chanceVisibleAssociation
-  tendencyAbstractClass' <- offerChange "chanceAbstractClass" tendencyAbstractClass
+  tendencyAbstractClass' <- offerChange "tendencyAbstractClass" tendencyAbstractClass
   portionOfPossibleLinksToKeep' <- offerChange "portionOfPossibleLinksToKeep" portionOfPossibleLinksToKeep
   numberOfAttributesPerConcretization' <- offerChange "numberOfAttributesPerConcretization" numberOfAttributesPerConcretization
   tendencyToDistanceAttributeFromItsInstantiation' <- offerChange "tendencyToDistanceAttributeFromItsInstantiation" tendencyToDistanceAttributeFromItsInstantiation
@@ -71,7 +71,13 @@ determineConfig = do
         , tendencyToDistanceAttributeFromItsInstantiation = tendencyToDistanceAttributeFromItsInstantiation'
         , allowMultipleInheritance = allowMultipleInheritance'
         }
-  return newConfig
+  case checkConfig newConfig of
+    Nothing ->
+      return newConfig
+    Just problem -> do
+      putStrLn $ "This didn't go well. Here is the problem: " ++ problem
+      putStrLn "You should try again."
+      determineConfig
 
 offerChange :: (Show a, Read a) => String -> a -> IO a
 offerChange name value = do

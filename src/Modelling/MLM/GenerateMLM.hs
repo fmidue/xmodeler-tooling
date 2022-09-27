@@ -219,8 +219,7 @@ addAttributes numberOfAttributesPerConcretization tendency theClasses = let
         containingClass <- tryToDelegateAttributeToClassifier classifier'
 
         return (insertWith (++) containingClass (oneAttribute : moreAttributes) soFar
-                , i + max 1 numberOfAttributesPerConcretization)
-
+                , i + numberOfAttributesPerConcretization)
 
     in do
         let emptyRequestMap = fromList $ map (( , []) . #name) theClasses :: Map Name [Attribute]

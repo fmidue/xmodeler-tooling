@@ -1,4 +1,6 @@
-module Modelling.MLM.Config (Config(..), defaultConfig) where
+{-# LANGUAGE RecordWildCards #-}
+
+module Modelling.MLM.Config (Config(..), defaultConfig, checkConfig) where
 
 data Config = Config
   { projectNameString :: String
@@ -32,3 +34,11 @@ defaultConfig = Config
   , tendencyToDistanceAttributeFromItsInstantiation = 0.25
   , allowMultipleInheritance = False
   }
+
+checkConfig :: Config -> Maybe String
+checkConfig Config {..}
+    | maxClassLevel < 0 || numberOfClasses < 0 || numberOfAssociations < 0
+      = Just "No setting can be negative."
+    | numberOfAttributesPerConcretization < 1
+      = Just "At least one attribute per concretization is required."
+    | otherwise = Nothing

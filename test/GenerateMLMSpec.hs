@@ -37,7 +37,7 @@ spec = do
                     (sum (map (\Class{attributes} -> length attributes) classes))
                     (length (filter (\Class{classifier} -> isJust classifier) classes))
               in
-                average `shouldSatisfy` (== max 1 numberOfAttributesPerConcretization)
+                average `shouldSatisfy` (== numberOfAttributesPerConcretization)
         describe "generateMLM" $
           it "respects tendencyAbstractClass" $
             forAll reasonableConfigs $ \config@Config{tendencyAbstractClass} ->
