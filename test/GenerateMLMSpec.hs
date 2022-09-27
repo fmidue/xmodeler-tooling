@@ -3,7 +3,6 @@ module GenerateMLMSpec (spec) where
 import Test.Hspec (Spec, describe, it, shouldSatisfy)
 import Test.QuickCheck (forAll, oneof)
 import Config (reasonableConfigs, smallConfigs)
-import Test.Hspec.QuickCheck (modifyMaxSuccess)
 import Modelling.MLM.GenerateMLM (generateMLM)
 import Modelling.MLM.Types (valid, MLM(..), Class(..), Association(..), Multiplicity(..), Name(..), Link(..))
 import Modelling.MLM.Config (Config(..))
@@ -83,7 +82,6 @@ spec = do
               in
                 probability `shouldSatisfy` within 0.2 chanceVisibleAssociation
         describe "generateMLM" $
-          modifyMaxSuccess (const 500) $
           it "can generate a valid MLM with the maximum number of links (instances of associations) possible" $
             forAll (fmap (\config -> config{portionOfPossibleLinksToKeep = 1.0}) smallConfigs) $ \config ->
               forAll (generateMLM config) $ \mlm@MLM{classes, links, associations} -> let
