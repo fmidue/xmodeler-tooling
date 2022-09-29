@@ -45,20 +45,20 @@ import Control.Monad (foldM)
 
 data Edit = AddClass | AddAssociation | AddLink | AddAttribute | AddOperation | DeleteClass | DeleteAssociation | DeleteLink | DeleteAttribute | DeleteOperation deriving (Enum, Bounded)
 
-generateNextAvailableClassNameFinder :: MLM -> Name
-generateNextAvailableClassNameFinder MLM{classes} = fromMaybe (error "Impossible to not find an available class name in the infinite list of names!!!") $
+nextAvailableClassName :: MLM -> Name
+nextAvailableClassName MLM{classes} = fromMaybe (error "Impossible to not find an available class name in the infinite list of names!!!") $
     find (`notElem` map #name classes) classNameSpace
 
-generateNextAvailableAssociationNameFinder :: MLM -> Name
-generateNextAvailableAssociationNameFinder MLM{associations} = fromMaybe (error "Impossible to not find an available association name in the infinite list of names!!!") $
+nextAvailableAssociationName :: MLM -> Name
+nextAvailableAssociationName MLM{associations} = fromMaybe (error "Impossible to not find an available association name in the infinite list of names!!!") $
     find (`notElem` map #name associations) associationNameSpace
 
-generateNextAvailableAttributeNameFinder :: MLM -> Name
-generateNextAvailableAttributeNameFinder MLM{classes} = fromMaybe (error "Impossible to not find an available attribute name in the infinite list of names!!!") $
+nextAvailableAttributeName :: MLM -> Name
+nextAvailableAttributeName MLM{classes} = fromMaybe (error "Impossible to not find an available attribute name in the infinite list of names!!!") $
     find (`notElem` map #name (concatMap #attributes classes)) attributeNameSpace
 
-generateNextAvailableOperationNameFinder :: MLM -> Name
-generateNextAvailableOperationNameFinder MLM{classes} = fromMaybe (error "Impossible to not find an available operation name in the infinite list of names!!!") $
+nextAvailableOperationName :: MLM -> Name
+nextAvailableOperationName MLM{classes} = fromMaybe (error "Impossible to not find an available operation name in the infinite list of names!!!") $
     find (`notElem` map #name (concatMap #operations classes)) operationNameSpace
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -79,18 +79,6 @@ editRandomlyValidlyN shouldWeForbidDeleteComponents config mlm n = let
 
 editValidly :: Config -> MLM -> Edit -> Gen MLM
 editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, multiplicitySpecAssociations, chanceVisibleAssociation, tendencyAbstractClass, allowMultipleInheritance } mlm@MLM{classes, associations, links} e = let
-
-    nextAvailableClassName :: Name
-    nextAvailableClassName = generateNextAvailableClassNameFinder mlm
-
-    nextAvailableAssociationName :: Name
-    nextAvailableAssociationName = generateNextAvailableAssociationNameFinder mlm
-
-    nextAvailableAttributeName :: Name
-    nextAvailableAttributeName = generateNextAvailableAttributeNameFinder mlm
-
-    nextAvailableOperationName :: Name
-    nextAvailableOperationName = generateNextAvailableOperationNameFinder mlm
 
     randomType :: Gen Type
     randomType = elements typeSpace
@@ -144,7 +132,7 @@ editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, mult
 
     in case e of
         AddClass -> do
-            let name' = nextAvailableClassName
+            let name' = nextAvailableClassName mlm
             classifierClass <- if null nonAbstractNonLevelZeroClasses
                 then return Nothing
                 else randomWeightedXOr tendencyToConcretize
@@ -168,11 +156,11 @@ editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, mult
             -- if it cannot instantiate any attributes and it is not a meta class, then let's add one for it in its classifier (if it exists) and let it instantiate it with the rest of instantiable attributes:
             mlmWithTheNewAttributeMaybe <- do
                 dataType' <- randomType
-                let newAttribute = Attribute level' nextAvailableAttributeName dataType' (Multiplicity (1, Just 1))
+                let newAttribute = Attribute level' (nextAvailableAttributeName mlmWithTheClassEvenIfNotReadyYet) dataType' (Multiplicity (1, Just 1))
                 return $ maybe mlmWithTheClassEvenIfNotReadyYet (\c -> insert mlmWithTheClassEvenIfNotReadyYet c newAttribute) classifier'
             refreshInstantiationAllClasses mlmWithTheNewAttributeMaybe
         AddAssociation -> if null nonLevelZeroClasses then return mlm else do
-            let name' = nextAvailableAssociationName
+            let name' = nextAvailableAssociationName mlm
             sourceClass <- elements nonLevelZeroClasses
             targetClass <- elements nonLevelZeroClasses
             let source' = #name sourceClass
@@ -192,7 +180,7 @@ editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, mult
                 else do
                     (mlm <<<) <$> elements allPossibleLinksAllAssociations
         AddAttribute -> if null nonLevelZeroClasses then return mlm else do
-            let name' = nextAvailableAttributeName
+            let name' = nextAvailableAttributeName mlm
             dataType' <- randomType
             let multiplicity' = Multiplicity (1, Just 1)
             class' <- elements nonLevelZeroClasses
@@ -201,7 +189,7 @@ editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, mult
             let mlmWithTheAttribute = insert mlm (#name class') attribute
             refreshInstantiationAllClasses mlmWithTheAttribute
         AddOperation -> if null nonLevelZeroClasses then return mlm else do
-            let name' = nextAvailableOperationName
+            let name' = nextAvailableOperationName mlm
             dataType' <- randomType
             isMonitored' <- chooseAny :: Gen Bool
             let body' = emptyOperationBody name'
@@ -278,17 +266,13 @@ editRandomlyBlindlyNStayValid shouldWeForbidDeleteComponents mlm n = let
 editBlindly :: MLM -> Edit -> Gen MLM
 editBlindly mlm@MLM{classes, associations, links} e = let
 
-    nextAvailableClassName = generateNextAvailableClassNameFinder mlm
-    nextAvailableAssociationName = generateNextAvailableAssociationNameFinder mlm
-    nextAvailableAttributeName = generateNextAvailableAttributeNameFinder mlm
-    nextAvailableOperationName = generateNextAvailableOperationNameFinder mlm
     randomType = elements typeSpace
 
     exceptOnesNamed list x = filter ((/= x) . #name) list
 
     in case e of
         AddClass -> do
-            let name' = nextAvailableClassName
+            let name' = nextAvailableClassName mlm
             isAbstract' <- chooseAny :: Gen Bool
             classifierClass <- if null classes
                 then return Nothing
@@ -301,7 +285,7 @@ editBlindly mlm@MLM{classes, associations, links} e = let
             let slots' = []
             return $ mlm <<< Class isAbstract' level' name' parents' classifier' attributes' operations' slots'
         AddAssociation -> if null classes then return mlm else do
-            let name' = nextAvailableAssociationName
+            let name' = nextAvailableAssociationName mlm
             sourceClass <- elements classes
             targetClass <- elements classes
             let source' = #name sourceClass
@@ -320,7 +304,7 @@ editBlindly mlm@MLM{classes, associations, links} e = let
             target' <- #name <$> elements classes
             return $ mlm <<< Link name' source' target'
         AddAttribute -> if null classes then return mlm else do
-            let name' = nextAvailableAttributeName
+            let name' = nextAvailableAttributeName mlm
             dataType' <- randomType
             let multiplicity' = Multiplicity (1, Just 1)
             class' <- elements classes
@@ -332,7 +316,7 @@ editBlindly mlm@MLM{classes, associations, links} e = let
                         else x
                 ) classes}
         AddOperation -> if null classes then return mlm else do
-            let name' = nextAvailableOperationName
+            let name' = nextAvailableOperationName mlm
             dataType' <- randomType
             isMonitored' <- chooseAny :: Gen Bool
             let body' = emptyOperationBody name'
