@@ -31,12 +31,20 @@ main = do
   theConfigToUse <- determineConfig
   putStrLn "\nThe following is the config now used:\n"
   pPrint theConfigToUse
-  putStrLn "\nThe following is a random MLM generated from it:\n"
-  mlm@MLM{ name = Name projectName } <- generate . generateMLM $ theConfigToUse
+  putStrLn "\nHow many random MLMs do you want me to generate from it (default is 1)?"
+  input <- getLine
+  let n = if null input then 1 else read input
+  mapM_ (makeMLM theConfigToUse) [1..n]
+
+makeMLM :: Config -> Int -> IO ()
+makeMLM config i = do
+  putStrLn $ "\nThe following is random MLM #" ++ show i ++ " generated from the config:\n"
+  mlm@MLM{ name = Name projectName } <- generate . generateMLM $ config
   pPrint mlm
-  putStrLn $ "\nI am also writing the random MLM generated above to file " ++ projectName ++ ".xml now.\n"
+  let file = projectName ++ show i ++ ".xml"
+  putStrLn $ "\nI am also writing the random MLM generated above to file " ++ file ++ " now.\n"
   export <- toXModeler (layoutCommand, spaceOut, scaleFactor, extraOffset) mlm
-  writeFile (projectName ++ ".xml") export
+  writeFile file export
 
 determineConfig :: IO Config
 determineConfig = do
