@@ -88,9 +88,8 @@ instance Eq MLM where
     eqBy l1 l2 sort
 
 generateClassDict :: [Class] -> Map Name [Name]
-generateClassDict theClasses =
-  fromList $ map (\Class{name, classifier, parents} -> (name, maybeToList classifier ++ parents)) theClasses
-
+generateClassDict =
+  fromList . map (\Class{name, classifier, parents} -> (name, maybeToList classifier ++ parents))
 
 (\?/) :: [Class] -> (Name -> Name -> Bool)
 (\?/) theClasses a b = let

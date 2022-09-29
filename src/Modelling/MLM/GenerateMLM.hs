@@ -36,7 +36,7 @@ import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, shuffle, Gen, suchThat)
 import Control.Monad (forM, foldM)
 import Control.Monad.Extra (concatMapM)
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, fromJust)
 import Data.Map (Map, fromList, (!?), (!), adjust, fromListWith)
 import Data.Tuple.Extra (second)
 import qualified Data.Set as S (fromList)
@@ -193,11 +193,8 @@ addAttributes numberOfAttributesPerConcretization tendency theClasses = let
     findClass :: Name -> Maybe Class
     findClass = generateClassFinder theClasses
 
-    above0 :: Class -> [Class]
-    above0 = generateAboveFinder theClasses
-
     above :: Name -> [Name]
-    above =  maybe [] (map #name . above0) . findClass
+    above = map #name . generateAboveFinder theClasses . fromJust . findClass
 
     tryToDelegateAttributeUpwards :: Name -> Gen Name
     tryToDelegateAttributeUpwards x = let
@@ -293,16 +290,14 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
     getClass = generateClassFinder theClasses
 
     getCandidateSources :: Association -> [Class]
-    getCandidateSources Association{source, lvlSource} = maybe
-        (error "An association is referring to a non-existent class as its source!!!")
-        (filter ((== lvlSource) . #level)  .  below)
-        (getClass source)
+    getCandidateSources Association{source, lvlSource} =
+        filter ((== lvlSource) . #level)  .  below . fromJust $
+        getClass source
 
     getCandidateTargets :: Association -> [Class]
-    getCandidateTargets Association{target, lvlTarget} = maybe
-        (error "An association is referring to a non-existent class as its target!!!")
-        (filter ((== lvlTarget) . #level) . below)
-        (getClass target)
+    getCandidateTargets Association{target, lvlTarget} =
+        filter ((== lvlTarget) . #level) . below . fromJust $
+        getClass target
 
     addLinksForOneAssociation theAssociation@Association{name = associationName, multSource = Multiplicity (0, multSourceMaxMaybe), multTarget = Multiplicity (0, multTargetMaxMaybe)} = let
 
