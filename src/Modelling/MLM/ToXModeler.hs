@@ -10,6 +10,8 @@ import Data.Maybe (isJust, isNothing, fromMaybe)
 import Diagrams.Points (Point (P))
 import Diagrams.TwoD.Types (V2 (V2))
 import Diagrams.TwoD.GraphViz (layoutGraph, mkGraph, getGraph)
+import Numeric (showFFloat)
+
 import Modelling.MLM.Types (
   MLM (..),
   Link (..),
@@ -66,7 +68,7 @@ instance XModelerable () Value where
   get () v = case v of
     VBoolean b -> get () b
     VInteger i' -> show i'
-    VFloat f -> show f
+    VFloat f -> showFFloat (Just 2) f ""
     VString s -> [i|#{map ord s}.asString()|]
     VMonetaryValue (amount, currency) ->
       [i|Auxiliary::MonetaryValue(#{amount}, Auxiliary::Currency(&quot;#{currency}&quot;, &quot;#{currency}&quot;, 1.0))|]
