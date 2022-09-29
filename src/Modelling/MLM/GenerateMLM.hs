@@ -7,7 +7,6 @@ module Modelling.MLM.GenerateMLM (
     randomSlot,
     randomMult,
     randomWeightedXOr,
-    addSlotValues
     ) where
 
 import Modelling.MLM.Config (Config(..))
