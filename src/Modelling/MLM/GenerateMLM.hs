@@ -37,9 +37,9 @@ import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, shuffle, Gen)
 import Control.Monad (forM, foldM)
 import Control.Monad.Extra (concatMapM)
-import Data.Maybe (fromMaybe, mapMaybe)
-import Data.Map (Map, fromList, insertWith, (!?), (!), adjust)
-
+import Data.Maybe (mapMaybe)
+import Data.Map (Map, fromList, (!?), (!), adjust, fromListWith)
+import Data.Tuple.Extra (second)
 import qualified Data.Set as S (fromList)
 import Data.Set (Set, member)
 
@@ -78,13 +78,10 @@ accumulate start list f = foldM (\soFar x -> do
     ) start list
 
 randomWeightedXOr :: Float -> Gen a -> Gen a -> Gen a
-randomWeightedXOr chance f g = if chance < 0 || chance > 1
-    then error "Chance values must be in the inclusive range (0, 1) !!!"
-    else let
-        chanceTo = round (chance * 1000) :: Int
-        chanceNotTo = 1000 - chanceTo :: Int
-    in
-        frequency [(chanceTo, f), (chanceNotTo, g)]
+randomWeightedXOr chance f g = let
+        chanceF = round (chance * 1000) :: Int
+        chanceG = 1000 - chanceF :: Int
+    in frequency [(chanceF, f), (chanceG, g)]
 
 randomMult :: (Float, Int) -> Gen Multiplicity
 randomMult (chance, max') = do
@@ -344,18 +341,14 @@ generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfA
 
     projectName = Name projectNameString :: Name
 
-    maxClassLevelSafe = max 0 maxClassLevel :: Level
-    numberOfClassesSafe = max 1 numberOfClasses :: Int
-    numberOfAssociationsSafe = max 0 numberOfAssociations :: Int
-
     endlessEmptyClasses = map (emptyClass <<<) classNameSpace :: [Class]
     endlessEmptyAssociations = map (emptyAssociation <<<) associationNameSpace :: [Association]
 
-    emptyClasses = take numberOfClassesSafe endlessEmptyClasses :: [Class]
-    emptyAssociations = take numberOfAssociationsSafe endlessEmptyAssociations :: [Association]
+    emptyClasses = take numberOfClasses endlessEmptyClasses :: [Class]
+    emptyAssociations = take numberOfAssociations endlessEmptyAssociations :: [Association]
 
     in do
-        withConcretizations <- addConcretizations maxClassLevelSafe tendencyToConcretize emptyClasses :: Gen [Class]
+        withConcretizations <- addConcretizations maxClassLevel tendencyToConcretize emptyClasses :: Gen [Class]
         withAbstractions <- addAbstractions tendencyAbstractClass withConcretizations :: Gen [Class]
         withInheritances <- addInheritances tendencyToInherit allowMultipleInheritance withAbstractions :: Gen [Class]
         withAttributes <- addAttributes numberOfAttributesPerConcretization tendencyToDistanceAttributeFromItsInstantiation withInheritances :: Gen [Class]
