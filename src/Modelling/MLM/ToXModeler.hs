@@ -11,6 +11,7 @@ import Diagrams.Points (Point (P))
 import Diagrams.TwoD.Types (V2 (V2))
 import Diagrams.TwoD.GraphViz (layoutGraph, mkGraph, getGraph)
 import Numeric (showFFloat)
+import GHC.Float (double2Float)
 
 import Modelling.MLM.Types (
   MLM (..),
@@ -50,6 +51,10 @@ instance XModelerable () Bool where
   get () True = "true"
   get () False = "false"
 
+-- Float
+instance XModelerable () Float where
+  get () x = showFFloat (Just 2) x ""
+
 -- Type
 instance XModelerable () Type where
   get () t = let
@@ -68,14 +73,14 @@ instance XModelerable () Value where
   get () v = case v of
     VBoolean b -> get () b
     VInteger i' -> show i'
-    VFloat f -> showFFloat (Just 2) f ""
+    VFloat f -> get () f
     VString s -> [i|#{map ord s}.asString()|]
     VMonetaryValue (amount, currency) ->
       [i|Auxiliary::MonetaryValue(#{amount}, Auxiliary::Currency(&quot;#{currency}&quot;, &quot;#{currency}&quot;, 1.0))|]
     VDate (year, month, day) ->
       [i|Auxiliary::Date::createDate(#{year}, #{month}, #{day})|]
     VCurrency c ->
-      [i|Auxiliary::Currency(&quot;#{currencySymbol c}&quot;, &quot;#{c}&quot;, #{relativeToEur c})|]
+      [i|Auxiliary::Currency(&quot;#{currencySymbol c}&quot;, &quot;#{c}&quot;, #{get () (relativeToEur c)})|]
     VElement e -> e
     VAuxiliaryClass c -> c
     VComplex x -> x
@@ -183,7 +188,7 @@ instance XModelerable ([Object], Double, Int) MLM where
       <Edges/>
       <Labels/>
       <Preferences/>
-      <View name="Main View" tx="#{txTy}" ty="#{txTy}" xx="#{xx}"/>
+      <View name="Main View" tx="#{txTy}" ty="#{txTy}" xx="#{get () (double2Float xx)}"/>
     </Diagram>
   </Diagrams>
   <Logs>
@@ -220,8 +225,6 @@ toXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)
   in do
     g <- layoutGraph layoutCommand $ mkGraph vertices edges
     let objects = map extractObject $ toList $ fst $ getGraph g :: [Object]
-    -- let xs = map #x objects
-    -- let ys = map #y objects
     let xx = 1 / sqrt ( sqrt ( sqrt ( fromIntegral (length classes)))) * scaleFactor :: Double
     let xxTruncated = round (xx * 100 :: Double) :: Int
     putStrLn $ "view scale = " ++ show xxTruncated ++ "%"
