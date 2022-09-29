@@ -16,11 +16,6 @@ spec = do
             forAll (generateMLM config) $
             valid ()
         describe "generateMLM" $
-          it "strangely never puts attributes at abstract classes" $
-            forAll (oneof [reasonableConfigs, smallConfigs]) $ \config ->
-            forAll (generateMLM config) $ \MLM{classes} ->
-              all (\Class{isAbstract, attributes} -> not isAbstract || null attributes) classes
-        describe "generateMLM" $
           it "respects certain configuration parameters" $
             forAll (oneof [reasonableConfigs, smallConfigs]) $ \config@Config{maxClassLevel, numberOfClasses, numberOfAssociations} ->
             forAll (generateMLM config) $ \MLM{classes, associations} ->
