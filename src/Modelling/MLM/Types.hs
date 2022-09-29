@@ -43,7 +43,7 @@ import Data.Maybe (isNothing, isJust, maybeToList, fromMaybe)
 import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
 import qualified Data.Map.Strict as M (filter, null, map)
-import Data.Map.Strict (Map, member, (!?), fromList)
+import Data.Map.Strict (Map, member, (!?), fromList, elems)
 import Data.List.Extra (replace)
 
 noCycles :: (Eq a, Ord a) => Map a [a] -> Bool
@@ -95,7 +95,7 @@ generateClassDict =
 (\?/) theClasses a b = let
   classDict = generateClassDict theClasses :: Map Name [Name]
   f :: Name -> Name -> Bool
-  f x y = let list = fromMaybe (error "There must be an entry in the dictionary, even if it is just an empty list. Maybe you are looking up a class that is not in the MLM!!!") (classDict !? x)
+  f x y = let list = fromMaybe [] (classDict !? x)
     in y `elem` list || any (`f` y) list
   in f a b
 
@@ -199,6 +199,7 @@ instance Validatable () MLM where
 
     in and [
       not (null classes),
+      all (`elem` map #name classes) (concat (elems dict)),
       valid () projectName,
       allUnique (map #name classes),
       allUnique (map #name associations),
