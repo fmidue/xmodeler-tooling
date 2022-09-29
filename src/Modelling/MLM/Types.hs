@@ -39,11 +39,11 @@ import Data.List.UniqueStrict (allUnique)
 import Data.Char (isDigit)
 import Data.List (find, sort, sortOn)
 import Data.Ix (inRange)
-import Data.Maybe (isNothing, isJust, maybeToList, fromMaybe)
+import Data.Maybe (isNothing, isJust, maybeToList)
 import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
 import qualified Data.Map.Strict as M (filter, null, map)
-import Data.Map.Strict (Map, member, (!?), fromList, elems)
+import Data.Map.Strict (Map, member, (!), fromList, elems)
 import Data.List.Extra (replace)
 
 noCycles :: (Eq a, Ord a) => Map a [a] -> Bool
@@ -95,7 +95,7 @@ generateClassDict =
 (\?/) theClasses a b = let
   classDict = generateClassDict theClasses :: Map Name [Name]
   f :: Name -> Name -> Bool
-  f x y = let list = fromMaybe [] (classDict !? x)
+  f x y = let list = classDict ! x
     in y `elem` list || any (`f` y) list
   in f a b
 
