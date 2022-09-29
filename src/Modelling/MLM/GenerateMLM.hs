@@ -33,7 +33,7 @@ import Modelling.MLM.Types (
   )
 
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
-import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, shuffle, Gen)
+import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, shuffle, Gen, suchThat)
 import Control.Monad (forM, foldM)
 import Control.Monad.Extra (concatMapM)
 import Data.Maybe (mapMaybe)
@@ -158,7 +158,7 @@ addInheritances tendency allowMultipleInheritance theClasses = let
                 then return []
                 else randomWeightedXOr tendency
                     (if allowMultipleInheritance
-                        then sublistOf canBeParents
+                        then sublistOf canBeParents `suchThat` (not . null)
                         else (:[]) <$> elements canBeParents)
                     (return [])
             return $ x <<< (toInheritFrom :: [Name])
