@@ -16,8 +16,7 @@ import Modelling.MLM.Types (
   Multiplicity (..),
   Name (..),
   Level,
-  Type (..),
-  Value (..)
+  Type (..)
   )
 
 class Modifiable a b where
@@ -83,12 +82,6 @@ instance Modifiable Attribute Type where
     (<<<) y x = y{dataType = x}
 instance Modifiable Attribute Multiplicity where
     (<<<) y x = y{multiplicity = x}
-
--------- Slot
-instance Modifiable Slot Name where
-    (<<<) y x = y{name = x}
-instance Modifiable Slot Value where
-    (<<<) y x = y{value = x}
 
 -------- Operation
 instance Modifiable Operation Int where

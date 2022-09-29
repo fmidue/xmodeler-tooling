@@ -28,8 +28,6 @@ module Modelling.MLM.Types(
   emptyOperationBody,
   typeSpace,
   generateClassDict,
-  generateClassifierDict,
-  generateParentDict,
   (\?/),
   generateAboveFinder,
   generateBelowFinder,
@@ -46,7 +44,7 @@ import Data.Ix (inRange)
 import Data.Maybe (isNothing, isJust, maybeToList, fromMaybe)
 import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
-import qualified Data.Map.Strict as M
+import qualified Data.Map.Strict as M (filter, null, map)
 import Data.Map.Strict (Map, member, (!?), fromList)
 import Data.List.Extra (replace)
 
@@ -91,15 +89,10 @@ instance Eq MLM where
     eqBy a1 a2 (sortOn #name) &&
     eqBy l1 l2 sort
 
-generateParentDict :: [Class] -> Map Name [Name]
-generateParentDict = fromList . map (\Class{name, parents} -> (name, parents))
-
-generateClassifierDict :: [Class] -> Map Name Name
-generateClassifierDict = fromList . concatMap (\Class{name, classifier} -> maybe [] ((:[]) . (name , )) classifier)
-
 generateClassDict :: [Class] -> Map Name [Name]
-generateClassDict theClasses = let x = fromList $ map (\Class{name, classifier, parents} -> (name, maybeToList classifier ++ parents)) theClasses
-  in if M.size x /= length theClasses then error "Something is wrong with Map library" else x
+generateClassDict theClasses =
+  fromList $ map (\Class{name, classifier, parents} -> (name, maybeToList classifier ++ parents)) theClasses
+
 
 (\?/) :: [Class] -> (Name -> Name -> Bool)
 (\?/) theClasses a b = let

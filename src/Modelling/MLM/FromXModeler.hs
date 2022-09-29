@@ -81,10 +81,11 @@ deduceValue :: RawSlot -> (Name, Slot)
 deduceValue RawSlot{slotClass, slotName, slotType, rawValue} = let
 
   extractCurrency :: String -> String
-  extractCurrency [] = error "A Currency value is invalid!!!"
   extractCurrency x = let
     y = splitOn "\"" x in
-    if null y then "" else y !! 3
+    if length y < 4
+      then error "A Currency value is invalid!!!"
+      else y !! 3
 
   extractMonetaryValue :: String -> (String, String)
   extractMonetaryValue [] = error "A MonetaryValue is invalid!!!"
