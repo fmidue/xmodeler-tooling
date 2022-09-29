@@ -45,7 +45,19 @@ spec = do
               in
                 probability `shouldSatisfy` within 0.5 tendencyAbstractClass
         describe "generateMLM" $
-          it "respects tendencyConcretize" $
+          it "respects allowMultipleInheritance" $
+            forAll reasonableConfigs $ \config@Config{allowMultipleInheritance} ->
+            forAll (generateMLM config) $ \MLM{classes} ->
+              let
+                allParents = map #parents classes :: [[Name]]
+                numbersOfParentsOfEachClass = map length allParents :: [Int]
+                isAtMostOneIfNotAllowMultipleInheritance :: Int -> Bool
+                isAtMostOneIfNotAllowMultipleInheritance n =
+                  allowMultipleInheritance || n < 2
+              in
+                numbersOfParentsOfEachClass `shouldSatisfy` all isAtMostOneIfNotAllowMultipleInheritance
+        describe "generateMLM" $
+          it "respects tendencyToConcretize" $
             forAll reasonableConfigs $ \config@Config{tendencyToConcretize} ->
             forAll (generateMLM config) $ \MLM{classes} ->
               let
