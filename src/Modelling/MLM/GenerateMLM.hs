@@ -27,6 +27,7 @@ import Modelling.MLM.Types (
   emptyClass,
   emptyAssociation,
   typeSpace,
+  generateAboveFinder,
   generateBelowFinder,
   generateClassFinder,
   generateInstantiatableAttributesFinder
@@ -188,8 +189,8 @@ addAttributes numberOfAttributesPerConcretization tendency theClasses = let
         randomType <- getRandomType
         return $ Attribute randomLevel name' randomType thePresetMultiplicity
 
-    getRandomAttributeSetLevel :: Level -> Int -> Gen Attribute
-    getRandomAttributeSetLevel level' i = do
+    getRandomAttributeWithSetLevel :: Level -> Int -> Gen Attribute
+    getRandomAttributeWithSetLevel level' i = do
         let name' = getName i
         randomType <- getRandomType
         return $ Attribute level' name' randomType thePresetMultiplicity
@@ -197,36 +198,48 @@ addAttributes numberOfAttributesPerConcretization tendency theClasses = let
     findClass :: Name -> Maybe Class
     findClass = generateClassFinder theClasses
 
-    tryToDelegateAttributeToClassifier :: Name -> Gen Name
-    tryToDelegateAttributeToClassifier x =
-        randomWeightedXOr
-            tendency
-            (return (maybe x (\Class{classifier} -> fromMaybe x classifier) (findClass x)))
-            (return x)
+    above0 :: Class -> [Class]
+    above0 = generateAboveFinder theClasses
 
-    addAttributesForOneClass :: (Map Name [Attribute], Int) -> Class -> Gen (Map Name [Attribute], Int)
-    addAttributesForOneClass (soFar, i) Class{classifier = Nothing} = return (soFar, i)
-    addAttributesForOneClass (soFar, i) Class{classifier = Just classifier', level} = do
+    above :: Name -> [Name]
+    above =  maybe [] (map #name . above0) . findClass
+
+    tryToDelegateAttributeUpwards :: Name -> Gen Name
+    tryToDelegateAttributeUpwards x = let
+        aboveThis = above x :: [Name]
+        in if null aboveThis
+            then return x
+            else randomWeightedXOr
+                tendency
+                (elements aboveThis)
+                (return x)
+
+    requestAttributesForOneClass :: ([(Name, Attribute)], Int) -> Class -> Gen ([(Name, Attribute)], Int)
+    requestAttributesForOneClass (soFar, i) Class{classifier = Nothing} = return (soFar, i)
+    requestAttributesForOneClass (soFar, i) Class{classifier = Just classifier', level} = do
 
         -- one attribute to guarantee the class will have something to instantiate
-        oneAttribute <- getRandomAttributeSetLevel level i
+        oneAttribute <- getRandomAttributeWithSetLevel level i
 
         moreAttributes <- forM
             [1 .. (numberOfAttributesPerConcretization - 1)]
-            (getRandomAttribute level . (i + ))
+            (getRandomAttribute level . (i +))
 
-        containingClass <- tryToDelegateAttributeToClassifier classifier'
+        return (soFar ++ map (classifier', ) (oneAttribute : moreAttributes), i + max 1 numberOfAttributesPerConcretization)
 
-        return (insertWith (++) containingClass (oneAttribute : moreAttributes) soFar
-                , i + numberOfAttributesPerConcretization)
 
     in do
-        let emptyRequestMap = fromList $ map (( , []) . #name) theClasses :: Map Name [Attribute]
+        requestDict <- fst <$> foldM requestAttributesForOneClass ([], 0) theClasses :: Gen [(Name, Attribute)]
 
-        requestDict <- fst <$> foldM addAttributesForOneClass (emptyRequestMap, 0) theClasses :: Gen (Map Name [Attribute])
+        requestDictWithDelegation <- mapM (\(containingClassOld, attribute) -> do
+                containingClassNew <- tryToDelegateAttributeUpwards containingClassOld
+                return (containingClassNew, attribute)
+            ) requestDict
+
+        let readyDict = fromListWith (++) $ map (second (:[])) requestDictWithDelegation
 
         return $ map (\class'@Class{name} ->
-                maybe class' (class' <<<) (requestDict !? name)
+                maybe class' (class' <<<) (readyDict !? name)
             ) theClasses
 
 ----------------------------------------------------------

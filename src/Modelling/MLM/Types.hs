@@ -31,6 +31,7 @@ module Modelling.MLM.Types(
   generateClassifierDict,
   generateParentDict,
   (\?/),
+  generateAboveFinder,
   generateBelowFinder,
   generateClassFinder,
   generateInstantiatableAttributesFinder,
