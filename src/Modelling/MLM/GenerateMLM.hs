@@ -160,12 +160,11 @@ addInheritances tendency allowMultipleInheritance theClasses = let
             let canBeParents = map #name (filter (sameAs x) soFar)
             toInheritFrom <- if null canBeParents || #level x < 1
                 then return []
-                else if allowMultipleInheritance
-                    then randomWeightedXOr
-                        tendency
-                        (sublistOf canBeParents)
-                        (return [])
-                    else (:[]) <$> elements canBeParents
+                else randomWeightedXOr tendency
+                    (if allowMultipleInheritance
+                        then sublistOf canBeParents
+                        else (:[]) <$> elements canBeParents)
+                    (return [])
             return $ x <<< (toInheritFrom :: [Name])
             )
 
