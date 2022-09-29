@@ -41,8 +41,8 @@ checkConfig :: Config -> Maybe String
 checkConfig Config {..}
     | maxClassLevel < 1
       = Just "Cannot have only \"classes\" of level 0 (instances)."
-    | numberOfClasses < 0
-      = Just "The number of classes cannot be negative."
+    | numberOfClasses < 1
+      = Just "The number of classes must be positive."
     | numberOfAssociations < 0
       = Just "The number of associations cannot be negative."
     | numberOfAttributesPerConcretization < 1

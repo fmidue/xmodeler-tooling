@@ -116,8 +116,7 @@ addConcretizations maxLevel chanceToConcretize theClasses = let
     concretizing :: Class -> Maybe Class -> Gen Class
     concretizing x (Just Class{name, level}) = return (x <<< Just name <<< (level - 1))
     concretizing x Nothing = do
-        randomLevel <- chooseInt (1, max 1 maxLevel)
-        -- max 1 ... because having meta classes of level zero is useless
+        randomLevel <- chooseInt (1, maxLevel)
         return $ x <<< (Nothing :: Maybe Name) <<< randomLevel
 
     initial = head theClasses <<< maxLevel <<< (Nothing :: Maybe Name) :: Class
@@ -222,7 +221,7 @@ addAttributes numberOfAttributesPerConcretization tendency theClasses = let
             [1 .. (numberOfAttributesPerConcretization - 1)]
             (getRandomAttribute level . (i +))
 
-        return (soFar ++ map (classifier', ) (oneAttribute : moreAttributes), i + max 1 numberOfAttributesPerConcretization)
+        return (soFar ++ map (classifier', ) (oneAttribute : moreAttributes), i + numberOfAttributesPerConcretization)
 
 
     in do
