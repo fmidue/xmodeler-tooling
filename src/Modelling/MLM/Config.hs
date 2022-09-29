@@ -23,17 +23,17 @@ data Config = Config
 defaultConfig :: Config
 defaultConfig = Config
   { projectNameString = "someMLM"
-  , maxClassLevel = 5
+  , maxClassLevel = 3
   , numberOfClasses = 30
-  , numberOfAssociations = 30
-  , tendencyToConcretize = 0.5
-  , tendencyToInherit = 0.5
-  , multiplicitySpecAssociations = (0.5, 2)
+  , numberOfAssociations = 15
+  , tendencyToConcretize = 0.8
+  , tendencyToInherit = 0.4
+  , multiplicitySpecAssociations = (0.5, 3)
   , chanceVisibleAssociation = 0.5
-  , tendencyAbstractClass = 0.2
+  , tendencyAbstractClass = 0.7
   , portionOfPossibleLinksToKeep = 0.8
-  , numberOfAttributesPerConcretization = 2
-  , tendencyToDistanceAttributeFromItsInstantiation = 0.25
+  , numberOfAttributesPerConcretization = 1
+  , tendencyToDistanceAttributeFromItsInstantiation = 0.1
   , allowMultipleInheritance = False
   }
 
