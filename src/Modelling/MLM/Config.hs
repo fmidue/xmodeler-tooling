@@ -2,6 +2,8 @@
 
 module Modelling.MLM.Config (Config(..), defaultConfig, checkConfig) where
 
+import Modelling.MLM.Types (valid, Name(..))
+
 data Config = Config
   { projectNameString :: String
   , maxClassLevel :: Int -- max level of classes
@@ -37,8 +39,18 @@ defaultConfig = Config
 
 checkConfig :: Config -> Maybe String
 checkConfig Config {..}
-    | maxClassLevel < 0 || numberOfClasses < 0 || numberOfAssociations < 0
-      = Just "No setting can be negative."
+    | maxClassLevel < 1
+      = Just "Cannot have only \"classes\" of level 0 (instances)."
+    | numberOfClasses < 0
+      = Just "The number of classes cannot be negative."
+    | numberOfAssociations < 0
+      = Just "The number of associations cannot be negative."
     | numberOfAttributesPerConcretization < 1
       = Just "At least one attribute per concretization is required."
+    | any (\x -> x < 0.0 || x > 1.0) [tendencyToConcretize, tendencyToInherit, fst multiplicitySpecAssociations, chanceVisibleAssociation, tendencyAbstractClass, portionOfPossibleLinksToKeep, tendencyToDistanceAttributeFromItsInstantiation]
+      = Just "Every value which represents a chance/tendency/portion must be in the inclusive range (0,1)."
+    | snd multiplicitySpecAssociations < 1
+      = Just "The upper bound of a multiplicity of an association cannot be less than 1."
+    | not (valid () (Name projectNameString))
+      = Just "A valid name for a multi-level model cannot be empty and its first character must be a letter (capital or small) and the rest of the characters must be combinations of letters, digits, and underscore ( _ ), but nothing else."
     | otherwise = Nothing
