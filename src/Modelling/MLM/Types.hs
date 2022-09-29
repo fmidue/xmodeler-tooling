@@ -18,6 +18,7 @@ module Modelling.MLM.Types(
   valid,
   relativeToEur,
   currencySymbol,
+  allCurrencies,
   emptyName,
   emptyClass,
   emptyAssociation,
@@ -413,7 +414,10 @@ equalType Complex (VComplex _) = True
 equalType AuxiliaryClass (VAuxiliaryClass _) = True
 equalType _ _ = False
 
-data XModelerCurrency = USD | EUR | GBP | AUD | NZD deriving (Eq, Show, Read)
+data XModelerCurrency = USD | EUR | GBP | AUD | NZD deriving (Eq, Show, Read, Enum, Bounded)
+
+allCurrencies :: [XModelerCurrency]
+allCurrencies = [minBound .. maxBound]
 
 relativeToEur :: XModelerCurrency -> Float
 relativeToEur USD = 0.9502091

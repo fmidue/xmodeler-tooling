@@ -22,7 +22,7 @@ import Modelling.MLM.Types (
   Level,
   Type (..),
   Value (..),
-  XModelerCurrency (..),
+  allCurrencies,
   emptyClass,
   emptyAssociation,
   typeSpace,
@@ -33,7 +33,7 @@ import Modelling.MLM.Types (
   )
 
 import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
-import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, shuffle, Gen, suchThat)
+import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, shuffle, Gen, suchThat, vectorOf)
 import Control.Monad (forM, foldM)
 import Control.Monad.Extra (concatMapM)
 import Data.Maybe (mapMaybe, fromJust)
@@ -41,6 +41,7 @@ import Data.Map (Map, fromList, (!?), (!), adjust, fromListWith)
 import Data.Tuple.Extra (second)
 import qualified Data.Set as S (fromList)
 import Data.Set (Set, member)
+import Numeric (showFFloat)
 
 
 abcCapital :: [String]
@@ -96,11 +97,11 @@ randomSlot Attribute{name, dataType} = let
             Boolean -> VBoolean <$> chooseAny
             Integer -> VInteger <$> chooseInt (0,10)
             Float -> VFloat <$> anyFloat
-            String -> return $ VString "some String value"
+            String -> VString <$> vectorOf 5 (elements "abcdef")
             Element -> return $ VElement "null"
-            MonetaryValue -> return $ VMonetaryValue ("9.99 ","apples")
-            Date -> return $ VDate (2000,01,01)
-            Currency -> VCurrency <$> elements [USD, EUR, GBP, AUD, NZD]
+            MonetaryValue -> curry VMonetaryValue <$> (flip (showFFloat Nothing) "" <$> anyFloat) <*> (show <$> elements allCurrencies)
+            Date -> (\year month day -> VDate (year,month,day)) <$> choose (1968,2022) <*> choose (1,12) <*> choose (1,28)
+            Currency -> VCurrency <$> elements allCurrencies
             Complex -> return $ VComplex "null"
             AuxiliaryClass -> return $ VAuxiliaryClass "null"
         return $ Slot name slotValue
