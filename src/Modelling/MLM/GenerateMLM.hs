@@ -97,7 +97,7 @@ randomSlot Attribute{name, dataType} = let
             Boolean -> VBoolean <$> chooseAny
             Integer -> VInteger <$> chooseInt (0,10)
             Float -> VFloat <$> anyFloat
-            String -> VString <$> vectorOf 5 (elements "abcdef")
+            String -> VString <$> vectorOf 5 (elements ['a'..'f'])
             Element -> return $ VElement "null"
             MonetaryValue -> curry VMonetaryValue <$> (flip (showFFloat Nothing) "" <$> anyFloat) <*> (show <$> elements allCurrencies)
             Date -> (\year month day -> VDate (year,month,day)) <$> choose (1968,2022) <*> choose (1,12) <*> choose (1,28)
