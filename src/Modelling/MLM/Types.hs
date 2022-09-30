@@ -27,8 +27,7 @@ module Modelling.MLM.Types(
   emptyOperation,
   emptyOperationBody,
   typeSpace,
-  (\?/),
-  generateAboveFinder,
+  generateAboveFinderFromClasses,
   generateBelowFinder,
   generateClassFinder,
   generateInstantiatableAttributesFinder,
@@ -44,7 +43,8 @@ import Data.Maybe (isNothing, isJust, maybeToList)
 import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
 import qualified Data.Map.Strict as M (filter, null, map)
-import Data.Map.Strict (Map, member, (!), fromList, elems)
+import Data.Map.Strict (Map, member, (!), (!?), fromList, elems)
+import qualified Data.Map.Lazy as Lazy (fromList)
 import Data.List.Extra (replace)
 
 noCycles :: (Eq a, Ord a) => Map a [a] -> Bool
@@ -92,40 +92,45 @@ generateClassDict :: [Class] -> Map Name [Name]
 generateClassDict =
   fromList . map (\Class{name, classifier, parents} -> (name, maybeToList classifier ++ parents))
 
-(\?/) :: [Class] -> (Name -> Name -> Bool)
-(\?/) theClasses a b = let
-  classDict = generateClassDict theClasses :: Map Name [Name]
+(\?/) :: Either [Class] ([Name], Map Name [Name]) -> (Name -> Name -> Bool)
+(\?/) (Left theClasses) = (\?/) (Right (map #name theClasses, generateClassDict theClasses))
+(\?/) (Right (theNames, classDict)) = let
   f :: Name -> Name -> Bool
   f x y = let list = classDict ! x
-    in y `elem` list || any (`f` y) list
-  in f a b
+    in y `elem` list || any (`f_memoized` y) list
+  f_memoized :: Name -> Name -> Bool
+  f_memoized = curry (Lazy.fromList [ ( (x, y), f x y ) | x <- theNames, y <- theNames ] !)
+  in f_memoized
 
-generateAboveFinder :: [Class] -> (Class -> [Class])
-generateAboveFinder theClasses x = let
+generateAboveFinderFromClasses :: [Class] -> (Class -> [Class])
+generateAboveFinderFromClasses theClasses = let
   (\/) :: Name -> Name -> Bool
-  (\/) = (\?/) theClasses
-  in filter ((#name x \/) . #name) theClasses
+  (\/) = (\?/) (Left theClasses)
+  in generateAboveFinderFromClassesAndRelation theClasses (\/)
+
+generateAboveFinderFromClassesAndRelation :: [Class] -> (Name -> Name -> Bool) -> (Class -> [Class])
+generateAboveFinderFromClassesAndRelation theClasses (\/) =
+  (fromList (map (\Class{name} -> (name, filter ((name \/) . #name) theClasses)) theClasses) !) . #name
 
 generateBelowFinder :: [Class] -> (Class -> [Class])
-generateBelowFinder theClasses x = let
+generateBelowFinder theClasses = let
   (\/) :: Name -> Name -> Bool
-  (\/) = (\?/) theClasses
-  in filter ((\/ #name x) . #name) theClasses
+  (\/) = (\?/) (Left theClasses)
+  in
+  (fromList (map (\Class{name} -> (name, filter ((\/ name) . #name) theClasses)) theClasses) !) . #name
 
 generateClassFinder :: [Class] -> (Name -> Maybe Class)
-generateClassFinder theClasses x = find ((== x) . #name) theClasses
+generateClassFinder = (!?) . fromList . map (\c@Class{name} -> (name, c))
 
 generateInstantiatableAttributesFinder :: [Class] -> (Class -> [Attribute])
 generateInstantiatableAttributesFinder theClasses c@Class{level = classLevel} = let
   above :: Class -> [Class]
-  above = generateAboveFinder theClasses
+  above = generateAboveFinderFromClasses theClasses
   in filter ((== classLevel) . #level) $ concatMap #attributes $ above c
 
-generateInstantiatableOperationsFinder :: [Class] -> (Class -> [Operation])
-generateInstantiatableOperationsFinder theClasses c@Class{level = classLevel} = let
-  above :: Class -> [Class]
-  above = generateAboveFinder theClasses
-  in filter ((== classLevel) . #level) $ concatMap #operations $ above c
+generateInstantiatableOperationsFinder :: (Class -> [Class]) -> (Class -> [Operation])
+generateInstantiatableOperationsFinder above c@Class{level = classLevel} =
+  filter ((== classLevel) . #level) $ concatMap #operations $ above c
 
 generateOccurrencesCounter :: Bool -> [Link] -> Class -> Association -> Int
 generateOccurrencesCounter asSourceRatherThanAsTarget theLinks Class{name = className} Association{name = associationName} = let
@@ -151,11 +156,13 @@ instance Validatable () MLM where
     dict :: Map Name [Name]
     dict = generateClassDict classes
 
+    classesNames = map #name classes :: [Name]
+
     (\/) :: Name -> Name -> Bool
-    (\/) = (\?/) classes
+    (\/) = (\?/) (Right (classesNames, dict))
 
     above :: Class -> [Class]
-    above = generateAboveFinder classes
+    above = generateAboveFinderFromClassesAndRelation classes (\/)
 
     -- whether an association multiplicity is violated:
     occurrencesAsSource :: Class -> Association -> Int
@@ -178,7 +185,7 @@ instance Validatable () MLM where
     isLinked className = any (\Link{source, target} -> source == className || target == className) links
 
     instantiatableOperations :: Class -> [Operation]
-    instantiatableOperations = generateInstantiatableOperationsFinder classes
+    instantiatableOperations = generateInstantiatableOperationsFinder above
 
     instantiatesSomethingOrIsMetaClass :: Class -> Bool
     instantiatesSomethingOrIsMetaClass c@Class{classifier, name, slots} =
@@ -200,9 +207,9 @@ instance Validatable () MLM where
 
     in and [
       not (null classes),
-      all (`elem` map #name classes) (concat (elems dict)),
+      all (`elem` classesNames) (concat (elems dict)),
       valid () projectName,
-      allUnique (map #name classes),
+      allUnique classesNames,
       allUnique (map #name associations),
       noCycles dict,
       all instantiatesSomethingOrIsMetaClass classes,

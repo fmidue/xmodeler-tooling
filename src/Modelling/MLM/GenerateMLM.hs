@@ -26,7 +26,7 @@ import Modelling.MLM.Types (
   emptyClass,
   emptyAssociation,
   typeSpace,
-  generateAboveFinder,
+  generateAboveFinderFromClasses,
   generateBelowFinder,
   generateClassFinder,
   generateInstantiatableAttributesFinder
@@ -195,7 +195,7 @@ addAttributes numberOfAttributesPerConcretization tendency theClasses = let
     findClass = generateClassFinder theClasses
 
     above :: Name -> [Name]
-    above = map #name . generateAboveFinder theClasses . fromJust . findClass
+    above = map #name . generateAboveFinderFromClasses theClasses . fromJust . findClass
 
     tryToDelegateAttributeUpwards :: Name -> Gen Name
     tryToDelegateAttributeUpwards x = let
