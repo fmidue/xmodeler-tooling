@@ -86,35 +86,37 @@ generateClassDict =
   f_memoized = curry (Lazy.fromList [ ( (x, y), f x y ) | x <- theNames, y <- theNames ] !)
   in f_memoized
 
-generateAboveFinderFromClasses :: [Class] -> (Class -> [Class])
+generateAboveFinderFromClasses :: [Class] -> (Name -> [Class])
 generateAboveFinderFromClasses theClasses = let
   (\/) :: Name -> Name -> Bool
   (\/) = (\?/) (Left theClasses)
   in generateAboveFinderFromClassesAndRelation theClasses (\/)
 
-generateAboveFinderFromClassesAndRelation :: [Class] -> (Name -> Name -> Bool) -> (Class -> [Class])
+generateAboveFinderFromClassesAndRelation :: [Class] -> (Name -> Name -> Bool) -> (Name -> [Class])
 generateAboveFinderFromClassesAndRelation theClasses (\/) =
-  (fromList (map (\Class{name} -> (name, filter ((name \/) . #name) theClasses)) theClasses) !) . #name
+  (!) $ fromList (map (\Class{name} -> (name, filter ((name \/) . #name) theClasses)) theClasses)
 
-generateBelowFinder :: [Class] -> (Class -> [Class])
+generateBelowFinder :: [Class] -> (Name -> [Class])
 generateBelowFinder theClasses = let
   (\/) :: Name -> Name -> Bool
   (\/) = (\?/) (Left theClasses)
   in
-  (fromList (map (\Class{name} -> (name, filter ((\/ name) . #name) theClasses)) theClasses) !) . #name
+  (!) $ fromList (map (\Class{name} -> (name, filter ((\/ name) . #name) theClasses)) theClasses)
 
 generateClassFinder :: [Class] -> (Name -> Maybe Class)
 generateClassFinder = (!?) . fromList . map (\c@Class{name} -> (name, c))
 
 generateInstantiatableAttributesFinder :: [Class] -> (Class -> [Attribute])
-generateInstantiatableAttributesFinder theClasses c@Class{level = classLevel} = let
-  above :: Class -> [Class]
+generateInstantiatableAttributesFinder theClasses = let
+  above :: Name -> [Class]
   above = generateAboveFinderFromClasses theClasses
-  in filter ((== classLevel) . #level) $ concatMap #attributes $ above c
+  in
+  \Class{name, level = classLevel} ->
+    filter ((== classLevel) . #level) $ concatMap #attributes $ above name
 
-generateInstantiatableOperationsFinder :: (Class -> [Class]) -> (Class -> [Operation])
-generateInstantiatableOperationsFinder above c@Class{level = classLevel} =
-  filter ((== classLevel) . #level) $ concatMap #operations $ above c
+generateInstantiatableOperationsFinder :: (Name -> [Class]) -> (Class -> [Operation])
+generateInstantiatableOperationsFinder above Class{name, level = classLevel} =
+  filter ((== classLevel) . #level) $ concatMap #operations $ above name
 
 generateOccurrencesCounter :: Bool -> [Link] -> Class -> Association -> Int
 generateOccurrencesCounter asSourceRatherThanAsTarget theLinks Class{name = className} Association{name = associationName} = let

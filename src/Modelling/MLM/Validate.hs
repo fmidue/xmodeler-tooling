@@ -65,7 +65,7 @@ instance Validatable () MLM where
     (\/) :: Name -> Name -> Bool
     (\/) = (\?/) (Right (classesNames, dict))
 
-    above :: Class -> [Class]
+    above :: Name -> [Class]
     above = generateAboveFinderFromClassesAndRelation classes (\/)
 
     -- whether an association multiplicity is violated:
@@ -118,7 +118,7 @@ instance Validatable () MLM where
       noCycles dict,
       all instantiatesSomethingOrIsMetaClass classes,
       allUnique links,
-      all (\x -> valid (above x) x) classes,
+      all (\x -> valid (above (#name x)) x) classes,
       all (\x -> valid (findClass (#source x), findClass (#target x)) x) associations,
       all associationMultiplicityNotViolated associations,
       all validLink links

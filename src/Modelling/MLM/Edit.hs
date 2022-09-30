@@ -89,7 +89,7 @@ editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, mult
     nonAbstractNonLevelZeroClasses = filter (not . #isAbstract) nonLevelZeroClasses :: [Class]
 
     below :: Name -> [Class]
-    below className = maybe [] (generateBelowFinder classes) $ find ((== className) . #name) classes
+    below = generateBelowFinder classes
 
     instantiatableAttributes :: MLM -> (Class -> [Attribute])
     instantiatableAttributes x = generateInstantiatableAttributesFinder $ #classes x

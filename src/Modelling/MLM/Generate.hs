@@ -28,7 +28,6 @@ import Modelling.MLM.Types (
   typeSpace,
   generateAboveFinderFromClasses,
   generateBelowFinder,
-  generateClassFinder,
   generateInstantiatableAttributesFinder
   )
 
@@ -36,7 +35,7 @@ import Modelling.MLM.Modify ((<<<), SourceOrTarget(..))
 import Test.QuickCheck (elements, choose, chooseAny, chooseInt, frequency, sublistOf, shuffle, Gen, suchThat, vectorOf)
 import Control.Monad (forM, foldM)
 import Control.Monad.Extra (concatMapM)
-import Data.Maybe (mapMaybe, fromJust)
+import Data.Maybe (mapMaybe)
 import Data.Map (Map, fromList, (!?), (!), adjust, fromListWith)
 import Data.Tuple.Extra (second)
 import qualified Data.Set as S (fromList)
@@ -191,11 +190,8 @@ addAttributes numberOfAttributesPerConcretization tendency theClasses = let
         randomType <- getRandomType
         return $ Attribute level' name' randomType thePresetMultiplicity
 
-    findClass :: Name -> Maybe Class
-    findClass = generateClassFinder theClasses
-
     above :: Name -> [Name]
-    above = map #name . generateAboveFinderFromClasses theClasses . fromJust . findClass
+    above = map #name . generateAboveFinderFromClasses theClasses
 
     tryToDelegateAttributeUpwards :: Name -> Gen Name
     tryToDelegateAttributeUpwards x = let
@@ -284,21 +280,18 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
 addLinks :: Float -> [Class] -> [Association] -> Gen [Link]
 addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
 
-    below :: Class -> [Class]
+    below :: Name -> [Class]
     below = generateBelowFinder theClasses
-
-    getClass :: Name -> Maybe Class
-    getClass = generateClassFinder theClasses
 
     getCandidateSources :: Association -> [Class]
     getCandidateSources Association{source, lvlSource} =
-        filter ((== lvlSource) . #level)  .  below . fromJust $
-        getClass source
+        filter ((== lvlSource) . #level)  .  below $
+        source
 
     getCandidateTargets :: Association -> [Class]
     getCandidateTargets Association{target, lvlTarget} =
-        filter ((== lvlTarget) . #level) . below . fromJust $
-        getClass target
+        filter ((== lvlTarget) . #level) . below $
+        target
 
     addLinksForOneAssociation theAssociation@Association{name = associationName, multSource = Multiplicity (0, multSourceMaxMaybe), multTarget = Multiplicity (0, multTargetMaxMaybe)} = let
 
