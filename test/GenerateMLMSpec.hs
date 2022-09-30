@@ -3,8 +3,9 @@ module GenerateMLMSpec (spec) where
 import Test.Hspec (Spec, describe, it, shouldSatisfy)
 import Test.QuickCheck (forAll, oneof)
 import Config (reasonableConfigs, smallConfigs)
-import Modelling.MLM.GenerateMLM (generateMLM)
-import Modelling.MLM.Types (valid, MLM(..), Class(..), Association(..), Multiplicity(..), Name(..), Link(..))
+import Modelling.MLM.Generate (generateMLM)
+import Modelling.MLM.Types (MLM(..), Class(..), Association(..), Multiplicity(..), Name(..), Link(..))
+import Modelling.MLM.Validate (valid)
 import Modelling.MLM.Config (Config(..))
 import Data.Maybe (isJust, mapMaybe)
 

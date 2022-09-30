@@ -21,12 +21,14 @@ import Modelling.MLM.Types (
   typeSpace,
   generateBelowFinder,
   emptyOperationBody,
-  valid,
   generateInstantiatableAttributesFinder,
   generateOccurrencesCounter,
   inRangeOfMult
   )
-import Modelling.MLM.GenerateMLM (
+import Modelling.MLM.Validate (
+  valid,
+  )
+import Modelling.MLM.Generate (
     classNameSpace,
     associationNameSpace,
     attributeNameSpace,

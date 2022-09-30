@@ -1,4 +1,4 @@
-module Modelling.MLM.GenerateMLM (
+module Modelling.MLM.Generate (
     generateMLM,
     classNameSpace,
     attributeNameSpace,

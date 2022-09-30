@@ -2,7 +2,8 @@
 
 module Modelling.MLM.Config (Config(..), defaultConfig, checkConfig) where
 
-import Modelling.MLM.Types (valid, Name(..))
+import Modelling.MLM.Types (Name(..))
+import Modelling.MLM.Validate (valid)
 
 data Config = Config
   { projectNameString :: String

@@ -6,7 +6,7 @@ import Modelling.MLM.ToXModeler (toXModeler)
 import Data.GraphViz (GraphvizCommand(..))
 import Modelling.MLM.Config (Config(..), defaultConfig, checkConfig)
 import Modelling.MLM.Types (MLM (..), Name (..))
-import Modelling.MLM.GenerateMLM (generateMLM)
+import Modelling.MLM.Generate (generateMLM)
 import Test.QuickCheck (generate)
 
 import System.IO (hSetBuffering, stdout, BufferMode(NoBuffering))

@@ -9,7 +9,7 @@ import Modelling.MLM.Config (Config(..))
 import Modelling.MLM.Types
 import Modelling.MLM.FromXModeler (fromXModeler)
 import Modelling.MLM.ToXModeler (toXModeler)
-import Modelling.MLM.GenerateMLM (generateMLM)
+import Modelling.MLM.Generate (generateMLM)
 
 spec :: Spec
 spec = do

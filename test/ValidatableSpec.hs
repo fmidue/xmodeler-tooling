@@ -11,7 +11,8 @@ import System.Directory.Internal (getFileMetadata, fileTypeFromMetadata, fileTyp
 import System.FilePath.Posix (takeExtension, (</>))
 
 import Modelling.MLM.FromXModeler (fromXModeler)
-import Modelling.MLM.Types (valid, MLM)
+import Modelling.MLM.Types (MLM)
+import Modelling.MLM.Validate (valid)
 
 spec :: Spec
 spec = do

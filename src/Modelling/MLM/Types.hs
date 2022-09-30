@@ -1,5 +1,4 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# LANGUAGE FunctionalDependencies #-}
 
 module Modelling.MLM.Types(
   MLM (..),
@@ -14,8 +13,6 @@ module Modelling.MLM.Types(
   Level,
   Type (..),
   Value (..),
-  XModelerCurrency (..),
-  valid,
   relativeToEur,
   currencySymbol,
   allCurrencies,
@@ -27,29 +24,27 @@ module Modelling.MLM.Types(
   emptyOperation,
   emptyOperationBody,
   typeSpace,
+  (\?/),
   generateAboveFinderFromClasses,
+  generateAboveFinderFromClassesAndRelation,
   generateBelowFinder,
+  generateClassDict,
   generateClassFinder,
   generateInstantiatableAttributesFinder,
+  generateInstantiatableOperationsFinder,
   generateOccurrencesCounter,
+  equalType,
   inRangeOfMult
 ) where
 
-import Data.List.UniqueStrict (allUnique)
-import Data.Char (isDigit)
-import Data.List (find, sort, sortOn)
+import Data.List (sort, sortOn)
 import Data.Ix (inRange)
-import Data.Maybe (isNothing, isJust, maybeToList)
+import Data.Maybe (maybeToList)
 import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
-import qualified Data.Map.Strict as M (filter, null, map)
-import Data.Map.Strict (Map, member, (!), (!?), fromList, elems)
+import Data.Map.Strict (Map, (!), (!?), fromList)
 import qualified Data.Map.Lazy as Lazy (fromList)
 import Data.List.Extra (replace)
-
-noCycles :: (Eq a, Ord a) => Map a [a] -> Bool
-noCycles x = M.null x || peeled /= x && noCycles peeled
-    where peeled = M.filter (not . null) $ M.map (filter (`member` x)) x
 
 
 eqBy :: Eq b => a -> a -> (a -> b) -> Bool
@@ -59,21 +54,10 @@ eqBy x y f = f x == f y
 instance HasField x r a => IsLabel x (r -> a) where
   fromLabel = getField @x
 
-class Validatable context a | a -> context where
-  valid :: context -> a -> Bool
-
 newtype Name = Name String deriving (Eq, Ord, Show, Read)
 
 emptyName :: Name
 emptyName = Name ""
-
-instance Validatable () Name where
-  valid () (Name name) = let
-    validChar1 = flip elem (['a'..'z'] ++ ['A'..'Z'])
-    validCharN char = validChar1 char || isDigit char || char == '_'
-    in
-      all ($ name)
-        [not . null, validChar1 . head, all validCharN . tail]
 
 data MLM = MLM {
   name :: Name,
@@ -143,83 +127,6 @@ inRangeOfMult :: Int -> Multiplicity -> Bool
 inRangeOfMult x (Multiplicity (a, Nothing)) = x >= a
 inRangeOfMult x (Multiplicity (a, Just b)) = inRange (a, b) x
 
-instance Validatable () MLM where
-  valid () MLM{name = projectName, classes, associations, links} = let
-
-    -- navigation
-    findClass :: Name -> Maybe Class
-    findClass = generateClassFinder classes
-
-    findAssociationOfLink :: Link -> Maybe Association
-    findAssociationOfLink Link{name = linkName} = find ((== linkName) . #name) associations
-
-    dict :: Map Name [Name]
-    dict = generateClassDict classes
-
-    classesNames = map #name classes :: [Name]
-
-    (\/) :: Name -> Name -> Bool
-    (\/) = (\?/) (Right (classesNames, dict))
-
-    above :: Class -> [Class]
-    above = generateAboveFinderFromClassesAndRelation classes (\/)
-
-    -- whether an association multiplicity is violated:
-    occurrencesAsSource :: Class -> Association -> Int
-    occurrencesAsSource = generateOccurrencesCounter True links
-
-    occurrencesAsTarget :: Class -> Association -> Int
-    occurrencesAsTarget = generateOccurrencesCounter False links
-
-    participationDoesNotViolateMultiplicity :: Association -> Class -> Bool
-    participationDoesNotViolateMultiplicity association'@Association{multSource, multTarget, source, target, lvlSource, lvlTarget} class'@Class{name, level} =
-        (not (name \/ source && level == lvlSource) || (class' `occurrencesAsSource` association') `inRangeOfMult` multTarget)
-        &&
-        (not (name \/ target && level == lvlTarget) || (class' `occurrencesAsTarget` association') `inRangeOfMult` multSource)
-
-    associationMultiplicityNotViolated :: Association -> Bool
-    associationMultiplicityNotViolated association' =
-      all (participationDoesNotViolateMultiplicity association') classes
-
-    isLinked :: Name -> Bool
-    isLinked className = any (\Link{source, target} -> source == className || target == className) links
-
-    instantiatableOperations :: Class -> [Operation]
-    instantiatableOperations = generateInstantiatableOperationsFinder above
-
-    instantiatesSomethingOrIsMetaClass :: Class -> Bool
-    instantiatesSomethingOrIsMetaClass c@Class{classifier, name, slots} =
-      isNothing classifier ||
-      isLinked name ||
-      not (null slots) ||
-      not (null (instantiatableOperations c))
-
-    validLink :: Link -> Bool
-    validLink link@Link{source = linkSource, target = linkTarget} =
-      maybe False (\Association{source = associationSource, target = associationTarget, lvlSource, lvlTarget} ->
-          and [
-              linkSource \/ associationSource,
-              linkTarget \/ associationTarget,
-              maybe False ((== lvlSource) . #level) (findClass linkSource),
-              maybe False ((== lvlTarget) . #level) (findClass linkTarget)
-            ]
-        ) (findAssociationOfLink link)
-
-    in and [
-      not (null classes),
-      all (`elem` classesNames) (concat (elems dict)),
-      valid () projectName,
-      allUnique classesNames,
-      allUnique (map #name associations),
-      noCycles dict,
-      all instantiatesSomethingOrIsMetaClass classes,
-      allUnique links,
-      all (\x -> valid (above x) x) classes,
-      all (\x -> valid (findClass (#source x), findClass (#target x)) x) associations,
-      all associationMultiplicityNotViolated associations,
-      all validLink links
-    ]
-
 data Class = Class {
   isAbstract :: Bool,
   level :: Level,
@@ -246,42 +153,6 @@ instance Eq Class where
 emptyClass :: Class
 emptyClass = Class False 0 emptyName [] Nothing [] [] []
 
-instance Validatable [Class] Class where
-  valid aboveThis Class{isAbstract = thisAbstract, name = thisName, level = thisLevel, classifier = thisClassifier, attributes = thisAttributes, slots = thisSlots, operations = thisOperations, parents = thisParents} = let
-
-    findClass :: Name -> Maybe Class
-    findClass = generateClassFinder aboveThis
-
-    allAttributesAbove = concatMap #attributes aboveThis :: [Attribute]
-
-    instantiatableAttributesHere = filter ((== thisLevel) . #level) allAttributesAbove :: [Attribute]
-
-    thisAttributesNames = map #name thisAttributes :: [Name]
-    thisSlotsNames = map #name thisSlots :: [Name]
-    thisOperationsNames = map #name thisOperations :: [Name]
-
-    getAttributeOfSlot :: Slot -> Maybe Attribute
-    getAttributeOfSlot Slot{name} = find ((== name) . #name) allAttributesAbove
-
-    in
-    and [
-        valid () thisName,
-        valid () thisLevel,
-        all (maybe False (\Class{level, classifier} -> level == thisLevel && classifier == thisClassifier) . findClass) thisParents,
-        maybe True (maybe False (\Class{level, isAbstract} -> level == thisLevel + 1 && not isAbstract) . findClass) thisClassifier,
-        allUnique thisParents,
-        allUnique thisAttributesNames,
-        allUnique thisSlotsNames,
-        allUnique thisOperationsNames,
-        allUnique (map (\Attribute{name, level} -> (name, level)) $ thisAttributes ++ allAttributesAbove),
-        -- pretending that all attributes multiplicities are (1, Just 1)
-        all (( `elem` thisSlotsNames) . #name) instantiatableAttributesHere,
-        thisLevel > 0 || (null thisAttributes && null thisOperations && null thisParents && not thisAbstract && isJust thisClassifier),
-        all (valid thisLevel) thisAttributes,
-        all (valid thisLevel) thisOperations,
-        all (\x -> valid (getAttributeOfSlot x, thisLevel) x) thisSlots
-        ]
-
 data Attribute = Attribute {
   level :: Level,
   name :: Name,
@@ -292,26 +163,10 @@ data Attribute = Attribute {
 emptyAttribute :: Attribute
 emptyAttribute = Attribute 0 emptyName Boolean emptyMultiplicity
 
-instance Validatable Level Attribute where
-  valid classLevel Attribute{multiplicity, level = attributeLevel, name} = and [
-      valid () attributeLevel,
-      valid () name,
-      valid () multiplicity,
-      -- enforcing this value of multiplicities because it is still not clear how to instantiate an attribute 0 times or >1 times
-      multiplicity == Multiplicity (1, Just 1),
-      classLevel > attributeLevel
-    ]
-
 data Slot = Slot {
   name :: Name,
   value :: Value
 } deriving (Show, Read, Eq)
-
-instance Validatable (Maybe Attribute, Level) Slot where
-  valid (slotAttribute, slotClassLvl) Slot{value} =
-      maybe False (\x ->
-          slotClassLvl == #level x && equalType (#dataType x) value
-        ) slotAttribute
 
 data Operation = Operation {
   level :: Int,
@@ -336,12 +191,6 @@ instance Eq Operation where
 emptyOperation :: Operation
 emptyOperation = Operation 0 emptyName Boolean False ""
 
-instance Validatable Level Operation where
-  valid operationClassLvl Operation{level, name} =
-    valid () name &&
-    valid () level &&
-    operationClassLvl > level
-
 data Association = Association {
   name :: Name,
   source :: Name,
@@ -357,16 +206,6 @@ data Association = Association {
 emptyAssociation :: Association
 emptyAssociation = Association emptyName emptyName emptyName 0 0 emptyMultiplicity emptyMultiplicity False False
 
-instance Validatable (Maybe Class, Maybe Class) Association where
-  valid (sourceClass, targetClass) Association{lvlSource, lvlTarget, multSource, multTarget, name} =
-    and [
-      valid () name,
-      maybe False ((> lvlSource) . #level) sourceClass,
-      maybe False ((> lvlTarget) . #level) targetClass,
-      valid () multSource,
-      valid () multTarget
-      ]
-
 data Link = Link {
   name :: Name,
   source :: Name,
@@ -381,14 +220,7 @@ newtype Multiplicity = Multiplicity (Int, Maybe Int) deriving (Eq, Show, Read)
 emptyMultiplicity :: Multiplicity
 emptyMultiplicity = Multiplicity (0, Nothing)
 
-instance Validatable () Multiplicity where
-  valid () (Multiplicity (lower, Nothing)) = lower >= 0
-  valid () (Multiplicity (lower, Just upper)) = lower >= 0 && lower <= upper
-
 type Level = Int
-
-instance Validatable () Level where
-  valid () level = level >= 0
 
 data Type = Boolean | Integer | Float | String | Element | MonetaryValue | Date | Currency | Complex | AuxiliaryClass deriving (Eq, Show, Read, Enum, Bounded)
 
