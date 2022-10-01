@@ -229,7 +229,7 @@ toXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)
     g <- layoutGraph layoutCommand $ mkGraph vertices edges
     let objects = map extractObject $ toList $ fst $ getGraph g :: [Object]
     let xx = 1 / sqrt ( sqrt ( sqrt ( fromIntegral (length classes)))) * scaleFactor :: Double
-    let xxTruncated = round (xx * 100 :: Double) :: Int
-    putStrLn $ "view scale = " ++ show xxTruncated ++ "%"
+    -- let xxTruncated = round (xx * 100 :: Double) :: Int
+    -- putStrLn $ "view scale = " ++ show xxTruncated ++ "%"
     let txTy = extraOffset * round xx :: Int
     return $ get (objects, xx, txTy) mlm
