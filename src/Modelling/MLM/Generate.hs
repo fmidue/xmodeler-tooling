@@ -141,7 +141,7 @@ addConcretizations maxLevel chanceToConcretize theClasses = let
 addAbstractions :: Float -> [Class] -> Gen [Class]
 addAbstractions tendency theClasses = let
     allClassifiers = S.fromList $ mapMaybe #classifier theClasses :: Set Name
-    in mapM (\x@Class{name, level} -> if name `member` allClassifiers || level < 1 then return (x <<< False) else (x <<<) <$> randomWeightedXOr tendency (return True) (return False)) theClasses
+    in mapM (\x@Class{name, level} -> if name `member` allClassifiers || level < 1 then return x else randomWeightedXOr tendency (return (x <<< True)) (return x)) theClasses
 
 ----------------------------------------------------------
 
