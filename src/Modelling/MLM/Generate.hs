@@ -26,7 +26,7 @@ import Modelling.MLM.Types (
   emptyClass,
   emptyAssociation,
   typeSpace,
-  generateAboveFinderFromClasses,
+  generateAboveFinder,
   generateBelowFinder,
   generateInstantiatableAttributesFinder
   )
@@ -191,7 +191,7 @@ addAttributes numberOfAttributesPerConcretization tendency theClasses = let
         return $ Attribute level' name' randomType thePresetMultiplicity
 
     above :: Name -> [Name]
-    above = map #name . generateAboveFinderFromClasses theClasses
+    above = map #name . generateAboveFinder theClasses Nothing
 
     tryToDelegateAttributeUpwards :: Name -> Gen Name
     tryToDelegateAttributeUpwards x = let

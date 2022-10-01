@@ -25,8 +25,7 @@ module Modelling.MLM.Types(
   emptyOperationBody,
   typeSpace,
   (\?/),
-  generateAboveFinderFromClasses,
-  generateAboveFinderFromClassesAndRelation,
+  generateAboveFinder,
   generateBelowFinder,
   generateClassDict,
   generateClassFinder,
@@ -89,14 +88,12 @@ generateClassDict =
   f_tabled = Lazy.fromList [ ( (x, y), x `f` y ) | x <- theNames, y <- theNames ]
   in curry (`member` keysSet (M.filter id f_tabled))
 
-generateAboveFinderFromClasses :: [Class] -> (Name -> [Class])
-generateAboveFinderFromClasses theClasses = let
+generateAboveFinder :: [Class] -> Maybe (Name -> Name -> Bool) -> (Name -> [Class])
+generateAboveFinder theClasses Nothing = let
   (\/) :: Name -> Name -> Bool
   (\/) = (\?/) (Left theClasses)
-  in generateAboveFinderFromClassesAndRelation theClasses (\/)
-
-generateAboveFinderFromClassesAndRelation :: [Class] -> (Name -> Name -> Bool) -> (Name -> [Class])
-generateAboveFinderFromClassesAndRelation theClasses (\/) =
+  in generateAboveFinder theClasses (Just (\/))
+generateAboveFinder theClasses (Just (\/)) =
   (!) $ fromList (map (\Class{name} -> (name, filter ((name \/) . #name) theClasses)) theClasses)
 
 generateBelowFinder :: [Class] -> (Name -> [Class])
@@ -112,7 +109,7 @@ generateClassFinder = (!?) . fromList . map (\c@Class{name} -> (name, c))
 generateInstantiatableAttributesFinder :: [Class] -> (Class -> [Attribute])
 generateInstantiatableAttributesFinder theClasses = let
   above :: Name -> [Class]
-  above = generateAboveFinderFromClasses theClasses
+  above = generateAboveFinder theClasses Nothing
   in
   \Class{name, level = classLevel} ->
     filter ((== classLevel) . #level) $ concatMap #attributes $ above name

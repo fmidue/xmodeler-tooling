@@ -16,7 +16,7 @@ import Modelling.MLM.Types (
   Name (..),
   Level,
   (\?/),
-  generateAboveFinderFromClassesAndRelation,
+  generateAboveFinder,
   generateClassDict,
   generateClassFinder,
   generateInstantiatableOperationsFinder,
@@ -66,7 +66,7 @@ instance Validatable () MLM where
     (\/) = (\?/) (Right (classesNames, dict))
 
     above :: Name -> [Class]
-    above = generateAboveFinderFromClassesAndRelation classes (\/)
+    above = generateAboveFinder classes (Just (\/))
 
     -- whether an association multiplicity is violated:
     occurrencesAsSource :: Class -> Association -> Int
