@@ -11,7 +11,6 @@ import Diagrams.Points (Point (P))
 import Diagrams.TwoD.Types (V2 (V2))
 import Diagrams.TwoD.GraphViz (layoutGraph, mkGraph, getGraph)
 import Numeric (showFFloat)
-import GHC.Float (double2Float)
 
 import Modelling.MLM.Types (
   MLM (..),
@@ -53,7 +52,11 @@ instance XModelerable () Bool where
 
 -- Float
 instance XModelerable () Float where
-  get () x = showFFloat (Just 2) x ""
+  get () x = showFFloat Nothing x ""
+
+-- Double
+instance XModelerable () Double where
+  get () x = showFFloat Nothing x ""
 
 -- Type
 instance XModelerable () Type where
@@ -188,7 +191,7 @@ instance XModelerable ([Object], Double, Int) MLM where
       <Edges/>
       <Labels/>
       <Preferences/>
-      <View name="Main View" tx="#{txTy}" ty="#{txTy}" xx="#{get () (double2Float xx)}"/>
+      <View name="Main View" tx="#{txTy}" ty="#{txTy}" xx="#{get () xx}"/>
     </Diagram>
   </Diagrams>
   <Logs>
