@@ -43,7 +43,10 @@ import Data.Maybe (maybeToList)
 import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
 import Data.Map.Strict (Map, (!), (!?), fromList)
-import qualified Data.Map.Lazy as Lazy (fromList)
+import qualified Data.Map.Lazy as Lazy (Map, fromList)
+import Data.Map.Lazy (keysSet)
+import qualified Data.Map.Lazy as M (filter)
+import Data.Set (member)
 import Data.List.Extra (replace)
 
 
@@ -80,11 +83,11 @@ generateClassDict =
 (\?/) (Left theClasses) = (\?/) (Right (map #name theClasses, generateClassDict theClasses))
 (\?/) (Right (theNames, classDict)) = let
   f :: Name -> Name -> Bool
-  f x y = let list = classDict ! x
-    in y `elem` list || any (`f_memoized` y) list
-  f_memoized :: Name -> Name -> Bool
-  f_memoized = curry (Lazy.fromList [ ( (x, y), f x y ) | x <- theNames, y <- theNames ] !)
-  in f_memoized
+  x `f` y = let list = classDict ! x
+    in y `elem` list || any ((f_tabled !) . (, y)) list
+  f_tabled :: Lazy.Map (Name, Name) Bool
+  f_tabled = Lazy.fromList [ ( (x, y), x `f` y ) | x <- theNames, y <- theNames ]
+  in curry (`member` keysSet (M.filter id f_tabled))
 
 generateAboveFinderFromClasses :: [Class] -> (Name -> [Class])
 generateAboveFinderFromClasses theClasses = let
