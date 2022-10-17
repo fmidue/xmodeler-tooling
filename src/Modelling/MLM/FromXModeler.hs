@@ -61,7 +61,7 @@ generateSlotTypeFinder theClasses rawSlot@RawSlot{slotClass, slotName} = let
 
   typeFound :: Type
   typeFound = maybe
-    (error "This slot value change is referring to a non-existent attribute!!!")
+    (error "This slot value change is referring to a nonexistent attribute!!!")
     #dataType
     (find ((== slotName) . #name) (instantiatableAttributesMaybe slotClass))
   in rawSlot {slotType = typeFound}

@@ -17,7 +17,7 @@ spec = do
             it "correctly judges some randomly generated MLM to be equal to the same MLM after being exported and then imported. \n So, importing and exporting an MLM does not change it." $
                 forAll (fmap (\config -> config{numberOfClasses = 4}) smallConfigs) $ \config ->
                     forAll (generateMLM config) $
-                    \randomMLM -> ioProperty $ do
+                    \ randomMLM -> ioProperty $ do
                         x <- toXModeler (Neato, (**1.135), 1.1, 163) randomMLM
                         writeFile "exportedForTesting.xml" x
                         importedMLM <- fromXModeler "exportedForTesting.xml"
