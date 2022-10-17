@@ -104,8 +104,8 @@ instance Modifiable Association (SourceOrTarget, Name) where
             Target -> y{target = x}
 instance Modifiable Association (SourceOrTarget, Level) where
     (<<<) y (direction, x) = case direction of
-            Source -> y{lvlSource = x}
-            Target -> y{lvlTarget = x}
+            Source -> y{levelSource = x}
+            Target -> y{levelTarget = x}
 instance Modifiable Association (SourceOrTarget, Multiplicity) where
     (<<<) y (direction, x) = case direction of
             Source -> y{multSource = x}

@@ -76,10 +76,10 @@ instance Validatable () MLM where
     occurrencesAsTarget = generateOccurrencesCounter False links
 
     participationDoesNotViolateMultiplicity :: Association -> Class -> Bool
-    participationDoesNotViolateMultiplicity association'@Association{multSource, multTarget, source, target, lvlSource, lvlTarget} class'@Class{name, level} =
-        (not (name \/ source && level == lvlSource) || (class' `occurrencesAsSource` association') `inRangeOfMult` multTarget)
+    participationDoesNotViolateMultiplicity association'@Association{multSource, multTarget, source, target, levelSource, levelTarget} class'@Class{name, level} =
+        (not (name \/ source && level == levelSource) || (class' `occurrencesAsSource` association') `inRangeOfMult` multTarget)
         &&
-        (not (name \/ target && level == lvlTarget) || (class' `occurrencesAsTarget` association') `inRangeOfMult` multSource)
+        (not (name \/ target && level == levelTarget) || (class' `occurrencesAsTarget` association') `inRangeOfMult` multSource)
 
     associationMultiplicityNotViolated :: Association -> Bool
     associationMultiplicityNotViolated association' =
@@ -100,12 +100,12 @@ instance Validatable () MLM where
 
     validLink :: Link -> Bool
     validLink link@Link{source = linkSource, target = linkTarget} =
-      maybe False (\Association{source = associationSource, target = associationTarget, lvlSource, lvlTarget} ->
+      maybe False (\Association{source = associationSource, target = associationTarget, levelSource, levelTarget} ->
           and [
               linkSource \/ associationSource,
               linkTarget \/ associationTarget,
-              maybe False ((== lvlSource) . #level) (findClass linkSource),
-              maybe False ((== lvlTarget) . #level) (findClass linkTarget)
+              maybe False ((== levelSource) . #level) (findClass linkSource),
+              maybe False ((== levelTarget) . #level) (findClass linkTarget)
             ]
         ) (findAssociationOfLink link)
 
@@ -171,23 +171,23 @@ instance Validatable Level Attribute where
     ]
 
 instance Validatable (Maybe Attribute, Level) Slot where
-  valid (slotAttribute, slotClassLvl) Slot{value} =
+  valid (slotAttribute, slotClassLevel) Slot{value} =
       maybe False (\x ->
-          slotClassLvl == #level x && equalType (#dataType x) value
+          slotClassLevel == #level x && equalType (#dataType x) value
         ) slotAttribute
 
 instance Validatable Level Operation where
-  valid operationClassLvl Operation{level, name} =
+  valid operationClassLevel Operation{level, name} =
     valid () name &&
     valid () level &&
-    operationClassLvl > level
+    operationClassLevel > level
 
 instance Validatable (Maybe Class, Maybe Class) Association where
-  valid (sourceClass, targetClass) Association{lvlSource, lvlTarget, multSource, multTarget, name} =
+  valid (sourceClass, targetClass) Association{levelSource, levelTarget, multSource, multTarget, name} =
     and [
       valid () name,
-      maybe False ((> lvlSource) . #level) sourceClass,
-      maybe False ((> lvlTarget) . #level) targetClass,
+      maybe False ((> levelSource) . #level) sourceClass,
+      maybe False ((> levelTarget) . #level) targetClass,
       valid () multSource,
       valid () multTarget
       ]

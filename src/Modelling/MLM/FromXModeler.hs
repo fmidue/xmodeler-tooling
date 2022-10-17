@@ -72,9 +72,9 @@ findClass className theClasses =
   (error ("No class with the name " ++ show className ++ " was found!!!"))
   (find ((== className) . #name) theClasses)
 
-deduceLvl ::  [Class] -> Class -> Class
-deduceLvl _ Class{classifier = Nothing} = error "Cannot deduce level of a meta class!!!"
-deduceLvl theClasses x@Class{classifier = Just classifier'} =
+deduceLevel ::  [Class] -> Class -> Class
+deduceLevel _ Class{classifier = Nothing} = error "Cannot deduce level of a meta class!!!"
+deduceLevel theClasses x@Class{classifier = Just classifier'} =
   x <<< (#level (findClass classifier' theClasses) - 1)
 
 deduceValue :: RawSlot -> (Name, Slot)
@@ -143,9 +143,9 @@ fromXModeler inputXML = let
     nameInstance <- map Name <$> extract "addInstance" "name" :: IO [Name]
     classifiers <- map (Just . getName) <$> extract "addInstance" "of" :: IO [Maybe Name]
 
-    let withInstancesButLvlZero = repeat emptyClass |<<<| isAbstractInstance |<<<| nameInstance |<<<| classifiers
+    let withInstancesButLevelZero = repeat emptyClass |<<<| isAbstractInstance |<<<| nameInstance |<<<| classifiers
 
-    let withInstances = accumulate withMetaClasses withInstancesButLvlZero deduceLvl
+    let withInstances = accumulate withMetaClasses withInstancesButLevelZero deduceLevel
     -----------------------------------------------------------------------------------------------
     changeParentClass <- map getName <$> extract "changeParent" "class" :: IO [Name]
     changeParentNew <- map (map getName . splitOn ",") <$> extract "changeParent" "new" :: IO [[Name]]

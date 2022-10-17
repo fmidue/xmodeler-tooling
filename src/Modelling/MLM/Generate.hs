@@ -258,8 +258,8 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
     in forM emptyAssociations (\x -> do
                 sourceClass <- randomClassGen
                 targetClass <- randomClassGen
-                lvlSource' <- randomLevelGen sourceClass
-                lvlTarget' <- randomLevelGen targetClass
+                levelSource' <- randomLevelGen sourceClass
+                levelTarget' <- randomLevelGen targetClass
                 multTargetToSource' <- randomMult'
                 multSourceToTarget' <- randomMult'
                 sourceVisibleFromTarget' <- randomVisibilityGen
@@ -267,8 +267,8 @@ addAssociations multSpecs visibilityChance theClassesIncludingLevelZero emptyAss
                 return $ x
                     <<< (Source, #name sourceClass)
                     <<< (Target, #name targetClass)
-                    <<< (Source, lvlSource')
-                    <<< (Target, lvlTarget')
+                    <<< (Source, levelSource')
+                    <<< (Target, levelTarget')
                     <<< (Source, multTargetToSource')
                     <<< (Target, multSourceToTarget')
                     <<< (Source, sourceVisibleFromTarget')
@@ -284,13 +284,13 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
     below = generateBelowFinder theClasses
 
     getCandidateSources :: Association -> [Class]
-    getCandidateSources Association{source, lvlSource} =
-        filter ((== lvlSource) . #level)  .  below $
+    getCandidateSources Association{source, levelSource} =
+        filter ((== levelSource) . #level)  .  below $
         source
 
     getCandidateTargets :: Association -> [Class]
-    getCandidateTargets Association{target, lvlTarget} =
-        filter ((== lvlTarget) . #level) . below $
+    getCandidateTargets Association{target, levelTarget} =
+        filter ((== levelTarget) . #level) . below $
         target
 
     addLinksForOneAssociation theAssociation@Association{name = associationName, multSource = Multiplicity (0, multSourceMaxMaybe), multTarget = Multiplicity (0, multTargetMaxMaybe)} = let

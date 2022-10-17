@@ -115,12 +115,12 @@ editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, mult
 
     candidateSources :: Association -> [Class]
     candidateSources a = filter (\class' ->
-            #level class' == #lvlSource a && (class' `occurrencesAsSource` a + 1) `inRangeOfMult` #multTarget a
+            #level class' == #levelSource a && (class' `occurrencesAsSource` a + 1) `inRangeOfMult` #multTarget a
         ) $ below $ #source a
 
     candidateTargets :: Association -> [Class]
     candidateTargets a = filter (\class' ->
-            #level class' == #lvlTarget a && (class' `occurrencesAsTarget` a + 1) `inRangeOfMult` #multSource a
+            #level class' == #levelTarget a && (class' `occurrencesAsTarget` a + 1) `inRangeOfMult` #multSource a
         ) $ below $ #target a
 
 
@@ -167,13 +167,13 @@ editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, mult
             targetClass <- elements nonLevelZeroClasses
             let source' = #name sourceClass
             let target' = #name targetClass
-            lvlSource' <- chooseInt (0, #level sourceClass - 1)
-            lvlTarget' <- chooseInt (0, #level targetClass - 1)
+            levelSource' <- chooseInt (0, #level sourceClass - 1)
+            levelTarget' <- chooseInt (0, #level targetClass - 1)
             multSource' <- randomMult multiplicitySpecAssociations
             multTarget' <- randomMult multiplicitySpecAssociations
             visibleSource' <- randomWeightedXOr chanceVisibleAssociation (return True) (return False)
             visibleTarget' <- randomWeightedXOr chanceVisibleAssociation (return True) (return False)
-            let mlmWithTheAssociation = mlm <<< Association name' source' target' lvlSource' lvlTarget' multSource' multTarget' visibleSource' visibleTarget'
+            let mlmWithTheAssociation = mlm <<< Association name' source' target' levelSource' levelTarget' multSource' multTarget' visibleSource' visibleTarget'
             return mlmWithTheAssociation
         AddLink -> let
             allPossibleLinksAllAssociations = concatMap allPossibleLinks associations
@@ -292,13 +292,13 @@ editBlindly mlm@MLM{classes, associations, links} e = let
             targetClass <- elements classes
             let source' = #name sourceClass
             let target' = #name targetClass
-            lvlSource' <- chooseInt (0, 10)
-            lvlTarget' <- chooseInt (0, 10)
+            levelSource' <- chooseInt (0, 10)
+            levelTarget' <- chooseInt (0, 10)
             multSource' <- randomMult (0, 3)
             multTarget' <- randomMult (0, 3)
             visibleSource' <- chooseAny :: Gen Bool
             visibleTarget' <- chooseAny :: Gen Bool
-            return $ mlm <<< Association name' source' target' lvlSource' lvlTarget' multSource' multTarget' visibleSource' visibleTarget'
+            return $ mlm <<< Association name' source' target' levelSource' levelTarget' multSource' multTarget' visibleSource' visibleTarget'
         AddLink -> if null associations || null classes then return mlm else do
             association <- elements associations
             let name' = #name association
