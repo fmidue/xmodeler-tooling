@@ -1,10 +1,9 @@
+---
 name: Haskell CI
 
 on:
   push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+    branches: ['**']
 
 jobs:
   build_and_test:
@@ -13,7 +12,7 @@ jobs:
         os:
           - ubuntu-latest
         plan:
-          - { build: stack }
+          - {build: stack}
         include:
           - os: ubuntu-latest
             apt-get: graphviz
@@ -21,41 +20,37 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - name: Install ${{ matrix.os }} Packages
-      uses: mstksg/get-package@2a4b48d55d72d43ca89ae58ec9ca1397d34a1c35
-      with:
-        apt-get: ${{ matrix.apt-get }}
-        brew: ${{ matrix.brew }}
-    - uses: actions/checkout@v2
+      - name: Install ${{ matrix.os }} Packages
+        uses: mstksg/get-package@2a4b48d55d72d43ca89ae58ec9ca1397d34a1c35
+        with:
+          apt-get: ${{ matrix.apt-get }}
+      - uses: actions/checkout@v2
 
-    - name: Cache Stack
-      id: cache-stack-unix
-      uses: actions/cache@v1
-      with:
-        path: ~/.stack
-        key: ${{ matrix.os }}-${{ matrix.plan.build }}-stack-home-${{ hashFiles('stack.yaml') }}-${{ hashFiles('package.yaml') }}
+      - name: Cache Stack
+        id: cache-stack-unix
+        uses: actions/cache@v3
+        with:
+          path: ~/.stack
+          key: ${{ hashFiles('stack.yaml') }}-${{ hashFiles('package.yaml') }}
 
-    - name: Setup stack
-      uses: haskell/actions/setup@v1
-      with:
-        enable-stack: true
-        stack-no-global: true
+      - name: Setup stack
+        uses: haskell/actions/setup@v2
+        with:
+          enable-stack: true
+          stack-no-global: true
 
-    - name: Install dependencies
-      run: |
-        set -ex
-        stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies
-        set +ex
-      env:
-        ARGS: ${{ matrix.plan.resolver }}
-        BUILD: ${{ matrix.plan.build }}
+      - name: Install dependencies
+        run: |
+          set -ex
+          stack --no-terminal --install-ghc build --test --only-dependencies
+          set +ex
+        env:
+          BUILD: ${{ matrix.plan.build }}
 
-    - name: Build and test
-      run: |
-        set -ex
-        stack --no-terminal $ARGS test --coverage --bench --no-run-benchmarks --haddock --no-haddock-deps
-        set +ex
-      env:
-        ARGS: ${{ matrix.plan.resolver }}
-        BUILD: ${{ matrix.plan.build }}
-        CABALVER: ${{ matrix.plan.cabal-install }}
+      - name: Build and test
+        run: |
+          set -ex
+          stack --no-terminal test --coverage
+          set +ex
+        env:
+          BUILD: ${{ matrix.plan.build }}

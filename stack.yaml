@@ -1,0 +1,9 @@
+---
+resolver: lts-19.25
+
+packages:
+  - .
+
+extra-deps:
+  - diagrams-graphviz-1.4.1.1
+  - Unique-0.4.7.9

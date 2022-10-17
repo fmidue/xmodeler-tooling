@@ -1,0 +1,9 @@
+.DS_Store
+.vscode/
+.stack-work/
+stack.yaml.lock
+*.cabal
+*.exe
+*.o
+*~
+exportedForTesting.xml

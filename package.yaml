@@ -1,0 +1,75 @@
+---
+name: xmodeler-tooling
+
+extra-source-files: [ ]
+
+dependencies:
+  - base
+
+default-extensions:
+  - TupleSections
+  - DuplicateRecordFields
+  - OverloadedLabels
+  - MultiParamTypeClasses
+  - FlexibleInstances
+  - TypeApplications
+  - ScopedTypeVariables
+  - NamedFieldPuns
+  - FlexibleContexts
+
+ghc-options:
+  - -Wall
+  - -Widentities
+  - -Werror
+
+library:
+  source-dirs: src
+  exposed-modules:
+    - Modelling.MLM.ToXModeler
+    - Modelling.MLM.Config
+    - Modelling.MLM.Types
+    - Modelling.MLM.Validate
+    - Modelling.MLM.Generate
+    - Modelling.MLM.FromXModeler
+  dependencies:
+    - extra
+    - string-interpolate
+    - graphviz
+    - diagrams-lib
+    - diagrams-graphviz
+    - containers
+    - bimap
+    - split
+    - Unique
+    - QuickCheck
+    - hxt
+
+executables:
+  generateRandomMLMs:
+    main: generateRandomMLMs.hs
+    source-dirs: app
+    dependencies:
+      - xmodeler-tooling
+      - graphviz
+      - QuickCheck
+      - pretty-simple
+
+tests:
+  xmodeler-tooling-test:
+    main: Spec.hs
+    source-dirs:
+      - test
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    default-extensions:
+      - RecordWildCards
+    dependencies:
+      - xmodeler-tooling
+      - extra
+      - graphviz
+      - QuickCheck
+      - hspec
+      - directory
+      - filepath

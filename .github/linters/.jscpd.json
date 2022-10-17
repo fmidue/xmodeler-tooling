@@ -1,0 +1,12 @@
+{
+  "threshold": 0,
+  "reporters": [
+    "consoleFull"
+  ],
+  "ignore": [
+    "**/__snapshots__/**", "**.xml", "**/should_fail/**.hs", "**/should_pass/**.hs"
+  ],
+  "minLines": 15,
+  "max-lines": 2000,
+  "absolute": true
+}

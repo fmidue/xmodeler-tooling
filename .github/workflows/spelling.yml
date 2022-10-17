@@ -1,7 +1,9 @@
+---
 name: Check Spelling
 
 # Updating pull request branches is managed via comment handling.
-# For details, see: https://github.com/check-spelling/check-spelling/wiki/Feature:-Update-expect-list
+# For details, see:
+# https://github.com/check-spelling/check-spelling/wiki/Feature:-Update-expect-list
 #
 # These elements work together to make it happen:
 #
@@ -20,13 +22,14 @@ name: Check Spelling
 #   In order to trigger workflows when the commit is made, you can provide a
 #   secret (typically, a write-enabled github deploy key).
 #
-#   For background, see: https://github.com/check-spelling/check-spelling/wiki/Feature:-Update-with-deploy-key
+#   For background, see:
+#   https://github.com/check-spelling/check-spelling/wiki/Feature:-Update-with-deploy-key
 
 on:
   push:
-    branches: [ master ]
+    branches: ['**']
   issue_comment:
-    types: [ created ]
+    types: [created]
 
 jobs:
   spelling:
@@ -44,21 +47,20 @@ jobs:
       # note: If you use only_check_changed_files, you do not want cancel-in-progress
       cancel-in-progress: true
     steps:
-    - name: check-spelling
-      id: spelling
-      uses: check-spelling/check-spelling@v0.0.20
-      with:
-        suppress_push_for_open_pull_request: 1
-        checkout: true
-        spell_check_this: check-spelling/spell-check-this@prerelease
-        post_comment: 0
-        experimental_apply_changes_via_bot: 1
-        extra_dictionaries:
-          cspell:latex/latex.txt
-          cspell:filetypes/filetypes.txt
-          cspell:software-terms/softwareTerms.txt
-          cspell:companies/companies.txt
-          cspell:haskell/haskell.txt
+      - name: check-spelling
+        id: spelling
+        uses: check-spelling/check-spelling@v0.0.20
+        with:
+          suppress_push_for_open_pull_request: 1
+          checkout: true
+          spell_check_this: check-spelling/spell-check-this@prerelease
+          post_comment: 0
+          experimental_apply_changes_via_bot: 1
+          extra_dictionaries:
+            cspell:filetypes/filetypes.txt
+            cspell:software-terms/softwareTerms.txt
+            cspell:companies/companies.txt
+            cspell:haskell/haskell.txt
 
   comment:
     name: Report
@@ -69,13 +71,13 @@ jobs:
       pull-requests: write
     if: (success() || failure()) && needs.spelling.outputs.followup
     steps:
-    - name: comment
-      uses: check-spelling/check-spelling@v0.0.20
-      with:
-        checkout: true
-        spell_check_this: check-spelling/spell-check-this@prerelease
-        task: ${{ needs.spelling.outputs.followup }}
-        experimental_apply_changes_via_bot: 1
+      - name: comment
+        uses: check-spelling/check-spelling@v0.0.20
+        with:
+          checkout: true
+          spell_check_this: check-spelling/spell-check-this@prerelease
+          task: ${{ needs.spelling.outputs.followup }}
+          experimental_apply_changes_via_bot: 1
 
   update:
     name: Update PR
@@ -92,9 +94,9 @@ jobs:
       group: spelling-update-${{ github.event.issue.number }}
       cancel-in-progress: false
     steps:
-    - name: apply spelling updates
-      uses: check-spelling/check-spelling@v0.0.20
-      with:
-        experimental_apply_changes_via_bot: 1
-        checkout: true
-        ssh_key: "${{ secrets.CHECK_SPELLING }}"
+      - name: apply spelling updates
+        uses: check-spelling/check-spelling@v0.0.20
+        with:
+          experimental_apply_changes_via_bot: 1
+          checkout: true
+          ssh_key: "${{ secrets.CHECK_SPELLING }}"
