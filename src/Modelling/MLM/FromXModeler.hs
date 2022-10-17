@@ -204,13 +204,13 @@ fromXModeler inputXML = let
     associationVisibilitySource <- map getBool <$> extract "addAssociation" "sourceVisibleFromTarget" :: IO [Bool]
     associationVisibilityTarget <- map getBool <$> extract "addAssociation" "targetVisibleFromSource" :: IO [Bool]
 
-    let readyAssociations = repeat emptyAssociation |<<<| zip (repeat Source) associationSources |<<<| zip (repeat Target) associationTargets |<<<| associationNames |<<<| zip (repeat Source) associationSourceLevels |<<<| zip (repeat Target) associationTargetLevels |<<<| zip (repeat Target) associationMultSourceToTarget |<<<| zip (repeat Source) associationMultTargetToSource |<<<| zip (repeat Source) associationVisibilitySource |<<<| zip (repeat Target) associationVisibilityTarget
+    let readyAssociations = repeat emptyAssociation |<<<| map (Source,) associationSources |<<<| map (Target,) associationTargets |<<<| associationNames |<<<| map (Source,) associationSourceLevels |<<<| map (Target,) associationTargetLevels |<<<| map (Target,) associationMultSourceToTarget |<<<| map (Source,) associationMultTargetToSource |<<<| map (Source,) associationVisibilitySource |<<<| map (Target,) associationVisibilityTarget
     -----------------------------------------------------------------------------------------------
     linkNames <- map getName <$> extract "addLink" "name" :: IO [Name]
     linkSources <- map getName <$> extract "addLink" "classSource" :: IO [Name]
     linkTargets <- map getName <$> extract "addLink" "classTarget" :: IO [Name]
 
-    let readyLinks = repeat emptyLink |<<<| linkNames |<<<| zip (repeat Source) linkSources |<<<| zip (repeat Target) linkTargets
+    let readyLinks = repeat emptyLink |<<<| linkNames |<<<| map (Source,) linkSources |<<<| map (Target,) linkTargets
     -----------------------------------------------------------------------------------------------
     let readyClasses = withSlots
     return $ MLM projectName readyClasses readyAssociations readyLinks
