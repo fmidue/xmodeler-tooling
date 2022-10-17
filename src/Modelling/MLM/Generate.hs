@@ -324,7 +324,12 @@ addLinks portionOfPossibleLinksToKeep theClasses theAssociations = let
 ----------------------------------------------------------
 
 generateMLM :: Config -> Gen MLM
-generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfAssociations, tendencyToConcretize, tendencyToInherit, multiplicitySpecAssociations, chanceVisibleAssociation, tendencyAbstractClass, portionOfPossibleLinksToKeep, numberOfAttributesPerConcretization, tendencyToDistanceAttributeFromItsInstantiation, allowMultipleInheritance} = let
+generateMLM Config{ projectNameString, maxClassLevel, numberOfClasses, numberOfAssociations,
+                    tendencyToConcretize, tendencyToInherit, multiplicitySpecAssociations,
+                    chanceVisibleAssociation, tendencyAbstractClass,
+                    portionOfPossibleLinksToKeep, numberOfAttributesPerConcretization,
+                    tendencyToDistanceAttributeFromItsInstantiation,
+                    allowMultipleInheritance} = let
 
     projectName = Name projectNameString :: Name
 

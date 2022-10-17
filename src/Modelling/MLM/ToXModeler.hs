@@ -4,7 +4,7 @@ module Modelling.MLM.ToXModeler (toXModeler) where
 
 import Data.Char (ord)
 import Data.Map.Strict (toList)
-import Data.String.Interpolate (i)
+import Data.String.Interpolate (i, iii)
 import Data.GraphViz (GraphvizCommand)
 import Data.Maybe (isJust, isNothing, fromMaybe)
 import Diagrams.Points (Point (P))
@@ -124,7 +124,11 @@ instance XModelerable (Name, Name) Attribute where
 -- Operation
 instance XModelerable (Name, Name) Operation where
   get (Name projectName, Name className) Operation{body, level, isMonitored, name, dataType} =
-    [i|    <addOperation body="#{body}" class="Root::#{projectName}::#{className}" level="#{level}" monitored="#{get () isMonitored}" name="#{nameString name}" package="Root::#{projectName}" paramNames="" paramTypes="" type="Root::#{get () dataType}"/>\n|]
+    "    " ++
+    [iii|<addOperation body="#{body}" class="Root::#{projectName}::#{className}"
+                       level="#{level}" monitored="#{get () isMonitored}"
+                       name="#{nameString name}" package="Root::#{projectName}"
+                       paramNames="" paramTypes="" type="Root::#{get () dataType}"/>\n|]
 
 -- Slot
 instance XModelerable (Name, Name) Slot where
@@ -134,7 +138,19 @@ instance XModelerable (Name, Name) Slot where
 -- Association
 instance XModelerable Name Association where
   get (Name projectName) Association{name, source, target, levelSource, levelTarget, multTarget, multSource, visibleSource, visibleTarget} =
-    [i|    <addAssociation accessSourceFromTargetName="#{nameString name}_#{from}" accessTargetFromSourceName="#{nameString name}_#{to}" classSource="Root::#{projectName}::#{from}" classTarget="Root::#{projectName}::#{to}" fwName="#{nameString name}" instLevelSource="#{levelSource}" instLevelTarget="#{levelTarget}" isSymmetric="false" isTransitive="false" multSourceToTarget="#{get () multTarget}" multTargetToSource="#{get () multSource}" package="Root::#{projectName}" reverseName="-1" sourceVisibleFromTarget="#{get () visibleSource}" targetVisibleFromSource="#{get () visibleTarget}"/>\n|]
+    "    " ++
+    [iii|<addAssociation accessSourceFromTargetName="#{nameString name}_#{from}"
+                         accessTargetFromSourceName="#{nameString name}_#{to}"
+                         classSource="Root::#{projectName}::#{from}"
+                         classTarget="Root::#{projectName}::#{to}"
+                         fwName="#{nameString name}"
+                         instLevelSource="#{levelSource}" instLevelTarget="#{levelTarget}"
+                         isSymmetric="false" isTransitive="false"
+                         multSourceToTarget="#{get () multTarget}"
+                         multTargetToSource="#{get () multSource}"
+                         package="Root::#{projectName}" reverseName="-1"
+                         sourceVisibleFromTarget="#{get () visibleSource}"
+                         targetVisibleFromSource="#{get () visibleTarget}"/>\n|]
    where
      from = nameString source
      to = nameString target
@@ -182,7 +198,7 @@ instance XModelerable ([Object], Double, Int) MLM where
     <Project name="Root::#{nameString projectName}"/>
   </Projects>
   <Diagrams>
-    <Diagram label="#{nameString projectName}_diagram" package_path="Root::#{nameString projectName}" showConstraintReports="false" showConstraints="false" showDerivedAttributes="false" showDerivedOperations="false" showGettersAndSetters="false" showMetaClassName="false" showOperationValues="true" showOperations="true" showSlots="true">
+    <Diagram label="#{nameString projectName}_diagram" package_path="Root::#{nameString projectName}" #{settings}>
       <Categories/>
       <Owners/>
       <Objects>
@@ -205,6 +221,16 @@ instance XModelerable ([Object], Double, Int) MLM where
 #{allTagsLink}
   </Logs>
 </XModeler>|]
+        where
+          settings = [iii|showConstraintReports="false"
+                          showConstraints="false"
+                          showDerivedAttributes="false"
+                          showDerivedOperations="false"
+                          showGettersAndSetters="false"
+                          showMetaClassName="false"
+                          showOperationValues="true"
+                          showOperations="true"
+                          showSlots="true"|] :: String
 
 toXModeler :: (GraphvizCommand, Double -> Double, Double, Int ) -> MLM -> IO String
 toXModeler    (layoutCommand, spaceOut, scaleFactor, extraOffset)

@@ -204,7 +204,16 @@ fromXModeler inputXML = let
     associationVisibilitySource <- map getBool <$> extract "addAssociation" "sourceVisibleFromTarget" :: IO [Bool]
     associationVisibilityTarget <- map getBool <$> extract "addAssociation" "targetVisibleFromSource" :: IO [Bool]
 
-    let readyAssociations = repeat emptyAssociation |<<<| map (Source,) associationSources |<<<| map (Target,) associationTargets |<<<| associationNames |<<<| map (Source,) associationSourceLevels |<<<| map (Target,) associationTargetLevels |<<<| map (Target,) associationMultSourceToTarget |<<<| map (Source,) associationMultTargetToSource |<<<| map (Source,) associationVisibilitySource |<<<| map (Target,) associationVisibilityTarget
+    let readyAssociations = repeat emptyAssociation
+          |<<<| map (Source,) associationSources
+          |<<<| map (Target,) associationTargets
+          |<<<| associationNames
+          |<<<| map (Source,) associationSourceLevels
+          |<<<| map (Target,) associationTargetLevels
+          |<<<| map (Target,) associationMultSourceToTarget
+          |<<<| map (Source,) associationMultTargetToSource
+          |<<<| map (Source,) associationVisibilitySource
+          |<<<| map (Target,) associationVisibilityTarget
     -----------------------------------------------------------------------------------------------
     linkNames <- map getName <$> extract "addLink" "name" :: IO [Name]
     linkSources <- map getName <$> extract "addLink" "classSource" :: IO [Name]
