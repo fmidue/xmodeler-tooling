@@ -42,5 +42,6 @@ ignore$
 \.yml$
 \.zip$
 ^\.github/actions/spelling/
+^\.github/linters/
 ^\Qtest/Spec.hs\E$
 ^\Qsrc/Modelling/MLM/Edit.hs\E$
