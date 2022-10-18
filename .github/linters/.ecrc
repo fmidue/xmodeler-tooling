@@ -4,7 +4,7 @@
   "IgnoreDefaults": false,
   "SpacesAftertabs": false,
   "NoColor": false,
-  "exclude": [],
+  "exclude": ["\\.cabal$"],
   "AllowedContentTypes": [],
   "PassedFiles": [],
   "Disable": {
