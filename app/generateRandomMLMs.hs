@@ -11,6 +11,8 @@ import Test.QuickCheck (generate)
 
 import System.IO (hSetBuffering, stdout, BufferMode(NoBuffering))
 import Text.Pretty.Simple (pPrint)
+import Data.List (intercalate)
+import Control.Monad (when)
 
 spaceOut :: Double -> Double
 spaceOut = (**1.2)
@@ -22,9 +24,6 @@ scaleFactor = 1.1
 extraOffset :: Int
 extraOffset = 163
 
-layoutCommand :: GraphvizCommand
-layoutCommand = Neato
-
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
@@ -32,17 +31,25 @@ main = do
   putStrLn "\nThe following is the config now used:\n"
   pPrint theConfigToUse
   putStrLn "\nHow many random MLMs do you want me to generate from it (default is 1)?"
-  input <- getLine
-  let n = if null input then 1 else read input
-  mapM_ (makeMLM theConfigToUse) [1..n]
+  inputN <- getLine
+  let n = if null inputN then 1 else read inputN
+  putStrLn "\nDo you want me to print Haskell representations of the MLMs (default is no)?"
+  inputP <- getLine
+  layoutCommand <- offerChange ("(options are Graphviz's " ++ intercalate ", " (map show [minBound .. maxBound :: GraphvizCommand]) ++ ")\nlayoutCommand") Neato
+  mapM_ (makeMLM theConfigToUse layoutCommand (inputP == "yes")) [1..n]
 
-makeMLM :: Config -> Int -> IO ()
-makeMLM config i = do
-  putStrLn $ "\nThe following is random MLM #" ++ show i ++ " generated from the config:\n"
+makeMLM :: Config -> GraphvizCommand -> Bool -> Int -> IO ()
+makeMLM config layoutCommand p i = do
   mlm@MLM{ name = Name projectName } <- generate . generateMLM $ config
-  pPrint mlm
+  when p $ do
+    putStrLn $ "\nThe following is random MLM #" ++ show i ++ " generated from the config:\n"
+    pPrint mlm
   let file = projectName ++ show i ++ ".xml"
-  putStrLn $ "\nI am also writing the random MLM generated above to file " ++ file ++ " now.\n"
+  putStrLn $ "\nI am " ++
+    (if p
+      then "also writing the random MLM generated above"
+      else "writing random MLM #" ++ show i ++ " generated from the config")
+    ++ " to file " ++ file ++ " now.\n"
   export <- toXModeler (layoutCommand, spaceOut, scaleFactor, extraOffset) mlm
   writeFile file export
 
