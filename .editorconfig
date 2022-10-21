@@ -10,3 +10,6 @@ max_line_length = 250
 
 [test/**.hs]
 max_line_length = 400
+
+[README.md]
+max_line_length = unset

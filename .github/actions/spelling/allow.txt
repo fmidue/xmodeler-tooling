@@ -23,7 +23,6 @@ VMonetary
 VString
 Wno
 XCore
-XModeler
 XModelerable
 XOr
 chr
@@ -44,3 +43,4 @@ standalone
 subdir
 subdirs
 uncurry
+xmodeler

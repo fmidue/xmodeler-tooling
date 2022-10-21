@@ -10,3 +10,6 @@
 
 # ignore long runs of a single character:
 \b([A-Za-z])\g{-1}{3,}\b
+
+# ignore urls
+https?://[-+0-9a-zA-Z?&=_\/%.]*
