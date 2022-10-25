@@ -4,7 +4,7 @@
 
 Download and install the following tools (while making sure their executables end up on the system `PATH`):
 
-- [Haskell Tool Stack](https://docs.haskellstack.org/en/stable/)
+- [Haskell Tool Stack](https://haskellstack.org/)
 - [Graphviz](https://graphviz.org/)
 
 Download the code of the [xmodeler-tooling repository](https://github.com/fmidue/xmodeler-tooling), e.g., via `git clone https://github.com/fmidue/xmodeler-tooling.git` or per "Download ZIP".
