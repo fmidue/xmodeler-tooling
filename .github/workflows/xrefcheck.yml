@@ -3,7 +3,7 @@ name: Xrefcheck
 
 on:
   push:
-    branches: [master]
+    branches: ['**']
 
 jobs:
   xrefcheck:
