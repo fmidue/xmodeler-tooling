@@ -32,11 +32,11 @@ MLM
             , operations = []
             , slots =
                 [ Slot
-                    { name = Name "att"
+                    { attribute = Name "att"
                     , value = VInteger 1
                     }
                 , Slot
-                    { name = Name "att"
+                    { attribute = Name "att"
                     , value = VInteger 2
                     }
                 ]

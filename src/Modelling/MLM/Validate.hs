@@ -55,7 +55,7 @@ instance Validatable () MLM where
     findClass = generateClassFinder classes
 
     findAssociationOfLink :: Link -> Maybe Association
-    findAssociationOfLink Link{name = linkName} = find ((== linkName) . #name) associations
+    findAssociationOfLink Link{association} = find ((association ==) . #name) associations
 
     dict :: Map Name [Name]
     dict = generateClassDict classes
@@ -135,11 +135,11 @@ instance Validatable [Class] Class where
     instantiatableAttributesHere = filter ((== thisLevel) . #level) allAttributesAbove :: [Attribute]
 
     thisAttributesNames = map #name thisAttributes :: [Name]
-    thisSlotsNames = map #name thisSlots :: [Name]
+    thisSlotsNames = map #attribute thisSlots :: [Name]
     thisOperationsNames = map #name thisOperations :: [Name]
 
     getAttributeOfSlot :: Slot -> Maybe Attribute
-    getAttributeOfSlot Slot{name} = find ((== name) . #name) allAttributesAbove
+    getAttributeOfSlot Slot{attribute} = find ((attribute ==) . #name) allAttributesAbove
 
     in
     and [

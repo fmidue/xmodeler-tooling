@@ -103,7 +103,7 @@ editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, mult
     refreshInstantiationOneClass :: MLM -> Class -> Gen Class
     refreshInstantiationOneClass mlm' class' =
         foldM (\soFar attribute ->
-                if #name attribute `elem` map #name (#slots soFar)
+                if #name attribute `elem` map #attribute (#slots soFar)
                     then return soFar
                     else (soFar <<<) <$> randomSlot attribute
             ) class' (instantiatableAttributes mlm' class')
@@ -212,11 +212,11 @@ editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, mult
             randomAssociation <- elements $ map #name associations
             let mlmWithoutTheAssociation = mlm{associations = associations `exceptOnesNamed` randomAssociation}
             return mlmWithoutTheAssociation{
-                links = filter ((/= randomAssociation) . #name) links
+                links = filter ((randomAssociation /=) . #association) links
             }
         DeleteLink -> if null links then return mlm else do
-            randomLink <- elements $ map #name links
-            return $ mlm{links = links `exceptOnesNamed` randomLink}
+            randomLink <- elements $ map #association links
+            return $ mlm{links = filter ((randomLink /=) . #association) links}
         DeleteAttribute -> if null (concatMap #attributes classes) then return mlm else do
             randomAttribute <- elements $ map #name $ concatMap #attributes classes
             let mlmWithoutTheAttribute = mlm{classes = map (\x@Class{attributes} -> x{attributes = attributes `exceptOnesNamed` randomAttribute}) classes}
@@ -337,8 +337,8 @@ editBlindly mlm@MLM{classes, associations, links} e = let
             randomAssociation <- elements $ map #name associations
             return $ mlm{associations = associations `exceptOnesNamed` randomAssociation}
         DeleteLink -> if null links then return mlm else do
-            randomLink <- elements $ map #name links
-            return $ mlm{links = links `exceptOnesNamed` randomLink}
+            randomLink <- elements $ map #association links
+            return $ mlm{links = filter ((randomLink /=) . #association) links}
         DeleteAttribute -> if null (concatMap #attributes classes) then return mlm else do
             randomAttribute <- elements $ map #name $ concatMap #attributes classes
             return $ mlm{classes = map (\x@Class{attributes} ->

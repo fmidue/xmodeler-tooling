@@ -132,8 +132,8 @@ instance XModelerable (Name, Name) Operation where
 
 -- Slot
 instance XModelerable (Name, Name) Slot where
-  get (Name projectName, Name slotClass) Slot{name, value} =
-    [i|    <changeSlotValue class="Root::#{projectName}::#{slotClass}" package="Root::#{projectName}" slotName="#{nameString name}" valueToBeParsed="#{get () value}"/>\n|]
+  get (Name projectName, Name slotClass) Slot{attribute, value} =
+    [i|    <changeSlotValue class="Root::#{projectName}::#{slotClass}" package="Root::#{projectName}" slotName="#{nameString attribute}" valueToBeParsed="#{get () value}"/>\n|]
 
 -- Association
 instance XModelerable Name Association where
@@ -157,8 +157,8 @@ instance XModelerable Name Association where
 
 -- Link
 instance XModelerable Name Link where
-  get (Name projectName) Link{source, target, name} =
-    [i|    <addLink classSource="Root::#{projectName}::#{nameString source}" classTarget="Root::#{projectName}::#{nameString target}" name="#{nameString name}" package="Root::#{projectName}"/>\n|]
+  get (Name projectName) Link{association, source, target} =
+    [i|    <addLink classSource="Root::#{projectName}::#{nameString source}" classTarget="Root::#{projectName}::#{nameString target}" name="#{nameString association}" package="Root::#{projectName}"/>\n|]
 
 -- MLM
 instance XModelerable ([Object], Double, Int) MLM where

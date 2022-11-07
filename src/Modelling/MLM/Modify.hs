@@ -117,7 +117,7 @@ instance Modifiable Association (SourceOrTarget, Bool) where
 
 -------- Link
 instance Modifiable Link Name where
-    (<<<) y x = y{name = x}
+    (<<<) y x = y{association = x}
 instance Modifiable Link (SourceOrTarget, Name) where
     (<<<) y (direction, x) = case direction of
             Source -> y{source = x}

@@ -122,7 +122,7 @@ generateOccurrencesCounter :: Bool -> [Link] -> Class -> Association -> Int
 generateOccurrencesCounter asSourceRatherThanAsTarget theLinks Class{name = className} Association{name = associationName} = let
   toLookFor = if asSourceRatherThanAsTarget then #source else #target in
     length $ filter (\link ->
-        #name link == associationName && toLookFor link == className
+        #association link == associationName && toLookFor link == className
       ) theLinks
 
 inRangeOfMult :: Int -> Multiplicity -> Bool
@@ -149,7 +149,7 @@ instance Eq Class where
       eqBy x y #classifier,
       eqBy x y (sortOn #name . #attributes),
       eqBy x y (sortOn #name . #operations),
-      eqBy x y (sortOn #name . #slots)
+      eqBy x y (sortOn #attribute . #slots)
     ]
 
 emptyClass :: Class
@@ -166,7 +166,7 @@ emptyAttribute :: Attribute
 emptyAttribute = Attribute 0 emptyName Boolean emptyMultiplicity
 
 data Slot = Slot {
-  name :: Name,
+  attribute :: Name,
   value :: Value
 } deriving (Show, Read, Eq)
 
@@ -209,7 +209,7 @@ emptyAssociation :: Association
 emptyAssociation = Association emptyName emptyName emptyName 0 0 emptyMultiplicity emptyMultiplicity False False
 
 data Link = Link {
-  name :: Name,
+  association :: Name,
   source :: Name,
   target :: Name
 } deriving (Show, Read, Eq, Ord)

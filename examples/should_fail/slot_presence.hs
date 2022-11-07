@@ -41,11 +41,11 @@ MLM
             , operations = []
             , slots =
                 [ Slot
-                    { name = Name "att"
+                    { attribute = Name "att"
                     , value = VInteger 1
                     }
                 , Slot
-                    { name = Name "att2"
+                    { attribute = Name "att2"
                     , value = VInteger 2
                     }
                 ]
@@ -62,7 +62,7 @@ MLM
             , operations = []
             , slots =
                 [ Slot
-                    { name = Name "att2"
+                    { attribute = Name "att2"
                     , value = VInteger 3
                     }
                 ]

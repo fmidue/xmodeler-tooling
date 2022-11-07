@@ -51,7 +51,7 @@ MLM
             , operations = []
             , slots =
                 [ Slot
-                    { name = Name "another"
+                    { attribute = Name "another"
                     , value = VInteger 0
                     }
                 ]
@@ -67,7 +67,7 @@ MLM
             , operations = []
             , slots =
                 [ Slot
-                    { name = Name "attr"
+                    { attribute = Name "attr"
                     , value = VInteger 0
                     }
                 ]
