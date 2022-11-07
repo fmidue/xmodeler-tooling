@@ -53,6 +53,12 @@ executables:
       - graphviz
       - QuickCheck
       - pretty-simple
+  checkValidityOfMLM:
+    main: checkValidityOfMLM.hs
+    source-dirs: app
+    dependencies:
+      - xmodeler-tooling
+      - pretty-simple
 
 tests:
   xmodeler-tooling-test:

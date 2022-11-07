@@ -19,9 +19,16 @@ This can take quite a while, but you only need to do it once.
 
 ## Usage (any time after installation)
 
-In a shell:
+In a shell, to generate XML files to be loaded into XModeler:
 ```shell
 cd xmodeler-tooling
 stack exec generateRandomMLMs
 ```
 The user prompts and outputs are hopefully somewhat self-explanatory.
+
+
+In a shell, to read and check validity of an XML file exported from XModeler:
+```shell
+cd xmodeler-tooling
+stack exec checkValidityOfMLM filename.xml
+```
