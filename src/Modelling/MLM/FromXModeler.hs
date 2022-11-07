@@ -122,7 +122,7 @@ getMult x = let
   in Multiplicity (a, if b == -1 then Nothing else Just b)
 
 getType :: String -> Type
-getType x = fromMaybe Boolean $ readMaybe $ last $ splitOn "::" x
+getType x = fromMaybe (error "unrecognized type") $ readMaybe $ last $ splitOn "::" x
 
 fromXModeler :: String -> IO MLM
 fromXModeler inputXML = let
