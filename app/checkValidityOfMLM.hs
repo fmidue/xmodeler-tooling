@@ -12,6 +12,6 @@ main = do
   hSetBuffering stdout NoBuffering
   [fileName] <- getArgs
   mlm <- fromXModeler fileName
-  putStrLn $ "\nThe following is the MLM imported from the XModeler file:\n"
+  putStrLn "\nThe following is the MLM imported from the XModeler file:\n"
   pPrint mlm
   putStrLn $ "\nIt is considered " ++ (if valid () mlm then "" else "in") ++ "valid.\n"
