@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<XModeler>
+  <Version>2</Version>
+  <Categories/>
+  <Projects>
+    <Project name="Root::Test"/>
+  </Projects>
+  <Diagrams>
+    <Diagram label="Test" package_path="Root::Test" showDerivedAttributes="true" showDerivedOperations="true" showGettersAndSetters="false" showOperationValues="true" showOperations="true" showSlots="true">
+      <Categories/>
+      <Owners/>
+      <Objects>
+        <Object hidden="false" ref="Root::Test::C" x="138" y="184"/>
+        <Object hidden="false" ref="Root::Test::c" x="442" y="196"/>
+        <Object hidden="false" ref="Root::Test::B" x="308" y="23"/>
+        <Object hidden="false" ref="Root::Test::A" x="64" y="23"/>
+      </Objects>
+      <Edges>
+        <Edge ref="InheritanceMapping: Root::Test::C/Root::Test::B" source_port="NORTH" target_port="SOUTH" type="inheritance">
+          <IntermediatePoints>
+            <IntermediatePoint x="250.16629" y="148.71428"/>
+            <IntermediatePoint x="393.4815" y="148.71428"/>
+          </IntermediatePoints>
+        </Edge>
+      </Edges>
+      <Labels/>
+      <Preferences/>
+      <View name="Main View" tx="0.0" ty="0.0" xx="1.0"/>
+    </Diagram>
+  </Diagrams>
+  <Logs>
+    <addMetaClass abstract="false" level="2" name="A" package="Root::Test" parents=""/>
+    <addMetaClass abstract="false" level="1" name="B" package="Root::Test" parents=""/>
+    <addInstance abstract="false" name="C" of="Root::Test::A" package="Root::Test" parents=""/>
+    <addInstance abstract="false" name="c" of="Root::Test::C" package="Root::Test" parents=""/>
+    <changeParent class="Root::Test::C" new="Root::Test::B" old="" package="Root::Test"/>
+    <addAttribute class="Root::Test::A" level="0" multiplicity="Seq{1,1,true,false}" name="deferred" package="Root::Test" type="Root::XCore::Integer"/>
+    <addAttribute class="Root::Test::A" level="1" multiplicity="Seq{1,1,true,false}" name="value" package="Root::Test" type="Root::XCore::Integer"/>
+    <addAttribute class="Root::Test::B" level="0" multiplicity="Seq{1,1,true,false}" name="another_value" package="Root::Test" type="Root::XCore::Integer"/>
+    <changeSlotValue class="Root::Test::C" package="Root::Test" slotName="value" valueToBeParsed="0"/>
+    <changeSlotValue class="Root::Test::c" package="Root::Test" slotName="another_value" valueToBeParsed="0"/>
+    <changeSlotValue class="Root::Test::c" package="Root::Test" slotName="deferred" valueToBeParsed="0"/>
+  </Logs>
+</XModeler>
