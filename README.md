@@ -34,8 +34,8 @@ stack exec checkValidityOfMLM filename.xml
 ```
 
 
-In a shell, to read-relayout-write an XModeler-XML file:
+In a shell, to read - re-layout - write an XModeler-XML file:
 ```shell
 cd xmodeler-tooling
-stack exec relayoutAnMLM filename.xml
+stack exec reLayoutAnMLM filename.xml
 ```

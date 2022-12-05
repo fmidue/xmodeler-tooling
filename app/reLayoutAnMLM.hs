@@ -16,6 +16,6 @@ main = do
   mlm <- fromXModeler fileName
   layoutCommand <- offerChange ("(options are Graphviz's " ++ intercalate ", " (map show [minBound .. maxBound :: GraphvizCommand]) ++ ")\nlayoutCommand") Neato
   let file = show layoutCommand ++ "-" ++ fileName
-  putStrLn $ "\nI am writing the relayouted MLM to file " ++ file ++ " now.\n"
+  putStrLn $ "\nI am writing the re-layouted MLM to file " ++ file ++ " now.\n"
   export <- toXModeler (layoutCommand, spaceOut, scaleFactor, extraOffset) mlm
   writeFile file export

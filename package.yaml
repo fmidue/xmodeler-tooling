@@ -59,8 +59,8 @@ executables:
     dependencies:
       - xmodeler-tooling
       - pretty-simple
-  relayoutAnMLM:
-    main: relayoutAnMLM.hs
+  reLayoutAnMLM:
+    main: reLayoutAnMLM.hs
     source-dirs: app
     dependencies:
       - xmodeler-tooling
