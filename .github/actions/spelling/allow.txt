@@ -34,6 +34,7 @@ foldl
 foldr
 fst
 instantiatable
+layouted
 mlm
 oneof
 roundtripping
