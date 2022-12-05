@@ -59,6 +59,12 @@ executables:
     dependencies:
       - xmodeler-tooling
       - pretty-simple
+  relayoutAnMLM:
+    main: relayoutAnMLM.hs
+    source-dirs: app
+    dependencies:
+      - xmodeler-tooling
+      - graphviz
 
 tests:
   xmodeler-tooling-test:

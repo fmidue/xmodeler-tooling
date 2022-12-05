@@ -32,3 +32,10 @@ In a shell, to read and check validity of an XML file exported from XModeler:
 cd xmodeler-tooling
 stack exec checkValidityOfMLM filename.xml
 ```
+
+
+In a shell, to read-relayout-write an XModeler-XML file:
+```shell
+cd xmodeler-tooling
+stack exec relayoutAnMLM filename.xml
+```

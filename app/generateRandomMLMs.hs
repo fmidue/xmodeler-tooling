@@ -8,21 +8,12 @@ import Modelling.MLM.Config (Config(..), defaultConfig, checkConfig)
 import Modelling.MLM.Types (MLM (..), Name (..))
 import Modelling.MLM.Generate (generateMLM)
 import Test.QuickCheck (generate)
+import Helpers (spaceOut, scaleFactor, extraOffset, offerChange)
 
 import System.IO (hSetBuffering, stdout, BufferMode(NoBuffering))
 import Text.Pretty.Simple (pPrint)
 import Data.List (intercalate)
 import Control.Monad (when)
-
-spaceOut :: Double -> Double
-spaceOut = (**1.2)
-
-scaleFactor :: Double
-scaleFactor = 1.1
-
--- this is the width of a rectangle of a class in XModeler
-extraOffset :: Int
-extraOffset = 163
 
 main :: IO ()
 main = do
@@ -93,11 +84,3 @@ determineConfig = do
       putStrLn $ "This didn't go well. Here is the problem: " ++ problem
       putStrLn "You should try again."
       determineConfig
-
-offerChange :: (Show a, Read a) => String -> a -> IO a
-offerChange name value = do
-  putStrLn $ "\nIf you want to change the setting " ++ name ++ " = " ++ show value ++ ", enter a new value here (otherwise just hit return):"
-  input <- getLine
-  if null input
-    then return value
-    else return (read input)
