@@ -72,15 +72,15 @@ editRandomlyValidly shouldWeForbidDeleteComponents config mlm = let
     editsToUse = if shouldWeForbidDeleteComponents
         then [AddClass, AddAssociation, AddLink, AddAttribute, AddOperation]
         else [minBound .. maxBound]
-    in editValidly config mlm =<< elements editsToUse
+    in editValidly True config mlm =<< elements editsToUse
 
 editRandomlyValidlyN :: Bool -> Config -> MLM -> Int -> Gen MLM
 editRandomlyValidlyN shouldWeForbidDeleteComponents config mlm n = let
     f = editRandomlyValidly shouldWeForbidDeleteComponents config
     in foldM (\soFar _ -> f soFar) mlm [1 .. n]
 
-editValidly :: Config -> MLM -> Edit -> Gen MLM
-editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, multiplicitySpecAssociations, chanceVisibleAssociation, tendencyAbstractClass, allowMultipleInheritance } mlm@MLM{classes, associations, links} e = let
+editValidly :: Bool -> Config -> MLM -> Edit -> Gen MLM
+editValidly requireInstantiations Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, multiplicitySpecAssociations, chanceVisibleAssociation, tendencyAbstractClass, allowMultipleInheritance } mlm@MLM{classes, associations, links} e = let
 
     randomType :: Gen Type
     randomType = elements typeSpace
@@ -159,7 +159,7 @@ editValidly Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, mult
             mlmWithTheNewAttributeMaybe <- do
                 dataType' <- randomType
                 let newAttribute = Attribute level' (nextAvailableAttributeName mlmWithTheClassEvenIfNotReadyYet) dataType' (Multiplicity (1, Just 1))
-                return $ maybe mlmWithTheClassEvenIfNotReadyYet (\c -> insert mlmWithTheClassEvenIfNotReadyYet c newAttribute) classifier'
+                return $ maybe mlmWithTheClassEvenIfNotReadyYet (if requireInstantiations then flip (insert mlmWithTheClassEvenIfNotReadyYet) newAttribute else const mlmWithTheClassEvenIfNotReadyYet) classifier'
             refreshInstantiationAllClasses mlmWithTheNewAttributeMaybe
         AddAssociation -> if null nonLevelZeroClasses then return mlm else do
             let name' = nextAvailableAssociationName mlm
