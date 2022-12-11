@@ -47,8 +47,8 @@ instance Validatable () Name where
       all ($ name)
         [not . null, validChar1 . head, all validCharN . tail]
 
-instance Validatable () MLM where
-  valid () MLM{name = projectName, classes, associations, links} = let
+instance Validatable Bool MLM where
+  valid requireInstantiations MLM{name = projectName, classes, associations, links} = let
 
     -- navigation
     findClass :: Name -> Maybe Class
@@ -116,7 +116,7 @@ instance Validatable () MLM where
       allUnique classesNames,
       allUnique (map #name associations),
       noCycles dict,
-      all instantiatesSomethingOrIsMetaClass classes,
+      not requireInstantiations || all instantiatesSomethingOrIsMetaClass classes,
       allUnique links,
       all (\x -> valid (above (#name x)) x) classes,
       all (\x -> valid (findClass (#source x), findClass (#target x)) x) associations,

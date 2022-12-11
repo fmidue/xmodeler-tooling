@@ -7,6 +7,9 @@ import System.IO (hSetBuffering, stdout, BufferMode(NoBuffering))
 import System.Environment (getArgs)
 import Text.Pretty.Simple (pPrint)
 
+requireInstantiations :: Bool
+requireInstantiations = False
+
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
@@ -14,4 +17,6 @@ main = do
   mlm <- fromXModeler fileName
   putStrLn "\nThe following is the MLM imported from the XModeler file:\n"
   pPrint mlm
-  putStrLn $ "\nIt is considered " ++ (if valid () mlm then "" else "in") ++ "valid.\n"
+  putStrLn $ "\nIt is considered "
+    ++ (if valid requireInstantiations mlm then "" else "in")
+    ++ "valid.\n"

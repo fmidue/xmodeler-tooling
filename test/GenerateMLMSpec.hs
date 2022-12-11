@@ -15,7 +15,7 @@ spec = do
           it "creates valid MLMs" $
             forAll (oneof [reasonableConfigs, smallConfigs]) $ \config ->
             forAll (generateMLM config) $
-            valid ()
+            valid True
         describe "generateMLM" $
           it "respects certain configuration parameters" $
             forAll (oneof [reasonableConfigs, smallConfigs]) $ \config@Config{maxClassLevel, numberOfClasses, numberOfAssociations} ->
@@ -99,7 +99,7 @@ spec = do
                   newLinks = map (\(linkName, (class1, class2)) -> Link linkName (#name class1) (#name class2)) linksInfo :: [Link]
                   possibleLinksToAdd = filter (\x ->
                                                   let mlmWithTheNewLink = mlm{links = x : links} :: MLM
-                                                  in valid () mlmWithTheNewLink
+                                                  in valid True mlmWithTheNewLink
                                               ) newLinks :: [Link]
                   in
                     possibleLinksToAdd `shouldSatisfy` null

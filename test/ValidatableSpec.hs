@@ -23,46 +23,53 @@ spec = do
         it ("correctly judges " ++ file) $
           ioProperty $ do
             input <- fromXModeler file
-            return $ input `shouldSatisfy` valid ()
+            return $ input `shouldSatisfy` valid True
+  forM_ withIsolatedObjects $ \i ->
+      let file = "examples" </> "UML" </> "testing_" ++ show i ++ ".xml" in
+      describe "valid" $
+        it ("correctly judges " ++ file) $
+          ioProperty $ do
+            input <- fromXModeler file
+            return $ input `shouldSatisfy` valid False
   forM_ withIsolatedObjects $ \i ->
       let file = "examples" </> "UML" </> "testing_" ++ show i ++ ".xml" in
       describe "invalid" $
         it ("correctly judges " ++ file) $
           ioProperty $ do
             input <- fromXModeler file
-            return $ input `shouldSatisfy` (not . valid ())
+            return $ input `shouldSatisfy` (not . valid True)
   describe "invalid" $
    let dir = "examples" </> "should_fail" in do
     it ("correctly judges .xml content of " ++ dir ++ " directory") $
       ioProperty $ do
         files <- map (dir </>) . filter ((".xml" ==) . takeExtension) <$> listDirectory dir
-        validities <- forM files $ \file -> (file,) . valid () <$> fromXModeler file
+        validities <- forM files $ \file -> (file,) . valid True <$> fromXModeler file
         return $ filter snd validities `shouldSatisfy` null
     it ("correctly judges .hs content of " ++ dir ++ " directory") $
       ioProperty $ do
         files <- map (dir </>) . filter ((".hs" ==) . takeExtension) <$> listDirectory dir
-        validities <- forM files $ \file -> (file,) . valid () . (read :: String -> MLM) <$> readFile file
+        validities <- forM files $ \file -> (file,) . valid False . (read :: String -> MLM) <$> readFile file
         return $ filter snd validities `shouldSatisfy` null
   describe "valid" $
     let dir = "examples" </> "should_narrowly_pass" in
     it ("correctly judges content of " ++ dir ++ " directory") $
       ioProperty $ do
         files <- map (dir </>) <$> listDirectory dir
-        validities <- forM files $ \file -> (file,) . valid () <$> fromXModeler file
+        validities <- forM files $ \file -> (file,) . valid True <$> fromXModeler file
         return $ filter (not . snd) validities `shouldSatisfy` null
   describe "valid" $
     let dir = "examples" </> "XModeler-strange" in
     it ("correctly judges content of " ++ dir ++ " directory") $
       ioProperty $ do
         files <- map (dir </>) <$> listDirectory dir
-        validities <- forM files $ \file -> (file,) . valid () <$> fromXModeler file
+        validities <- forM files $ \file -> (file,) . valid True <$> fromXModeler file
         return $ filter (not . snd) validities `shouldSatisfy` null
   describe "valid" $
     let dir = "examples" </> "should_pass" in
     it ("correctly judges content of " ++ dir ++ " directory") $
       ioProperty $ do
         files <- map (dir </>) <$> listDirectory dir
-        validities <- forM files $ \file -> (file,) . valid () . (read :: String -> MLM) <$> readFile file
+        validities <- forM files $ \file -> (file,) . valid True . (read :: String -> MLM) <$> readFile file
         return $ filter (not . snd) validities `shouldSatisfy` null
   describe "valid" $
     let dir = "examples" </> "should_have_same_outcome" in
@@ -71,7 +78,7 @@ spec = do
         subdirs <- filterM (fmap (fileTypeIsDirectory . fileTypeFromMetadata) . getFileMetadata)
                     . map (dir </>) =<< listDirectory dir
         results <- forM subdirs $ \subdir ->
-          listDirectory subdir >>= mapM ((\file -> (file,) . valid () <$> fromXModeler file) . (subdir </>))
+          listDirectory subdir >>= mapM ((\file -> (file,) . valid True <$> fromXModeler file) . (subdir </>))
         return $ filter ((1<) . length . nubOrd . map snd) results `shouldSatisfy` null
 
 withIsolatedObjects :: [Int]

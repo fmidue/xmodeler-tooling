@@ -248,7 +248,7 @@ editRandomlyBlindlyNKeepLastValidOne shouldWeForbidDeleteComponents mlm n = let
                     soFar' <- soFar
                     f soFar'
                 ) (return mlm) [1 .. n] :: Gen [MLM]
-        let validOnes = filter (valid ()) result
+        let validOnes = filter (valid True) result
         if null validOnes
             then return Nothing
             else return $ Just $ last validOnes
@@ -259,9 +259,9 @@ editRandomlyBlindlyNStayValid shouldWeForbidDeleteComponents mlm n = let
     in do
         result <- foldM (\x _ -> do
                 y <- f x
-                return $ if valid () y then y else x
+                return $ if valid True y then y else x
             ) mlm [1 .. n]
-        if valid () result
+        if valid True result
             then return $ Just result
             else return Nothing
 
