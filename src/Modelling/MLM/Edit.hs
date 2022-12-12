@@ -1,5 +1,6 @@
 module Modelling.MLM.Edit (
-    Edit,
+    Edit(..),
+    editValidly,
     editRandomlyValidly,
     editRandomlyValidlyN,
     editRandomlyBlindly,

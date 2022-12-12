@@ -39,3 +39,10 @@ In a shell, to read - re-layout - write an XModeler-XML file:
 cd xmodeler-tooling
 stack exec reLayoutAnMLM filename.xml
 ```
+
+
+In a shell, to populate an existing MLM:
+```shell
+cd xmodeler-tooling
+stack exec populateAnMLM filename.xml
+```
