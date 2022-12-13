@@ -16,7 +16,7 @@ import System.IO (hSetBuffering, stdout, BufferMode(NoBuffering))
 import System.Environment (getArgs)
 import Control.Monad (foldM)
 import Data.List (intercalate)
-import Data.Maybe (mapMaybe, listToMaybe)
+import Data.Maybe (mapMaybe)
 
 main :: IO ()
 main = do
@@ -44,7 +44,7 @@ generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loo
   where
     loop n =
       (\case
-          Just mlm'
+          mlm':_
             | length (#classes mlm') >= length classes + newClasses
               && length (#links mlm') >= length links + newLinks
               && (not enforceClasses ||
@@ -54,7 +54,7 @@ generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loo
               -> return mlm'
           _
               -> loop (n+1)
-      ) . listToMaybe . dropWhile (not . valid False)
+      ) . dropWhile (not . valid False)
       =<< foldM (\list@(mlm':_) _ ->
                     fmap (:list)
                     . editValidly False defaultConfig{ tendencyToConcretize = 1.0 } mlm'
