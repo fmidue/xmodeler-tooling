@@ -23,7 +23,7 @@ main = do
   hSetBuffering stdout NoBuffering
   [fileName] <- getArgs
   mlm <- fromXModeler fileName
-  putStrLn "\nShould it be enforced that each existing class occurs concretized at least once (default is yes)?"
+  putStrLn "\nShould it be enforced that each existing non-abstract class occurs concretized at least once (default is yes)?"
   enforceClasses <- getLine
   let enforceC = enforceClasses /= "no"
   putStrLn "\nHow many class concretizations do you want me to perform at least (default is 5)?"
@@ -48,7 +48,7 @@ generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loo
             | length (#classes mlm') >= length classes + newClasses
               && length (#links mlm') >= length links + newLinks
               && (not enforceClasses ||
-                   all (\Class{level, name} -> level == 0
+                   all (\Class{level, isAbstract, name} -> level == 0 || isAbstract
                          || name `elem` mapMaybe #classifier (#classes mlm'))
                    classes)
               -> return mlm'
