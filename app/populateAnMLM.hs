@@ -33,7 +33,7 @@ main = do
   newLinks <- getLine
   let newL = if null newLinks then 5 else read newLinks
   layoutCommand <- offerChange ("(options are Graphviz's " ++ intercalate ", " (map show [minBound .. maxBound :: GraphvizCommand]) ++ ")\nlayoutCommand") Neato
-  let file = "populated-" ++ fileName
+  let file = "populated_" ++ fileName
   mlm' <- generate $ generateAndTest mlm enforceC newC newL (newC + newL)
   putStrLn $ "\nI am writing the populated MLM to file " ++ file ++ " now.\n"
   export <- toXModeler (layoutCommand, spaceOut, scaleFactor, extraOffset) mlm'{name = Name "populated" }

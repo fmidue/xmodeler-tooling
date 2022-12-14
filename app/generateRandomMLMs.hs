@@ -35,7 +35,7 @@ makeMLM config layoutCommand p i = do
   when p $ do
     putStrLn $ "\nThe following is random MLM #" ++ show i ++ " generated from the config:\n"
     pPrint mlm
-  let file = projectName ++ show i ++ ".xml"
+  let file = projectName ++ "_" ++ show i ++ ".xml"
   putStrLn $ "\nI am " ++
     (if p
       then "also writing the random MLM generated above"
