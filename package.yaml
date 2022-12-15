@@ -93,3 +93,4 @@ tests:
       - hspec
       - directory
       - filepath
+      - pretty-simple

@@ -5,7 +5,7 @@ import Test.QuickCheck (ioProperty)
 
 import Data.List ((\\))
 import Data.List.Extra (nubOrd)
-import Control.Monad (filterM, forM_, forM)
+import Control.Monad (filterM, forM_, forM, when, unless)
 import System.Directory (listDirectory)
 import System.Directory.Internal (getFileMetadata, fileTypeFromMetadata, fileTypeIsDirectory)
 import System.FilePath.Posix (takeExtension, (</>))
@@ -13,6 +13,8 @@ import System.FilePath.Posix (takeExtension, (</>))
 import Modelling.MLM.FromXModeler (fromXModeler)
 import Modelling.MLM.Types (MLM)
 import Modelling.MLM.Validate (valid)
+
+import Text.Pretty.Simple (pPrint)
 
 spec :: Spec
 spec = do
@@ -43,7 +45,11 @@ spec = do
     it ("correctly judges .xml content of " ++ dir ++ " directory") $
       ioProperty $ do
         files <- map (dir </>) . filter ((".xml" ==) . takeExtension) <$> listDirectory dir
-        validities <- forM files $ \file -> (file,) . valid True <$> fromXModeler file
+        validities <- forM files $ \file -> do
+          mlm <- fromXModeler file
+          let validity = (file,) . valid True $ mlm
+          when (snd validity) $ putStrLn file >> pPrint mlm
+          return validity
         return $ filter snd validities `shouldSatisfy` null
     it ("correctly judges .hs content of " ++ dir ++ " directory") $
       ioProperty $ do
@@ -55,7 +61,11 @@ spec = do
     it ("correctly judges content of " ++ dir ++ " directory") $
       ioProperty $ do
         files <- map (dir </>) <$> listDirectory dir
-        validities <- forM files $ \file -> (file,) . valid True <$> fromXModeler file
+        validities <- forM files $ \file -> do
+          mlm <- fromXModeler file
+          let validity = (file,) . valid True $ mlm
+          unless (snd validity) $ putStrLn file >> pPrint mlm
+          return validity
         return $ filter (not . snd) validities `shouldSatisfy` null
   describe "valid" $
     let dir = "examples" </> "XModeler-strange" in
