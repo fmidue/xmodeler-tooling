@@ -57,7 +57,9 @@ generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loo
               -> return mlm'
           _
               -> when debug (putChar '\n') >> loop (n+1)
-      ) . dropWhile (not . valid False)
+      )
+      =<< dropWhile (not . valid False)
+      <$> (debugOutput n
       =<< foldM (\list@(mlm':_) i -> when debug (putStr (' ' : show i)) >> (
                     fmap (:list)
                     . generate $ editValidly False defaultConfig{ tendencyToConcretize = 1.0 } mlm'
@@ -69,3 +71,10 @@ generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loo
                     frequency [(1, return AddClass), (10, return AddLink)]
                   )
                 ) [mlm] [1 .. n]
+          )
+
+debugOutput :: Int -> [MLM] -> IO [MLM]
+debugOutput n list =
+  when debug (toXModeler (Neato, spaceOut, scaleFactor, extraOffset) (head list)
+              >>= writeFile (show n ++ ".xml"))
+  >> return list
