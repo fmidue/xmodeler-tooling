@@ -222,7 +222,7 @@ instance XModelerable ([Object], Double, Int) MLM where
   </Logs>
 </XModeler>|]
         where
-          settings = [iii|showConstraintReports="false"
+          settings = [iii|showConstraintReports="true"
                           showConstraints="false"
                           showDerivedAttributes="false"
                           showDerivedOperations="false"
