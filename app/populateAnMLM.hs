@@ -6,7 +6,7 @@ import Modelling.MLM.FromXModeler (fromXModeler)
 import Data.GraphViz (GraphvizCommand(..))
 import Modelling.MLM.ToXModeler (toXModeler)
 import Helpers (spaceOut, scaleFactor, extraOffset, offerChange)
-import Test.QuickCheck (Gen, frequency, generate)
+import Test.QuickCheck (frequency, generate)
 import Modelling.MLM.Config (Config(..), defaultConfig)
 import Modelling.MLM.Edit (Edit(..), editValidly)
 import Modelling.MLM.Types (MLM(..), Name(..), Class(..))
@@ -14,9 +14,12 @@ import Modelling.MLM.Validate (valid)
 
 import System.IO (hSetBuffering, stdout, BufferMode(NoBuffering))
 import System.Environment (getArgs)
-import Control.Monad (foldM)
+import Control.Monad (foldM, when)
 import Data.List (intercalate)
 import Data.Maybe (mapMaybe)
+
+debug :: Bool
+debug = False
 
 main :: IO ()
 main = do
@@ -34,12 +37,12 @@ main = do
   let newL = if null newLinks then 5 else read newLinks
   layoutCommand <- offerChange ("(options are Graphviz's " ++ intercalate ", " (map show [minBound .. maxBound :: GraphvizCommand]) ++ ")\nlayoutCommand") Neato
   let file = "populated_" ++ fileName
-  mlm' <- generate $ generateAndTest mlm enforceC newC newL (newC + newL)
+  mlm' <- generateAndTest mlm enforceC newC newL (newC + newL)
   putStrLn $ "\nI am writing the populated MLM to file " ++ file ++ " now.\n"
   export <- toXModeler (layoutCommand, spaceOut, scaleFactor, extraOffset) mlm'{name = Name "populated" }
   writeFile file export
 
-generateAndTest :: MLM -> Bool -> Int -> Int -> Int -> Gen MLM
+generateAndTest :: MLM -> Bool -> Int -> Int -> Int -> IO MLM
 generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loop
   where
     loop n =
@@ -53,15 +56,16 @@ generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loo
                    classes)
               -> return mlm'
           _
-              -> loop (n+1)
+              -> when debug (putChar '\n') >> loop (n+1)
       ) . dropWhile (not . valid False)
-      =<< foldM (\list@(mlm':_) _ ->
+      =<< foldM (\list@(mlm':_) i -> when debug (putStr (' ' : show i)) >> (
                     fmap (:list)
-                    . editValidly False defaultConfig{ tendencyToConcretize = 1.0 } mlm'
+                    . generate $ editValidly False defaultConfig{ tendencyToConcretize = 1.0 } mlm'
                     =<<
                     -- additional possibilities would be:
                     --   AddAssociation, AddAttribute, AddOperation,
                     --   DeleteClass, DeleteAssociation, DeleteLink,
                     --   DeleteAttribute, DeleteOperation
                     frequency [(1, return AddClass), (10, return AddLink)]
+                  )
                 ) [mlm] [1 .. n]
