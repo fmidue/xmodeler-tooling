@@ -6,7 +6,7 @@ import Modelling.MLM.FromXModeler (fromXModeler)
 import Data.GraphViz (GraphvizCommand(..))
 import Modelling.MLM.ToXModeler (toXModeler)
 import Helpers (spaceOut, scaleFactor, extraOffset, offerChange)
-import Test.QuickCheck (frequency, generate)
+import Test.QuickCheck (frequency, generate, chooseInt)
 import Modelling.MLM.Config (Config(..), defaultConfig)
 import Modelling.MLM.Edit (Edit(..), editValidly)
 import Modelling.MLM.Types (MLM(..), Name(..), Class(..))
@@ -60,7 +60,11 @@ generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loo
       )
       . dropWhile (not . valid False)
       =<< debugOutput n
-      =<< foldM (\list@(mlm':_) i -> when debug (putStr (' ' : show i)) >> (
+      =<< do
+          f1 <- generate $ chooseInt (1,20)
+          f2 <- generate $ chooseInt (1,20)
+          when debug (putStr $ show (f1,f2))
+          foldM (\list@(mlm':_) i -> when debug (putStr (' ' : show i)) >> (
                     fmap (:list)
                     . generate $ editValidly False defaultConfig{ tendencyToConcretize = 1.0 } mlm'
                     =<<
@@ -68,7 +72,7 @@ generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loo
                     --   AddAssociation, AddAttribute, AddOperation,
                     --   DeleteClass, DeleteAssociation, DeleteLink,
                     --   DeleteAttribute, DeleteOperation
-                    frequency [(1, return AddClass), (10, return AddLink)]
+                    frequency [(f1, return AddClass), (f2, return AddLink)]
                   )
                 ) [mlm] [1 .. n]
 
