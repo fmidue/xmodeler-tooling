@@ -58,6 +58,14 @@ spec = do
               in
                 numbersOfParentsOfEachClass `shouldSatisfy` all isAtMostOneIfNotAllowMultipleInheritance
         describe "generateMLM" $
+          it "respects tendencyToInherit == 0" $
+            forAll reasonableConfigs $ \config ->
+            forAll (generateMLM config{tendencyToInherit = 0}) $ \MLM{classes} ->
+              let
+                inheritingClasses = filter (\Class{parents} -> not . null $ parents) classes
+              in
+                inheritingClasses `shouldSatisfy` null
+        describe "generateMLM" $
           it "respects tendencyToConcretize" $
             forAll reasonableConfigs $ \config@Config{tendencyToConcretize} ->
             forAll (generateMLM config) $ \MLM{classes} ->
