@@ -56,7 +56,7 @@ generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loo
                    classes)
               -> return mlm'
           _
-              -> when debug (putChar '\n') >> loop (n+1)
+              -> loop (n+1)
       )
       . dropWhile (not . valid False)
       =<< debugOutput n
@@ -64,7 +64,7 @@ generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loo
           f1 <- generate $ chooseInt (1,20)
           f2 <- generate $ chooseInt (1,20)
           when debug (putStr $ show (f1,f2))
-          foldM (\list@(mlm':_) i -> when debug (putStr (' ' : show i)) >> (
+          foldM (\list@(mlm':_) _ ->
                     fmap (:list)
                     . generate $ editValidly False defaultConfig{ tendencyToConcretize = 1.0 } mlm'
                     =<<
@@ -73,11 +73,11 @@ generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loo
                     --   DeleteClass, DeleteAssociation, DeleteLink,
                     --   DeleteAttribute, DeleteOperation
                     frequency [(f1, return AddClass), (f2, return AddLink)]
-                  )
                 ) [mlm] [1 .. n]
 
 debugOutput :: Int -> [MLM] -> IO [MLM]
 debugOutput n list =
   when debug (toXModeler (Neato, spaceOut, scaleFactor, extraOffset) (head list)
-              >>= writeFile (show n ++ ".xml"))
+              >>= \export -> writeFile (show n ++ ".xml") export
+                             >> putStr (' ' : show n ++ "; "))
   >> return list
