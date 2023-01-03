@@ -7,6 +7,8 @@ import Data.GraphViz (GraphvizCommand(..))
 import Modelling.MLM.Config (Config(..), defaultConfig, checkConfig)
 import Modelling.MLM.Types (MLM (..), Name (..))
 import Modelling.MLM.Generate (generateMLM)
+import Modelling.MLM.Validate (valid)
+
 import Test.QuickCheck (generate)
 import Helpers (spaceOut, scaleFactor, extraOffset, offerChange)
 
@@ -27,9 +29,10 @@ main = do
   putStrLn "\nDo you want me to print Haskell representations of the MLMs (default is no)?"
   inputP <- getLine
   layoutCommand <- offerChange ("(options are Graphviz's " ++ intercalate ", " (map show [minBound .. maxBound :: GraphvizCommand]) ++ ")\nlayoutCommand") Neato
-  mapM_ (makeMLM theConfigToUse layoutCommand (inputP == "yes")) [1..n]
+  mlms <- mapM (makeMLM theConfigToUse layoutCommand (inputP == "yes")) [1..n]
+  putStrLn $ "\nTo my eyes," ++ (if all (valid True) mlms then "" else " not") ++ " all of the MLMs generated look valid."
 
-makeMLM :: Config -> GraphvizCommand -> Bool -> Int -> IO ()
+makeMLM :: Config -> GraphvizCommand -> Bool -> Int -> IO MLM
 makeMLM config layoutCommand p i = do
   mlm@MLM{ name = Name projectName } <- generate . generateMLM $ config
   when p $ do
@@ -43,6 +46,7 @@ makeMLM config layoutCommand p i = do
     ++ " to file " ++ file ++ " now.\n"
   export <- toXModeler (layoutCommand, spaceOut, scaleFactor, extraOffset) mlm
   writeFile file export
+  return mlm
 
 determineConfig :: IO Config
 determineConfig = do
