@@ -164,8 +164,8 @@ instance Validatable Level Attribute where
   valid classLevel Attribute{multiplicity, level = attributeLevel, name} = and [
       valid () attributeLevel,
       valid () name,
-      valid () multiplicity,
-      -- enforcing this value of multiplicities because it is still not clear how to instantiate an attribute 0 times or >1 times
+      -- valid () multiplicity,
+      -- enforcing the following specific value of multiplicities instead, because it is still not clear how to instantiate an attribute 0 times or >1 times
       multiplicity == Multiplicity (1, Just 1),
       classLevel > attributeLevel
     ]
