@@ -21,6 +21,9 @@ import Data.Maybe (mapMaybe)
 debug :: Bool
 debug = False
 
+requireInstantiations :: Bool
+requireInstantiations = False
+
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
@@ -36,6 +39,7 @@ main = do
   newLinks <- getLine
   let newL = if null newLinks then 5 else read newLinks
   layoutCommand <- offerChange ("(options are Graphviz's " ++ intercalate ", " (map show [minBound .. maxBound :: GraphvizCommand]) ++ ")\nlayoutCommand") Neato
+  putStrLn $ "\nJust so that you know: I consider the given MLM to be " ++ (if valid requireInstantiations mlm then "" else "in") ++ "valid.\n"
   let file = "populated_" ++ fileName
   mlm' <- generateAndTest mlm enforceC newC newL (newC + newL)
   putStrLn $ "\nI am writing the populated MLM to file " ++ file ++ " now.\n"
@@ -58,7 +62,7 @@ generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loo
           _
               -> loop (n+1)
       )
-      . dropWhile (not . valid False)
+      . dropWhile (not . valid requireInstantiations)
       =<< debugOutput n
       =<< do
           f1 <- generate $ chooseInt (1,20)
@@ -66,7 +70,7 @@ generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loo
           when debug (putStr $ show (f1,f2))
           foldM (\list@(mlm':_) _ ->
                     fmap (:list)
-                    . generate $ editValidly False defaultConfig{ tendencyToConcretize = 1.0 } mlm'
+                    . generate $ editValidly requireInstantiations defaultConfig{ tendencyToConcretize = 1.0 } mlm'
                     =<<
                     -- additional possibilities would be:
                     --   AddAssociation, AddAttribute, AddOperation,
