@@ -42,6 +42,9 @@ import qualified Data.Set as S (fromList)
 import Data.Set (Set, member)
 import Numeric (showFFloat)
 
+import Data.Aeson.Key (fromString)
+import Data.Aeson.KeyMap (KeyMap)
+import qualified Data.Aeson.KeyMap as KeyMap (empty, lookup)
 
 abcCapital :: [String]
 abcCapital = map (:[]) ['A'..'Z']
@@ -87,8 +90,8 @@ randomMult (chance, max') = do
     b <- randomWeightedXOr chance (Just <$> chooseInt (1, max')) (return Nothing)
     return $ Multiplicity (0, b)
 
-randomSlot :: Attribute -> Gen Slot
-randomSlot Attribute{name, dataType} = let
+randomSlot :: KeyMap [String] -> Attribute -> Gen Slot
+randomSlot dictionary Attribute{name = name@(Name attributeName), dataType} = let
     anyFloat :: Gen Float
     anyFloat = (/100) . (fromIntegral :: Int -> Float) . round . (*100) <$> (choose (0.0,10.0) :: Gen Float)
     in do
@@ -96,7 +99,11 @@ randomSlot Attribute{name, dataType} = let
             Boolean -> VBoolean <$> chooseAny
             Integer -> VInteger <$> chooseInt (0,10)
             Float -> VFloat <$> anyFloat
-            String -> VString <$> vectorOf 5 (elements ['a'..'f'])
+            String -> VString <$>
+              maybe
+              (vectorOf 5 (elements ['a'..'f']))
+              elements
+              (KeyMap.lookup (fromString attributeName) dictionary)
             Element -> return $ VElement "null"
             MonetaryValue -> curry VMonetaryValue <$> (flip (showFFloat Nothing) "" <$> anyFloat) <*> (show <$> elements allCurrencies)
             Date -> (\year month day -> VDate (year,month,day)) <$> choose (1968,2022) <*> choose (1,12) <*> choose (1,28)
@@ -241,7 +248,7 @@ addSlotValues theClasses = let
 
     addSlotValuesForOneClass :: Class -> Gen Class
     addSlotValuesForOneClass c =
-        (c <<<) <$> mapM randomSlot (instantiatable c)
+        (c <<<) <$> mapM (randomSlot KeyMap.empty) (instantiatable c)
 
     in mapM addSlotValuesForOneClass theClasses
 

@@ -52,6 +52,7 @@ library:
     - transformers
     - QuickCheck
     - hxt
+    - aeson
 
 executables:
   generateRandomMLMs:
@@ -81,6 +82,8 @@ executables:
       - xmodeler-tooling
       - graphviz
       - QuickCheck
+      - aeson
+      - yaml
   useAlloyToPopulateCd:
     main: useAlloyToPopulateCd.hs
     source-dirs: app
@@ -89,6 +92,8 @@ executables:
       - graphviz
       - QuickCheck
       - extra
+      - aeson
+      - yaml
 
 tests:
   xmodeler-tooling-test:

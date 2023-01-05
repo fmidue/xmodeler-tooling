@@ -20,6 +20,9 @@ import Data.List (intercalate)
 import Data.List.Extra (replace)
 import Data.Maybe (mapMaybe, listToMaybe)
 
+import Data.Aeson.KeyMap (KeyMap)
+import Data.Yaml (decodeFileThrow)
+
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
@@ -29,6 +32,9 @@ main = do
     False ->
       putStrLn " I am not okay with that. Goodbye."
     _ -> do
+      putStrLn "\nWhich file do you want to use as string dictionary (default is strings.yaml)?"
+      dictName <- getLine
+      dictionary <- decodeFileThrow $ if null dictName then "strings.yaml" else dictName
       putStrLn "\nShould it be enforced that each non-abstract class is instantiated at least once (default is yes)?"
       enforceObjects <- getLine
       let enforceO = enforceObjects /= "no"
@@ -48,12 +54,12 @@ main = do
       inputN <- getLine
       let n = if null inputN then 10 else read inputN
       layoutCommand <- offerChange ("(options are Graphviz's " ++ intercalate ", " (map show [minBound .. maxBound :: GraphvizCommand]) ++ ")\nlayoutCommand") Neato
-      mlms <- makeMLMs mlm enforceO numOMin numOMax numLMin allowS n
+      mlms <- makeMLMs mlm enforceO numOMin numOMax numLMin allowS n dictionary
       mapM_ (writeMLM layoutCommand fileName) $ zip [1..] mlms
       putStrLn $ "\nTo my eyes," ++ (if all (valid False) mlms then "" else " not") ++ " all of the MLMs produced look valid."
 
-makeMLMs :: MLM -> Bool -> Int -> Int -> Int -> Bool -> Integer -> IO [MLM]
-makeMLMs mlm@MLM{classes, associations} enforceObjects numObjectsMin numObjectsMax numLinksMin allowSelfLinks number =
+makeMLMs :: MLM -> Bool -> Int -> Int -> Int -> Bool -> Integer -> KeyMap [String] -> IO [MLM]
+makeMLMs mlm@MLM{classes, associations} enforceObjects numObjectsMin numObjectsMax numLinksMin allowSelfLinks number dictionary =
   let
     noIsolationLimitation = True
     cd = ( map (\Class{name = Name className, parents} ->
@@ -72,7 +78,7 @@ makeMLMs mlm@MLM{classes, associations} enforceObjects numObjectsMin numObjectsM
     populateCd noIsolationLimitation cd abstractClasses enforceObjects numObjectsMin numObjectsMax numLinksMin allowSelfLinks number
     >>= mapM (
     \(Right (objectNames, linkList)) ->
-      generate . refreshInstantiationAllClasses $
+      generate . refreshInstantiationAllClasses dictionary $
       mlm{ classes = classes ++ map (\object ->
                                        Class{ isAbstract = False
                                             , level = 0

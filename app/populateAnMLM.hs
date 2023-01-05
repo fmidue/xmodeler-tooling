@@ -18,6 +18,9 @@ import Control.Monad (foldM, when)
 import Data.List (intercalate)
 import Data.Maybe (mapMaybe)
 
+import Data.Aeson.KeyMap (KeyMap)
+import Data.Yaml (decodeFileThrow)
+
 debug :: Bool
 debug = False
 
@@ -29,6 +32,9 @@ main = do
   hSetBuffering stdout NoBuffering
   [fileName] <- getArgs
   mlm <- fromXModeler fileName
+  putStrLn "\nWhich file do you want to use as string dictionary (default is strings.yaml)?"
+  dictName <- getLine
+  dictionary <- decodeFileThrow $ if null dictName then "strings.yaml" else dictName
   putStrLn "\nShould it be enforced that each existing non-abstract class occurs concretized at least once (default is yes)?"
   enforceClasses <- getLine
   let enforceC = enforceClasses /= "no"
@@ -41,13 +47,13 @@ main = do
   layoutCommand <- offerChange ("(options are Graphviz's " ++ intercalate ", " (map show [minBound .. maxBound :: GraphvizCommand]) ++ ")\nlayoutCommand") Neato
   putStrLn $ "\nJust so that you know: I consider the given MLM to be " ++ (if valid requireInstantiations mlm then "" else "in") ++ "valid.\n"
   let file = "populated_" ++ fileName
-  mlm' <- generateAndTest mlm enforceC newC newL (newC + newL)
+  mlm' <- generateAndTest mlm enforceC newC newL dictionary (newC + newL)
   putStrLn $ "\nI am writing the populated MLM to file " ++ file ++ " now.\n"
   export <- toXModeler (layoutCommand, spaceOut, scaleFactor, extraOffset) mlm'{name = Name "populated" }
   writeFile file export
 
-generateAndTest :: MLM -> Bool -> Int -> Int -> Int -> IO MLM
-generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loop
+generateAndTest :: MLM -> Bool -> Int -> Int -> KeyMap [String] -> Int -> IO MLM
+generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks dictionary = loop
   where
     loop n =
       (\case
@@ -70,7 +76,7 @@ generateAndTest mlm@MLM{classes, links} enforceClasses newClasses newLinks = loo
           when debug (putStr $ show (f1,f2))
           foldM (\list@(mlm':_) _ ->
                     fmap (:list)
-                    . generate $ editValidly requireInstantiations defaultConfig{ tendencyToConcretize = 1.0 } mlm'
+                    . generate $ editValidly requireInstantiations defaultConfig{ tendencyToConcretize = 1.0 } mlm' dictionary
                     =<<
                     -- additional possibilities would be:
                     --   AddAssociation, AddAttribute, AddOperation,

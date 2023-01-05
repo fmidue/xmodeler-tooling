@@ -47,6 +47,9 @@ import Data.List (find)
 import Data.Maybe (fromMaybe)
 import Control.Monad (foldM)
 
+import Data.Aeson.KeyMap (KeyMap)
+import qualified Data.Aeson.KeyMap as KeyMap (empty)
+
 data Edit = AddClass | AddAssociation | AddLink | AddAttribute | AddOperation | DeleteClass | DeleteAssociation | DeleteLink | DeleteAttribute | DeleteOperation deriving (Enum, Bounded)
 
 nextAvailableClassName :: MLM -> Name
@@ -74,7 +77,7 @@ editRandomlyValidly shouldWeForbidDeleteComponents config mlm = let
     editsToUse = if shouldWeForbidDeleteComponents
         then [AddClass, AddAssociation, AddLink, AddAttribute, AddOperation]
         else [minBound .. maxBound]
-    in editValidly True config mlm =<< elements editsToUse
+    in editValidly True config mlm KeyMap.empty =<< elements editsToUse
 
 editRandomlyValidlyN :: Bool -> Config -> MLM -> Int -> Gen MLM
 editRandomlyValidlyN shouldWeForbidDeleteComponents config mlm n = let
@@ -85,21 +88,21 @@ editRandomlyValidlyN shouldWeForbidDeleteComponents config mlm n = let
 instantiatableAttributes :: MLM -> Class -> [Attribute]
 instantiatableAttributes = generateInstantiatableAttributesFinder . #classes
 
-refreshInstantiationOneClass :: MLM -> Class -> Gen Class
-refreshInstantiationOneClass mlm theClass =
+refreshInstantiationOneClass :: KeyMap [String] -> MLM -> Class -> Gen Class
+refreshInstantiationOneClass dictionary mlm theClass =
   foldM (\soFar attribute ->
             if #name attribute `elem` map #attribute (#slots soFar)
             then return soFar
-            else (soFar <<<) <$> randomSlot attribute
+            else (soFar <<<) <$> randomSlot dictionary attribute
         ) theClass (instantiatableAttributes mlm theClass)
 
-refreshInstantiationAllClasses :: MLM -> Gen MLM
-refreshInstantiationAllClasses mlm = do
-  classes' <- mapM (refreshInstantiationOneClass mlm) (#classes mlm)
+refreshInstantiationAllClasses :: KeyMap [String] -> MLM -> Gen MLM
+refreshInstantiationAllClasses dictionary mlm = do
+  classes' <- mapM (refreshInstantiationOneClass dictionary mlm) (#classes mlm)
   return $ mlm{classes = classes'}
 
-editValidly :: Bool -> Config -> MLM -> Edit -> Gen MLM
-editValidly requireInstantiations Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, multiplicitySpecAssociations, chanceVisibleAssociation, tendencyAbstractClass, allowMultipleInheritance } mlm@MLM{classes, associations, links} e = let
+editValidly :: Bool -> Config -> MLM -> KeyMap [String] -> Edit -> Gen MLM
+editValidly requireInstantiations Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, multiplicitySpecAssociations, chanceVisibleAssociation, tendencyAbstractClass, allowMultipleInheritance } mlm@MLM{classes, associations, links} dictionary e = let
 
     randomType :: Gen Type
     randomType = elements typeSpace
@@ -163,7 +166,7 @@ editValidly requireInstantiations Config{ maxClassLevel, tendencyToConcretize, t
                 dataType' <- randomType
                 let newAttribute = Attribute level' (nextAvailableAttributeName mlmWithTheClassEvenIfNotReadyYet) dataType' (Multiplicity (1, Just 1))
                 return $ maybe mlmWithTheClassEvenIfNotReadyYet (if requireInstantiations then flip (insert mlmWithTheClassEvenIfNotReadyYet) newAttribute else const mlmWithTheClassEvenIfNotReadyYet) classifier'
-            refreshInstantiationAllClasses mlmWithTheNewAttributeMaybe
+            refreshInstantiationAllClasses dictionary mlmWithTheNewAttributeMaybe
         AddAssociation -> if null nonLevelZeroClasses then return mlm else do
             let name' = nextAvailableAssociationName mlm
             sourceClass <- elements nonLevelZeroClasses
@@ -192,7 +195,7 @@ editValidly requireInstantiations Config{ maxClassLevel, tendencyToConcretize, t
             level' <- chooseInt (0, #level class' - 1)
             let attribute = Attribute level' name' dataType' multiplicity'
             let mlmWithTheAttribute = insert mlm (#name class') attribute
-            refreshInstantiationAllClasses mlmWithTheAttribute
+            refreshInstantiationAllClasses dictionary mlmWithTheAttribute
         AddOperation -> if null nonLevelZeroClasses then return mlm else do
             let name' = nextAvailableOperationName mlm
             dataType' <- randomType
