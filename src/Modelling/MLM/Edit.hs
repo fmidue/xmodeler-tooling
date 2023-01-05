@@ -102,7 +102,18 @@ refreshInstantiationAllClasses dictionary mlm = do
   return $ mlm{classes = classes'}
 
 editValidly :: Bool -> Config -> MLM -> KeyMap [String] -> Edit -> Gen MLM
-editValidly requireInstantiations Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, multiplicitySpecAssociations, chanceVisibleAssociation, tendencyAbstractClass, allowMultipleInheritance } mlm@MLM{classes, associations, links} dictionary e = let
+editValidly
+  requireInstantiations
+  Config{ maxClassLevel
+        , tendencyToConcretize
+        , tendencyToInherit
+        , multiplicitySpecAssociations
+        , chanceVisibleAssociation
+        , tendencyAbstractClass
+        , allowMultipleInheritance }
+  mlm@MLM{classes, associations, links}
+  dictionary
+  e = let
 
     randomType :: Gen Type
     randomType = elements typeSpace
