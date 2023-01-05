@@ -42,11 +42,11 @@ populateCd
             ""
             ""
           abstractnessConstraint =
-            "fact AbstractClasses {\n" ++ unlines (map (\c -> "  no " ++ c) abstractClasses) ++ "}\n"
+            "fact AbstractClasses {\n" ++ unlines (map ("  no " ++) abstractClasses) ++ "}\n"
           instantiationConstraint
             | not enforceObjects = ""
             | otherwise =
-                "fact EnforceObjects {\n" ++ unlines (map (\c -> "  some " ++ c) (map fst classes \\ abstractClasses)) ++ "}\n"
+                "fact EnforceObjects {\n" ++ unlines (map ("  some " ++) (map fst classes \\ abstractClasses)) ++ "}\n"
           command = createRunCommand
             "cd"
             (length classes)
