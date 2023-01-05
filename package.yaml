@@ -1,7 +1,8 @@
 ---
 name: xmodeler-tooling
 
-extra-source-files: [ ]
+extra-source-files:
+  - alloy/od/template.als
 
 dependencies:
   - base
@@ -32,16 +33,23 @@ library:
     - Modelling.MLM.Generate
     - Modelling.MLM.FromXModeler
     - Modelling.MLM.Edit
+    - Modelling.CdOd.Populate
   dependencies:
+    - call-alloy >= 0.4.0.1 && < 0.5
+    - exceptions
     - extra
+    - file-embed
     - string-interpolate
     - graphviz
     - diagrams-lib
     - diagrams-graphviz
+    - parsec
     - containers
     - bimap
     - split
     - Unique
+    - text
+    - transformers
     - QuickCheck
     - hxt
 
@@ -73,6 +81,14 @@ executables:
       - xmodeler-tooling
       - graphviz
       - QuickCheck
+  useAlloyToPopulateCd:
+    main: useAlloyToPopulateCd.hs
+    source-dirs: app
+    dependencies:
+      - xmodeler-tooling
+      - graphviz
+      - QuickCheck
+      - extra
 
 tests:
   xmodeler-tooling-test:

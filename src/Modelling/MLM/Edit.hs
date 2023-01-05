@@ -1,6 +1,7 @@
 module Modelling.MLM.Edit (
     Edit(..),
     editValidly,
+    refreshInstantiationAllClasses,
     editRandomlyValidly,
     editRandomlyValidlyN,
     editRandomlyBlindly,
@@ -80,6 +81,23 @@ editRandomlyValidlyN shouldWeForbidDeleteComponents config mlm n = let
     f = editRandomlyValidly shouldWeForbidDeleteComponents config
     in foldM (\soFar _ -> f soFar) mlm [1 .. n]
 
+
+instantiatableAttributes :: MLM -> Class -> [Attribute]
+instantiatableAttributes = generateInstantiatableAttributesFinder . #classes
+
+refreshInstantiationOneClass :: MLM -> Class -> Gen Class
+refreshInstantiationOneClass mlm theClass =
+  foldM (\soFar attribute ->
+            if #name attribute `elem` map #attribute (#slots soFar)
+            then return soFar
+            else (soFar <<<) <$> randomSlot attribute
+        ) theClass (instantiatableAttributes mlm theClass)
+
+refreshInstantiationAllClasses :: MLM -> Gen MLM
+refreshInstantiationAllClasses mlm = do
+  classes' <- mapM (refreshInstantiationOneClass mlm) (#classes mlm)
+  return $ mlm{classes = classes'}
+
 editValidly :: Bool -> Config -> MLM -> Edit -> Gen MLM
 editValidly requireInstantiations Config{ maxClassLevel, tendencyToConcretize, tendencyToInherit, multiplicitySpecAssociations, chanceVisibleAssociation, tendencyAbstractClass, allowMultipleInheritance } mlm@MLM{classes, associations, links} e = let
 
@@ -92,27 +110,11 @@ editValidly requireInstantiations Config{ maxClassLevel, tendencyToConcretize, t
     below :: Name -> [Class]
     below = generateBelowFinder classes
 
-    instantiatableAttributes :: MLM -> (Class -> [Attribute])
-    instantiatableAttributes x = generateInstantiatableAttributesFinder $ #classes x
-
     occurrencesAsSource :: Class -> Association -> Int
     occurrencesAsSource = generateOccurrencesCounter True links
 
     occurrencesAsTarget :: Class -> Association -> Int
     occurrencesAsTarget = generateOccurrencesCounter False links
-
-    refreshInstantiationOneClass :: MLM -> Class -> Gen Class
-    refreshInstantiationOneClass mlm' class' =
-        foldM (\soFar attribute ->
-                if #name attribute `elem` map #attribute (#slots soFar)
-                    then return soFar
-                    else (soFar <<<) <$> randomSlot attribute
-            ) class' (instantiatableAttributes mlm' class')
-
-    refreshInstantiationAllClasses :: MLM -> Gen MLM
-    refreshInstantiationAllClasses mlm'@MLM{classes = classes'} = do
-        classes'' <- mapM (refreshInstantiationOneClass mlm') classes'
-        return $ mlm'{classes = classes''}
 
     candidateSources :: Association -> [Class]
     candidateSources a = filter (\class' ->

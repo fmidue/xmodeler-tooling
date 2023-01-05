@@ -6,6 +6,8 @@ Download and install the following tools (while making sure their executables en
 
 - [Haskell Tool Stack](https://haskellstack.org/)
 - [Graphviz](https://graphviz.org/)
+- Java (any JRE able to run the [Alloy Analyzer](https://alloytools.org/))
+- (no need to install Alloy itself, since it will be accessed behind the scenes via a Haskell binding)
 
 Download the code of the [xmodeler-tooling repository](https://github.com/fmidue/xmodeler-tooling), e.g., via `git clone https://github.com/fmidue/xmodeler-tooling.git` or per "Download ZIP".
 
@@ -45,4 +47,11 @@ In a shell, to populate an existing MLM:
 ```shell
 cd xmodeler-tooling
 stack exec populateAnMLM filename.xml
+```
+
+
+In a shell, to populate an existing class diagram via Alloy:
+```shell
+cd xmodeler-tooling
+stack exec useAlloyToPopulateCd filename.xml
 ```
