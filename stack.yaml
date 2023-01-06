@@ -5,6 +5,17 @@ packages:
   - .
 
 extra-deps:
+  - git: https://github.com/fmidue/modelling-tasks
+    commit: 77ab66fc321d823f6712217e11b2a54d161f01ba
+  - git: https://github.com/fmidue/output-monad # required for modelling-tasks
+    commit: d51169e89ecfc736e12f36732b08d53460c2bb4f
+    subdirs:
+      - output-monad
   - call-alloy-0.4.0.1@sha256:f1d03617af4ce8845e3ffd5073406e5f0fdf16a7669ee79fe68924ad550f410d,3167
+  - call-plantuml-0.0.1.1@sha256:886c047088c9204e3ca6096d7b586ae4f30e4cac27a3f31a1b42936a7a42f9f4,2043 # required for modelling-tasks
+  - hgal-2.0.0.2@sha256:13d58afd0668b9cb881c612eff8488a0e289edd4bbffa893df4beee60cfeb73b,653 # required for modelling-tasks
+  - latex-svg-image-0.2@sha256:b282a74a96724037ec3d24b664118e51170c8152aff12f363ddb715a38ef053a,1830 # required for modelling-tasks
   - diagrams-graphviz-1.4.1.1
   - Unique-0.4.7.9
+
+allow-newer: true

@@ -40,7 +40,7 @@ populateCdOd
             linksPerObject    = (0, Nothing),
             objects           = both (length theObjects +) (newObjectsMin, newObjectsMax)
             }
-          parts = combineParts $ transform
+          parts = transform
             (classes, map (\(a,b,c,d,e) -> (Association,a,b,c,d,e)) associations)
             abstractClasses
             objectConfig
@@ -56,8 +56,9 @@ populateCdOd
             "cd"
             (length classes)
             objectConfig
-      let alloyCode =
             parts
+      let alloyCode =
+            combineParts parts
             ++ instantiationConstraint
             ++ unlines (map (\(objectName, className)
                              -> "one sig " ++ objectName ++ " extends " ++ className ++ " {}")

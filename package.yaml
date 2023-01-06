@@ -43,6 +43,7 @@ library:
     - graphviz
     - diagrams-lib
     - diagrams-graphviz
+    - modelling-tasks
     - parsec
     - containers
     - bimap
