@@ -36,13 +36,12 @@ populateCd
             }
           parts = combineParts $ transform
             (classes, map (\(a,b,c,d,e) -> (Association,a,b,c,d,e)) associations)
+            abstractClasses
             objectConfig
             (if allowSelfLinks then Nothing else Just False)
             noIsolationLimitation
             ""
             ""
-          abstractnessConstraint =
-            "fact AbstractClasses {\n" ++ unlines (map ("  no " ++) abstractClasses) ++ "}\n"
           instantiationConstraint
             | not enforceObjects = ""
             | otherwise =
@@ -51,7 +50,7 @@ populateCd
             "cd"
             (length classes)
             objectConfig
-      let alloyCode = parts ++ abstractnessConstraint ++ instantiationConstraint ++ command
+      let alloyCode = parts ++ instantiationConstraint ++ command
       -- putStrLn alloyCode
       let timeout = Nothing
       putStrLn "\nI am letting Alloy do its work now.\n"

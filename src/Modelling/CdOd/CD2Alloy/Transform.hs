@@ -17,7 +17,7 @@ import Modelling.CdOd.Types (
   )
 
 import Data.Bifunctor                   (first)
-import Data.List                        (intercalate, union)
+import Data.List                        (intercalate, union, (\\))
 import Data.FileEmbed                   (embedStringFile)
 import Data.Maybe                       (catMaybes, fromMaybe, isJust)
 import Data.String.Interpolate          (i)
@@ -34,6 +34,7 @@ data Parts = Parts {
 
 transform
   :: ([(String, Maybe String)], [Association])
+  -> [String]
   -> ObjectConfig
   -> Maybe Bool
   -> Bool
@@ -42,6 +43,7 @@ transform
   -> Parts
 transform
   (classes, associations)
+  abstractClassNames
   objectConfig
   hasSelfLoops
   noIsolationLimitation
@@ -108,8 +110,8 @@ fact LimitLinks {
 #{unlines (associationSigs associations)}
 |]
     part3 = [i|
-// Classes
-#{unlines (classSigs classNames)}
+// Classes (non-abstract)
+#{unlines (classSigs nonAbstractClassNames)}
 |]
     part4 = [i|
 ///////////////////////////////////////////////////
@@ -117,15 +119,16 @@ fact LimitLinks {
 ///////////////////////////////////////////////////
 
 // Types wrapping subtypes
-#{unlines (subTypes index classesWithDirectSubclasses)}
+#{unlines (subTypes index abstractClassNames classesWithDirectSubclasses)}
 // Types wrapping field names
 #{unlines (fieldNames index associations classes)}
 // Types wrapping composite structures and field names
 #{if noCompositions then "" else unlines (compositesAndFieldNames index compositions classes)}
 // Properties
-#{predicate index associations classNames}
+#{predicate index associations nonAbstractClassNames}
 |]
     classNames = map fst classes
+    nonAbstractClassNames = classNames \\ abstractClassNames
     classesWithDirectSubclasses =
       map (\(name, _) -> (name, map fst (filter ((== Just name) . snd) classes))) classes
     noCompositions = null compositions
@@ -169,10 +172,11 @@ associationSigs = map (\(_,name,_,_,_,_) -> "one sig " ++ name ++ " extends FNam
 classSigs :: [String] -> [String]
 classSigs = map (\name -> "sig " ++ name ++ " extends Obj {}")
 
-subTypes :: String -> [(String, [String])] -> [String]
-subTypes index = concatMap (\(name, directSubclasses) ->
+subTypes :: String -> [String] -> [(String, [String])] -> [String]
+subTypes index abstractClassNames = concatMap (\(name, directSubclasses) ->
   [ "fun " ++ name ++ subsCD ++ " : set Obj {"
-  , "  " ++ intercalate " + " (name : map (++ subsCD) directSubclasses)
+  , "  " ++ intercalate " + " ((if name `elem` abstractClassNames then "none" else name)
+                               : map (++ subsCD) directSubclasses)
   , "}"
   ])
   where
@@ -207,10 +211,10 @@ compositesAndFieldNames index compositions = concatMap (\(this, super) ->
     subsCD = "SubsCD" ++ index
 
 predicate :: String -> [Association] -> [String] -> String
-predicate index associations classNames = [i|
+predicate index associations nonAbstractClassNames = [i|
 pred cd#{index} {
 
-  Obj = #{intercalate " + " classNames}
+  Obj = #{intercalate " + " ("none" : nonAbstractClassNames)}
 
   // Contents
 #{unlines objFNames}
@@ -221,7 +225,7 @@ pred cd#{index} {
 }
 |]
   where
-    objFNames = map (\name -> [i|  ObjFNames[#{name}, #{name}#{fieldNamesCD}]|]) classNames
+    objFNames = map (\name -> [i|  ObjFNames[#{name}, #{name}#{fieldNamesCD}]|]) nonAbstractClassNames
     objAttribs = concatMap
       (\(_, name, mult1, class1, class2, mult2) ->
           [makeAssoc "Attrib" class1 name class2 mult2
@@ -237,7 +241,7 @@ pred cd#{index} {
     anyCompositions = any (\(a,_,_,_,_,_) -> a == Composition) associations
     compositions = map
       (\name -> [i|  Composition[#{name}#{compositesCD}, #{name}#{compFieldNamesCD}, #{name}]|])
-      classNames
+      nonAbstractClassNames
     fieldNamesCD     = "FieldNamesCD" ++ index
     compositesCD     = "CompositesCD" ++ index
     compFieldNamesCD = "CompFieldNamesCD" ++ index
