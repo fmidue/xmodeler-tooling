@@ -1,38 +1,44 @@
-module Modelling.CdOd.Populate (populateCd) where
+module Modelling.CdOd.Populate (populateCdOd) where
 
 import Modelling.CdOd.Types (AssociationType(Association), ObjectConfig(..))
 import Modelling.CdOd.CD2Alloy.Transform (transform, combineParts, createRunCommand)
 import Modelling.CdOd.Auxiliary.Util (getInstances, alloyInstanceToOd)
 
 import Data.List ((\\))
+import Data.Tuple.Extra (both)
+import Data.Bifunctor (first)
 import Control.Monad.Trans.Except (runExceptT)
 
-populateCd ::
+populateCdOd ::
   Bool
   -> ([(String, Maybe String)], [(String, (Int, Maybe Int), String, String, (Int, Maybe Int))])
   -> [String]
   -> Bool
+  -> [(String, String)]
   -> Int
   -> Int
+  -> [(String, String, String)]
   -> Int
   -> Bool
   -> Integer
-  -> IO [Either String ([String], [(Int, Int, String)])]
-populateCd
+  -> IO [Either String ([Either String (String, String)], [(Int, Int, String)])]
+populateCdOd
   noIsolationLimitation
   (classes, associations)
   abstractClasses
   enforceObjects
-  numObjectsMin
-  numObjectsMax
-  numLinksMin
+  theObjects
+  newObjectsMin
+  newObjectsMax
+  links
+  newLinksMin
   allowSelfLinks
   number
   = do
       let objectConfig = ObjectConfig {
-            links             = (numLinksMin, Nothing),
+            links             = (length links + newLinksMin, Nothing),
             linksPerObject    = (0, Nothing),
-            objects           = (numObjectsMin, numObjectsMax)
+            objects           = both (length theObjects +) (newObjectsMin, newObjectsMax)
             }
           parts = combineParts $ transform
             (classes, map (\(a,b,c,d,e) -> (Association,a,b,c,d,e)) associations)
@@ -50,8 +56,26 @@ populateCd
             "cd"
             (length classes)
             objectConfig
-      let alloyCode = parts ++ instantiationConstraint ++ command
+      let alloyCode =
+            parts
+            ++ instantiationConstraint
+            ++ unlines (map (\(objectName, className)
+                             -> "one sig " ++ objectName ++ " extends " ++ className ++ " {}")
+                        theObjects)
+            ++ unlines (map (\(sourceName, targetName, associationName)
+                             -> "fact { " ++ targetName ++ " in " ++ sourceName ++ ".get[" ++ associationName ++ "] }")
+                        links)
+            ++ command
       -- putStrLn alloyCode
       let timeout = Nothing
       putStrLn "\nI am letting Alloy do its work now.\n"
-      mapM (runExceptT . alloyInstanceToOd) =<< getInstances (Just number) timeout alloyCode
+      mapM (runExceptT . fmap (first oldOrNew) . alloyInstanceToOd) =<< getInstances (Just number) timeout alloyCode
+        where
+          oldOrNew =
+            map (\objectName ->
+                    case break (=='$') objectName of
+                      (name, rest) ->
+                        if name `elem` map fst theObjects
+                        then Left name
+                        else Right ("new_" ++ name ++ '_' : tail rest, name)
+                )

@@ -53,5 +53,5 @@ stack exec populateAnMLM filename.xml
 In a shell, to populate an existing class diagram via Alloy:
 ```shell
 cd xmodeler-tooling
-stack exec useAlloyToPopulateCd filename.xml
+stack exec useAlloyToPopulateCdOd filename.xml
 ```

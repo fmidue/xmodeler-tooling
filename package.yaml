@@ -84,14 +84,13 @@ executables:
       - QuickCheck
       - aeson
       - yaml
-  useAlloyToPopulateCd:
-    main: useAlloyToPopulateCd.hs
+  useAlloyToPopulateCdOd:
+    main: useAlloyToPopulateCdOd.hs
     source-dirs: app
     dependencies:
       - xmodeler-tooling
       - graphviz
       - QuickCheck
-      - extra
       - aeson
       - yaml
 
