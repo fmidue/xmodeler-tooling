@@ -1,8 +1,7 @@
 ---
 name: xmodeler-tooling
 
-extra-source-files:
-  - alloy/od/template.als
+extra-source-files: [ ]
 
 dependencies:
   - base
@@ -35,21 +34,16 @@ library:
     - Modelling.MLM.Edit
     - Modelling.CdOd.Populate
   dependencies:
-    - call-alloy >= 0.4.0.1 && < 0.5
-    - exceptions
     - extra
-    - file-embed
     - string-interpolate
     - graphviz
     - diagrams-lib
     - diagrams-graphviz
     - modelling-tasks
-    - parsec
     - containers
     - bimap
     - split
     - Unique
-    - text
     - transformers
     - QuickCheck
     - hxt

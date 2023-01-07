@@ -11,7 +11,7 @@ extra-deps:
     commit: d51169e89ecfc736e12f36732b08d53460c2bb4f
     subdirs:
       - output-monad
-  - call-alloy-0.4.0.1@sha256:f1d03617af4ce8845e3ffd5073406e5f0fdf16a7669ee79fe68924ad550f410d,3167
+  - call-alloy-0.4.0.1 # required for modelling-tasks
   - call-plantuml-0.0.1.1 # required for modelling-tasks
   - hgal-2.0.0.2 # required for modelling-tasks
   - latex-svg-image-0.2 # required for modelling-tasks
