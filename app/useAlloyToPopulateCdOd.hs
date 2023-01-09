@@ -32,6 +32,7 @@ main = do
     False ->
       putStrLn " I am not okay with that. Goodbye."
     _ -> do
+      putStrLn $ "\nIf you want to use the default in any of the following settings, just hit <return> there."
       putStrLn "\nWhich file do you want to use as string dictionary (default is strings.yaml)?"
       dictName <- getLine
       dictionary <- decodeFileThrow $ if null dictName then "strings.yaml" else dictName
