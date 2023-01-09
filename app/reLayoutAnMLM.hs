@@ -4,6 +4,7 @@ import Modelling.MLM.FromXModeler (fromXModeler)
 import Data.GraphViz (GraphvizCommand(..))
 import Modelling.MLM.ToXModeler (toXModeler)
 import Modelling.MLM.Validate (valid)
+import Modelling.MLM.Types (LeniencyConsideringConcretization(..))
 
 import Helpers (spaceOut, scaleFactor, extraOffset, offerChange)
 
@@ -11,8 +12,8 @@ import System.IO (hSetBuffering, stdout, BufferMode(NoBuffering))
 import System.Environment (getArgs)
 import Data.List (intercalate)
 
-requireInstantiations :: Bool
-requireInstantiations = False
+requireInstantiations :: LeniencyConsideringConcretization
+requireInstantiations = BeLenientAboutConcretization
 
 main :: IO ()
 main = do

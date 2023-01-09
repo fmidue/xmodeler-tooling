@@ -20,6 +20,7 @@ import Modelling.MLM.Types (
   Multiplicity(..),
   Name(..),
   Type(..),
+  LeniencyConsideringConcretization(..),
   typeSpace,
   generateBelowFinder,
   emptyOperationBody,
@@ -77,7 +78,7 @@ editRandomlyValidly shouldWeForbidDeleteComponents config mlm = let
     editsToUse = if shouldWeForbidDeleteComponents
         then [AddClass, AddAssociation, AddLink, AddAttribute, AddOperation]
         else [minBound .. maxBound]
-    in editValidly True config mlm KeyMap.empty =<< elements editsToUse
+    in editValidly BeStrictAboutConcretization config mlm KeyMap.empty =<< elements editsToUse
 
 editRandomlyValidlyN :: Bool -> Config -> MLM -> Int -> Gen MLM
 editRandomlyValidlyN shouldWeForbidDeleteComponents config mlm n = let
@@ -101,7 +102,7 @@ refreshInstantiationAllClasses dictionary mlm = do
   classes' <- mapM (refreshInstantiationOneClass dictionary mlm) (#classes mlm)
   return $ mlm{classes = classes'}
 
-editValidly :: Bool -> Config -> MLM -> KeyMap [String] -> Edit -> Gen MLM
+editValidly :: LeniencyConsideringConcretization -> Config -> MLM -> KeyMap [String] -> Edit -> Gen MLM
 editValidly
   requireInstantiations
   Config{ maxClassLevel
@@ -176,7 +177,7 @@ editValidly
             mlmWithTheNewAttributeMaybe <- do
                 dataType' <- randomType
                 let newAttribute = Attribute level' (nextAvailableAttributeName mlmWithTheClassEvenIfNotReadyYet) dataType' (Multiplicity (1, Just 1))
-                return $ maybe mlmWithTheClassEvenIfNotReadyYet (if requireInstantiations then flip (insert mlmWithTheClassEvenIfNotReadyYet) newAttribute else const mlmWithTheClassEvenIfNotReadyYet) classifier'
+                return $ maybe mlmWithTheClassEvenIfNotReadyYet (if requireInstantiations == BeStrictAboutConcretization then flip (insert mlmWithTheClassEvenIfNotReadyYet) newAttribute else const mlmWithTheClassEvenIfNotReadyYet) classifier'
             refreshInstantiationAllClasses dictionary mlmWithTheNewAttributeMaybe
         AddAssociation -> if null nonLevelZeroClasses then return mlm else do
             let name' = nextAvailableAssociationName mlm
@@ -265,7 +266,7 @@ editRandomlyBlindlyNKeepLastValidOne shouldWeForbidDeleteComponents mlm n = let
                     soFar' <- soFar
                     f soFar'
                 ) (return mlm) [1 .. n] :: Gen [MLM]
-        let validOnes = filter (valid True) result
+        let validOnes = filter (valid BeStrictAboutConcretization) result
         if null validOnes
             then return Nothing
             else return $ Just $ last validOnes
@@ -276,9 +277,9 @@ editRandomlyBlindlyNStayValid shouldWeForbidDeleteComponents mlm n = let
     in do
         result <- foldM (\x _ -> do
                 y <- f x
-                return $ if valid True y then y else x
+                return $ if valid BeStrictAboutConcretization y then y else x
             ) mlm [1 .. n]
-        if valid True result
+        if valid BeStrictAboutConcretization result
             then return $ Just result
             else return Nothing
 

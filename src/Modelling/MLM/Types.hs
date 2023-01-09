@@ -13,6 +13,7 @@ module Modelling.MLM.Types(
   Level,
   Type (..),
   Value (..),
+  LeniencyConsideringConcretization(..),
   relativeToEur,
   currencySymbol,
   allCurrencies,
@@ -48,6 +49,9 @@ import qualified Data.Map.Lazy as M (filter)
 import Data.Set (member)
 import Data.List.Extra (replace)
 
+data LeniencyConsideringConcretization =
+  BeLenientAboutConcretization | BeStrictAboutConcretization
+  deriving Eq
 
 eqBy :: Eq b => a -> a -> (a -> b) -> Bool
 eqBy x y f = f x == f y

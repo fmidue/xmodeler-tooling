@@ -11,7 +11,7 @@ import System.Directory.Internal (getFileMetadata, fileTypeFromMetadata, fileTyp
 import System.FilePath.Posix (takeExtension, (</>))
 
 import Modelling.MLM.FromXModeler (fromXModeler)
-import Modelling.MLM.Types (MLM)
+import Modelling.MLM.Types (MLM, LeniencyConsideringConcretization(..))
 import Modelling.MLM.Validate (valid)
 
 import Text.Pretty.Simple (pPrint)
@@ -25,21 +25,21 @@ spec = do
         it ("correctly judges " ++ file) $
           ioProperty $ do
             input <- fromXModeler file
-            return $ input `shouldSatisfy` valid True
+            return $ input `shouldSatisfy` valid BeStrictAboutConcretization
   forM_ withIsolatedObjects $ \i ->
       let file = "examples" </> "UML" </> "testing_" ++ show i ++ ".xml" in
       describe "valid" $
         it ("correctly judges " ++ file) $
           ioProperty $ do
             input <- fromXModeler file
-            return $ input `shouldSatisfy` valid False
+            return $ input `shouldSatisfy` valid BeLenientAboutConcretization
   forM_ withIsolatedObjects $ \i ->
       let file = "examples" </> "UML" </> "testing_" ++ show i ++ ".xml" in
       describe "invalid" $
         it ("correctly judges " ++ file) $
           ioProperty $ do
             input <- fromXModeler file
-            return $ input `shouldSatisfy` (not . valid True)
+            return $ input `shouldSatisfy` (not . valid BeStrictAboutConcretization)
   describe "invalid" $
    let dir = "examples" </> "should_fail" in do
     it ("correctly judges .xml content of " ++ dir ++ " directory") $
@@ -47,14 +47,14 @@ spec = do
         files <- map (dir </>) . filter ((".xml" ==) . takeExtension) <$> listDirectory dir
         validities <- forM files $ \file -> do
           mlm <- fromXModeler file
-          let validity = (file,) . valid True $ mlm
+          let validity = (file,) . valid BeStrictAboutConcretization $ mlm
           when (snd validity) $ putStrLn file >> pPrint mlm
           return validity
         return $ filter snd validities `shouldSatisfy` null
     it ("correctly judges .hs content of " ++ dir ++ " directory") $
       ioProperty $ do
         files <- map (dir </>) . filter ((".hs" ==) . takeExtension) <$> listDirectory dir
-        validities <- forM files $ \file -> (file,) . valid False . (read :: String -> MLM) <$> readFile file
+        validities <- forM files $ \file -> (file,) . valid BeLenientAboutConcretization . (read :: String -> MLM) <$> readFile file
         return $ filter snd validities `shouldSatisfy` null
   describe "valid" $
     let dir = "examples" </> "should_narrowly_pass" in
@@ -63,7 +63,7 @@ spec = do
         files <- map (dir </>) <$> listDirectory dir
         validities <- forM files $ \file -> do
           mlm <- fromXModeler file
-          let validity = (file,) . valid True $ mlm
+          let validity = (file,) . valid BeStrictAboutConcretization $ mlm
           unless (snd validity) $ putStrLn file >> pPrint mlm
           return validity
         return $ filter (not . snd) validities `shouldSatisfy` null
@@ -72,14 +72,14 @@ spec = do
     it ("correctly judges content of " ++ dir ++ " directory") $
       ioProperty $ do
         files <- map (dir </>) <$> listDirectory dir
-        validities <- forM files $ \file -> (file,) . valid True <$> fromXModeler file
+        validities <- forM files $ \file -> (file,) . valid BeStrictAboutConcretization <$> fromXModeler file
         return $ filter (not . snd) validities `shouldSatisfy` null
   describe "valid" $
     let dir = "examples" </> "should_pass" in
     it ("correctly judges content of " ++ dir ++ " directory") $
       ioProperty $ do
         files <- map (dir </>) <$> listDirectory dir
-        validities <- forM files $ \file -> (file,) . valid True . (read :: String -> MLM) <$> readFile file
+        validities <- forM files $ \file -> (file,) . valid BeStrictAboutConcretization . (read :: String -> MLM) <$> readFile file
         return $ filter (not . snd) validities `shouldSatisfy` null
   describe "valid" $
     let dir = "examples" </> "should_have_same_outcome" in
@@ -88,7 +88,7 @@ spec = do
         subdirs <- filterM (fmap (fileTypeIsDirectory . fileTypeFromMetadata) . getFileMetadata)
                     . map (dir </>) =<< listDirectory dir
         results <- forM subdirs $ \subdir ->
-          listDirectory subdir >>= mapM ((\file -> (file,) . valid True <$> fromXModeler file) . (subdir </>))
+          listDirectory subdir >>= mapM ((\file -> (file,) . valid BeStrictAboutConcretization <$> fromXModeler file) . (subdir </>))
         return $ filter ((1<) . length . nubOrd . map snd) results `shouldSatisfy` null
 
 withIsolatedObjects :: [Int]

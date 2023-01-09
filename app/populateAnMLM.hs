@@ -9,7 +9,7 @@ import Helpers (spaceOut, scaleFactor, extraOffset, offerChange)
 import Test.QuickCheck (frequency, generate, chooseInt)
 import Modelling.MLM.Config (Config(..), defaultConfig)
 import Modelling.MLM.Edit (Edit(..), editValidly)
-import Modelling.MLM.Types (MLM(..), Name(..), Class(..))
+import Modelling.MLM.Types (MLM(..), Name(..), Class(..), LeniencyConsideringConcretization(..))
 import Modelling.MLM.Validate (valid)
 
 import System.IO (hSetBuffering, stdout, BufferMode(NoBuffering))
@@ -24,8 +24,8 @@ import Data.Yaml (decodeFileThrow)
 debug :: Bool
 debug = False
 
-requireInstantiations :: Bool
-requireInstantiations = False
+requireInstantiations :: LeniencyConsideringConcretization
+requireInstantiations = BeLenientAboutConcretization
 
 main :: IO ()
 main = do

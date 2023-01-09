@@ -15,6 +15,7 @@ import Modelling.MLM.Types (
   Multiplicity (..),
   Name (..),
   Level,
+  LeniencyConsideringConcretization(..),
   (\?/),
   generateAboveFinder,
   generateClassDict,
@@ -47,7 +48,7 @@ instance Validatable () Name where
       all ($ name)
         [not . null, validChar1 . head, all validCharN . tail]
 
-instance Validatable Bool MLM where
+instance Validatable LeniencyConsideringConcretization MLM where
   valid requireInstantiations MLM{name = projectName, classes, associations, links} = let
 
     -- navigation
@@ -116,7 +117,8 @@ instance Validatable Bool MLM where
       allUnique classesNames,
       allUnique (map #name associations),
       noCycles dict,
-      not requireInstantiations || all instantiatesSomethingOrIsMetaClass classes,
+      requireInstantiations == BeLenientAboutConcretization
+        || all instantiatesSomethingOrIsMetaClass classes,
       allUnique links,
       all (\x -> valid (above (#name x)) x) classes,
       all (\x -> valid (findClass (#source x), findClass (#target x)) x) associations,

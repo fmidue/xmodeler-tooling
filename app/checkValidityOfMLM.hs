@@ -2,13 +2,14 @@ module Main (main) where
 
 import Modelling.MLM.FromXModeler (fromXModeler)
 import Modelling.MLM.Validate (valid)
+import Modelling.MLM.Types (LeniencyConsideringConcretization(..))
 
 import System.IO (hSetBuffering, stdout, BufferMode(NoBuffering))
 import System.Environment (getArgs)
 import Text.Pretty.Simple (pPrint)
 
-requireInstantiations :: Bool
-requireInstantiations = False
+requireInstantiations :: LeniencyConsideringConcretization
+requireInstantiations = BeLenientAboutConcretization
 
 main :: IO ()
 main = do

@@ -4,7 +4,7 @@ import Test.Hspec (Spec, describe, it, shouldSatisfy)
 import Test.QuickCheck (forAll, oneof)
 import Config (reasonableConfigs, smallConfigs)
 import Modelling.MLM.Generate (generateMLM)
-import Modelling.MLM.Types (MLM(..), Class(..), Association(..), Multiplicity(..), Name(..), Link(..))
+import Modelling.MLM.Types (MLM(..), Class(..), Association(..), Multiplicity(..), Name(..), Link(..), LeniencyConsideringConcretization(..))
 import Modelling.MLM.Validate (valid)
 import Modelling.MLM.Config (Config(..))
 import Data.Maybe (isJust, mapMaybe)
@@ -15,7 +15,7 @@ spec = do
           it "creates valid MLMs" $
             forAll (oneof [reasonableConfigs, smallConfigs]) $ \config ->
             forAll (generateMLM config) $
-            valid True
+            valid BeStrictAboutConcretization
         describe "generateMLM" $
           it "respects certain configuration parameters" $
             forAll (oneof [reasonableConfigs, smallConfigs]) $ \config@Config{maxClassLevel, numberOfClasses, numberOfAssociations} ->
@@ -107,7 +107,7 @@ spec = do
                   newLinks = map (\(linkName, (class1, class2)) -> Link linkName (#name class1) (#name class2)) linksInfo :: [Link]
                   possibleLinksToAdd = filter (\x ->
                                                   let mlmWithTheNewLink = mlm{links = x : links} :: MLM
-                                                  in valid True mlmWithTheNewLink
+                                                  in valid BeStrictAboutConcretization mlmWithTheNewLink
                                               ) newLinks :: [Link]
                   in
                     possibleLinksToAdd `shouldSatisfy` null

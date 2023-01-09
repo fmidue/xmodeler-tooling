@@ -5,7 +5,7 @@ module Main (main) where
 import Modelling.MLM.FromXModeler (fromXModeler)
 import Data.GraphViz (GraphvizCommand(..))
 import Modelling.MLM.ToXModeler (toXModeler)
-import Modelling.MLM.Types (MLM(..), Class(..), Association(..), Name(..), Multiplicity(..), Link(..))
+import Modelling.MLM.Types (MLM(..), Class(..), Association(..), Name(..), Multiplicity(..), Link(..), LeniencyConsideringConcretization(..))
 import Modelling.MLM.Validate (valid)
 import Modelling.MLM.Edit (refreshInstantiationAllClasses)
 import Modelling.CdOd.Populate (populateCdOd)
@@ -57,7 +57,7 @@ main = do
       layoutCommand <- offerChange ("(options are Graphviz's " ++ intercalate ", " (map show [minBound .. maxBound :: GraphvizCommand]) ++ ")\nlayoutCommand") Neato
       mlms <- makeMLMs mlm enforceO newOMin newOMax newLMin allowS n dictionary
       mapM_ (writeMLM layoutCommand fileName) $ zip [1..] mlms
-      putStrLn $ "\nTo my eyes," ++ (if all (valid False) mlms then "" else " not") ++ " all of the MLMs produced look valid."
+      putStrLn $ "\nTo my eyes," ++ (if all (valid BeLenientAboutConcretization) mlms then "" else " not") ++ " all of the MLMs produced look valid."
 
 makeMLMs :: MLM -> Bool -> Int -> Int -> Int -> Bool -> Integer -> KeyMap [String] -> IO [MLM]
 makeMLMs mlm@MLM{classes, associations, links} enforceObjects newObjectsMin newObjectsMax newLinksMin allowSelfLinks number dictionary =
@@ -127,7 +127,7 @@ isEligible mlm@MLM{classes, associations}
   | any (\Class{parents} -> length parents > 1) classes =
       putStr "\nThere is multiple inheritance in the given MLM."
       >> return False
-  | not (valid False mlm) =
+  | not (valid BeLenientAboutConcretization mlm) =
       putStr "\nThe given MLM does not look valid."
       >> return False
   | otherwise =
