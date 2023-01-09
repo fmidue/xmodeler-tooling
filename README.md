@@ -1,13 +1,16 @@
 # XModeler Tooling
 
+This repository contains the source code for various executables working with [XModeler](https://le4mm.org/xmodelerml/) files.
+It grew out of the Bachelor thesis of [Ashraf Hashash](https://github.com/fmidue/xmodeler-tooling/commits?author=smmohash).
+
 ## Installation
 
 Download and install the following tools (while making sure their executables end up on the system `PATH`):
 
 - [Haskell Tool Stack](https://haskellstack.org/)
 - [Graphviz](https://graphviz.org/)
-- Java (any JRE able to run the [Alloy Analyzer](https://alloytools.org/))
-- (no need to install Alloy itself, since it will be accessed behind the scenes via a Haskell binding)
+- any Java Runtime Environment supporting the [Alloy Analyzer](https://alloytools.org/)
+- (no need to install Alloy itself since it will be included behind the scenes via a Haskell binding)
 
 Download the code of the [xmodeler-tooling repository](https://github.com/fmidue/xmodeler-tooling), e.g., via `git clone https://github.com/fmidue/xmodeler-tooling.git` or per "Download ZIP".
 
@@ -50,7 +53,7 @@ stack exec populateAnMLM filename.xml
 ```
 
 
-In a shell, to populate an existing class diagram via Alloy:
+In a shell, to populate a UML class/object diagram via Alloy:
 ```shell
 cd xmodeler-tooling
 stack exec useAlloyToPopulateCdOd filename.xml
