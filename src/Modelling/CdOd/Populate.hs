@@ -74,9 +74,11 @@ populateCdOd
         where
           oldOrNew =
             map (\objectName ->
-                    case break (=='$') objectName of
-                      (name, rest) ->
-                        if name `elem` map fst theObjects
-                        then Left name
-                        else Right ("new_" ++ name ++ '_' : tail rest, name)
+                    let (name, rest) = break (=='$') objectName
+                    in
+                      if name `elem` map fst theObjects
+                      then
+                        (if rest == "$0" then Left name else error "invalid object name")
+                      else
+                        Right ("new_" ++ name ++ '_' : show (1 + read (tail rest) :: Int), name)
                 )
