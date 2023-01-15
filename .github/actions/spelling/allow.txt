@@ -1,9 +1,12 @@
+Aeson
+Bifunctor
 EUR
 FFloat
 GBP
 GHC
 Graphviz
 HXT
+Hashash
 Hspec
 MLMs
 Neato
@@ -36,6 +39,7 @@ fst
 instantiatable
 layouted
 mlm
+mlms
 oneof
 roundtripping
 scanl
@@ -44,4 +48,5 @@ standalone
 subdir
 subdirs
 uncurry
+unlines
 xmodeler
