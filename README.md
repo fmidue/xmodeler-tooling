@@ -1,7 +1,7 @@
 # XModeler Tooling
 
 This repository contains the source code for various executables working with [XModeler](https://le4mm.org/xmodelerml/) files.
-It grew out of the Bachelor thesis of [Ashraf Hashash](https://github.com/fmidue/xmodeler-tooling/commits?author=smmohash).
+It originally grew out of the Bachelor thesis of [Ashraf Hashash](https://github.com/fmidue/xmodeler-tooling/commits?author=smmohash), then was extended using our [CD2Alloy implementation](https://github.com/fmidue/modelling-tasks/blob/master/src/Modelling/CdOd/CD2Alloy/Transform.hs).
 
 ## Installation
 
