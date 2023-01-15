@@ -51,13 +51,10 @@ main = do
       let enforceO = enforceObjects /= "no"
       putStrLn "\nHow many objects do you want me to add at least (default is 5)?"
       newObjectsMin <- getLine
-      let newOMin = max 0 (if null newObjectsMin then 5 else read newObjectsMin)
       putStrLn "\nHow many objects do you want me to add at most (not smaller than previous number, default is 10)?"
       newObjectsMax <- getLine
-      let newOMax = max newOMin (if null newObjectsMax then 10 else read newObjectsMax)
       putStrLn "\nHow many links do you want me to add at least (default is 5)?"
       newLinksMin <- getLine
-      let newLMin = max 0 (if null newLinksMin then 5 else read newLinksMin)
       putStrLn "\nShould it be allowed that an object has a link to itself (default is yes)?"
       allowSelfLinks <- getLine
       let allowS = allowSelfLinks /= "no"
@@ -65,7 +62,14 @@ main = do
       inputN <- getLine
       let n = if null inputN then 10 else read inputN
       layoutCommand <- offerChange ("(options are Graphviz's " ++ intercalate ", " (map show [minBound .. maxBound :: GraphvizCommand]) ++ ")\nlayoutCommand") Neato
-      mlms <- makeMLMs mlm enforceO newOMin newOMax newLMin allowS n dictionary
+      mlms <- makeMLMs mlm
+              enforceO
+              (max 0 (if null newObjectsMin then 5 else read newObjectsMin))
+              (if null newObjectsMax then 10 else read newObjectsMax)
+              (max 0 (if null newLinksMin then 5 else read newLinksMin))
+              allowS
+              n
+              dictionary
       mapM_ (writeMLM layoutCommand fileName) $ zip [1..] mlms
       putStrLn $ "\nTo my eyes,"
         ++ (if all
@@ -105,7 +109,7 @@ makeMLMs mlm@MLM{classes, associations, links} enforceObjects newObjectsMin newO
     (map (\Class{name = Name objectName, classifier = Just (Name className)}
           -> (objectName, className)) theObjects)
     newObjectsMin
-    newObjectsMax
+    (max newObjectsMin newObjectsMax)
     (map (\Link{association = Name associationName, source = Name sourceName, target = Name targetName}
           -> (sourceName, targetName, associationName)) links)
     newLinksMin
