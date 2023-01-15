@@ -5,7 +5,7 @@ module Main (main) where
 import Modelling.MLM.ToXModeler (toXModeler)
 import Data.GraphViz (GraphvizCommand(..))
 import Modelling.MLM.Config (Config(..), defaultConfig, checkConfig)
-import Modelling.MLM.Types (MLM (..), Name (..), LeniencyConsideringConcretization(..))
+import Modelling.MLM.Types (MLM (..), Name (..), beVeryStrict)
 import Modelling.MLM.Generate (generateMLM)
 import Modelling.MLM.Validate (valid)
 
@@ -30,7 +30,7 @@ main = do
   inputP <- getLine
   layoutCommand <- offerChange ("(options are Graphviz's " ++ intercalate ", " (map show [minBound .. maxBound :: GraphvizCommand]) ++ ")\nlayoutCommand") Neato
   mlms <- mapM (makeMLM theConfigToUse layoutCommand (inputP == "yes")) [1..n]
-  putStrLn $ "\nTo my eyes," ++ (if all (valid BeStrictAboutConcretization) mlms then "" else " not") ++ " all of the MLMs generated look valid."
+  putStrLn $ "\nTo my eyes," ++ (if all (valid beVeryStrict) mlms then "" else " not") ++ " all of the MLMs generated look valid."
 
 makeMLM :: Config -> GraphvizCommand -> Bool -> Int -> IO MLM
 makeMLM config layoutCommand p i = do

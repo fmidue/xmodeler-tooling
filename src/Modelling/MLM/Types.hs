@@ -13,7 +13,11 @@ module Modelling.MLM.Types(
   Level,
   Type (..),
   Value (..),
+  Leniencies,
   LeniencyConsideringConcretization(..),
+  LeniencyConsideringSlotFilling(..),
+  LeniencyConsideringLowerMultiplicities(..),
+  beVeryStrict,
   relativeToEur,
   currencySymbol,
   allCurrencies,
@@ -52,6 +56,23 @@ import Data.List.Extra (replace)
 data LeniencyConsideringConcretization =
   BeLenientAboutConcretization | BeStrictAboutConcretization
   deriving Eq
+
+data LeniencyConsideringSlotFilling =
+  BeLenientAboutSlotFilling | BeStrictAboutSlotFilling
+  deriving Eq
+
+data LeniencyConsideringLowerMultiplicities =
+  BeLenientAboutLowerMultiplicities | BeStrictAboutLowerMultiplicities
+  deriving Eq
+
+type Leniencies =
+  ( LeniencyConsideringConcretization
+  , LeniencyConsideringSlotFilling
+  , LeniencyConsideringLowerMultiplicities
+  )
+
+beVeryStrict :: Leniencies
+beVeryStrict = (BeStrictAboutConcretization, BeStrictAboutSlotFilling, BeStrictAboutLowerMultiplicities)
 
 eqBy :: Eq b => a -> a -> (a -> b) -> Bool
 eqBy x y f = f x == f y

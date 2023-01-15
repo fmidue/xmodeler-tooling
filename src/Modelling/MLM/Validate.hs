@@ -15,7 +15,10 @@ import Modelling.MLM.Types (
   Multiplicity (..),
   Name (..),
   Level,
+  Leniencies,
   LeniencyConsideringConcretization(..),
+  LeniencyConsideringSlotFilling(..),
+  LeniencyConsideringLowerMultiplicities(..),
   (\?/),
   generateAboveFinder,
   generateClassDict,
@@ -48,8 +51,10 @@ instance Validatable () Name where
       all ($ name)
         [not . null, validChar1 . head, all validCharN . tail]
 
-instance Validatable LeniencyConsideringConcretization MLM where
-  valid requireInstantiations MLM{name = projectName, classes, associations, links} = let
+instance Validatable Leniencies MLM where
+  valid (requireInstantiations, requireAllSlots, requireMinimumLinks)
+    MLM{name = projectName, classes, associations, links}
+    = let
 
     -- navigation
     findClass :: Name -> Maybe Class
@@ -78,9 +83,21 @@ instance Validatable LeniencyConsideringConcretization MLM where
 
     participationDoesNotViolateMultiplicity :: Association -> Class -> Bool
     participationDoesNotViolateMultiplicity association'@Association{multSource, multTarget, source, target, levelSource, levelTarget} class'@Class{name, level} =
-        (not (name \/ source && level == levelSource) || (class' `occurrencesAsSource` association') `inRangeOfMult` multTarget)
+        (not (name \/ source && level == levelSource)
+         ||
+         (class' `occurrencesAsSource` association') `inRangeOfMult`
+          if requireMinimumLinks == BeStrictAboutLowerMultiplicities
+          then multTarget
+          else case multTarget of Multiplicity (_, upper) -> Multiplicity (0, upper)
+        )
         &&
-        (not (name \/ target && level == levelTarget) || (class' `occurrencesAsTarget` association') `inRangeOfMult` multSource)
+        (not (name \/ target && level == levelTarget)
+         ||
+         (class' `occurrencesAsTarget` association') `inRangeOfMult`
+          if requireMinimumLinks == BeStrictAboutLowerMultiplicities
+          then multSource
+          else case multSource of Multiplicity (_, upper) -> Multiplicity (0, upper)
+        )
 
     associationMultiplicityNotViolated :: Association -> Bool
     associationMultiplicityNotViolated association' =
@@ -120,14 +137,23 @@ instance Validatable LeniencyConsideringConcretization MLM where
       requireInstantiations == BeLenientAboutConcretization
         || all instantiatesSomethingOrIsMetaClass classes,
       allUnique links,
-      all (\x -> valid (above (#name x)) x) classes,
+      all (\x -> valid (requireAllSlots, above (#name x)) x) classes,
       all (\x -> valid (findClass (#source x), findClass (#target x)) x) associations,
       all associationMultiplicityNotViolated associations,
       all validLink links
     ]
 
-instance Validatable [Class] Class where
-  valid aboveThis Class{isAbstract = thisAbstract, name = thisName, level = thisLevel, classifier = thisClassifier, attributes = thisAttributes, slots = thisSlots, operations = thisOperations, parents = thisParents} = let
+instance Validatable (LeniencyConsideringSlotFilling, [Class]) Class where
+  valid (requireAllSlots, aboveThis)
+    Class{ isAbstract = thisAbstract
+         , name = thisName
+         , level = thisLevel
+         , classifier = thisClassifier
+         , attributes = thisAttributes
+         , slots = thisSlots
+         , operations = thisOperations
+         , parents = thisParents}
+    = let
 
     findClass :: Name -> Maybe Class
     findClass = generateClassFinder aboveThis
@@ -155,7 +181,8 @@ instance Validatable [Class] Class where
         allUnique thisOperationsNames,
         allUnique (map (\Attribute{name, level} -> (name, level)) $ thisAttributes ++ allAttributesAbove),
         -- pretending that all attributes multiplicities are (1, Just 1)
-        all (( `elem` thisSlotsNames) . #name) instantiatableAttributesHere,
+        requireAllSlots == BeLenientAboutSlotFilling
+          || all ((`elem` thisSlotsNames) . #name) instantiatableAttributesHere,
         thisLevel > 0 || (null thisAttributes && null thisOperations && null thisParents && not thisAbstract && isJust thisClassifier),
         all (valid thisLevel) thisAttributes,
         all (valid thisLevel) thisOperations,

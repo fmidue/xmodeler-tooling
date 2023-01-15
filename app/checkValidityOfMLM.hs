@@ -2,7 +2,11 @@ module Main (main) where
 
 import Modelling.MLM.FromXModeler (fromXModeler)
 import Modelling.MLM.Validate (valid)
-import Modelling.MLM.Types (LeniencyConsideringConcretization(..))
+import Modelling.MLM.Types
+  ( LeniencyConsideringConcretization(..)
+  , LeniencyConsideringSlotFilling(..)
+  , LeniencyConsideringLowerMultiplicities(..)
+  )
 
 import System.IO (hSetBuffering, stdout, BufferMode(NoBuffering))
 import System.Environment (getArgs)
@@ -19,5 +23,11 @@ main = do
   putStrLn "\nThe following is the MLM imported from the XModeler file:\n"
   pPrint mlm
   putStrLn $ "\nIt is considered "
-    ++ (if valid requireInstantiations mlm then "" else "in")
+    ++ (if valid
+         ( requireInstantiations
+         , BeStrictAboutSlotFilling
+         , BeStrictAboutLowerMultiplicities
+         )
+         mlm
+        then "" else "in")
     ++ "valid.\n"

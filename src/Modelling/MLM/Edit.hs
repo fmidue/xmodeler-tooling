@@ -21,6 +21,7 @@ import Modelling.MLM.Types (
   Name(..),
   Type(..),
   LeniencyConsideringConcretization(..),
+  beVeryStrict,
   typeSpace,
   generateBelowFinder,
   emptyOperationBody,
@@ -266,7 +267,7 @@ editRandomlyBlindlyNKeepLastValidOne shouldWeForbidDeleteComponents mlm n = let
                     soFar' <- soFar
                     f soFar'
                 ) (return mlm) [1 .. n] :: Gen [MLM]
-        let validOnes = filter (valid BeStrictAboutConcretization) result
+        let validOnes = filter (valid beVeryStrict) result
         if null validOnes
             then return Nothing
             else return $ Just $ last validOnes
@@ -277,9 +278,9 @@ editRandomlyBlindlyNStayValid shouldWeForbidDeleteComponents mlm n = let
     in do
         result <- foldM (\x _ -> do
                 y <- f x
-                return $ if valid BeStrictAboutConcretization y then y else x
+                return $ if valid beVeryStrict y then y else x
             ) mlm [1 .. n]
-        if valid BeStrictAboutConcretization result
+        if valid beVeryStrict result
             then return $ Just result
             else return Nothing
 
