@@ -134,15 +134,12 @@ makeMLMs mlm@MLM{classes, associations, links} enforceObjects newObjectsMin newO
     )
 
 isEligible :: MLM -> IO Bool
-isEligible mlm@MLM{classes, associations}
+isEligible mlm@MLM{classes}
   | null classes =
       putStr "\nThere are no classes in the given MLM."
       >> return False
   | any (\Class{level} -> level > 1) classes =
       putStr "\nThere are classes at levels higher than 1 in the given MLM."
-      >> return False
-  | null associations =
-      putStr "\nThere are no associations in the given MLM. That is boring."
       >> return False
   | any (\Class{parents} -> length parents > 1) classes =
       putStr "\nThere is multiple inheritance in the given MLM."
