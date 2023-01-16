@@ -9,6 +9,7 @@ import Modelling.MLM.Types (
   Link (..),
   Association (..),
   Slot (..),
+  Value (..),
   Class (..),
   Operation (..),
   Attribute (..),
@@ -202,8 +203,16 @@ instance Validatable Level Attribute where
 instance Validatable (Maybe Attribute, Level) Slot where
   valid (slotAttribute, slotClassLevel) Slot{value} =
       maybe False (\x ->
-          slotClassLevel == #level x && equalType (#dataType x) value
+          slotClassLevel == #level x && equalType (#dataType x) value && valid () value
         ) slotAttribute
+
+instance Validatable () Value where
+  valid () value =
+    case value of
+      VMonetaryValue ("", _)
+        -> False
+      _
+        -> True
 
 instance Validatable Level Operation where
   valid operationClassLevel Operation{level, name} =
