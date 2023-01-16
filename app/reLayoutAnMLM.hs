@@ -16,6 +16,9 @@ import System.IO (hSetBuffering, stdout, BufferMode(NoBuffering))
 import System.Environment (getArgs)
 import Data.List (intercalate)
 
+import Control.Exception (evaluate)
+import Control.DeepSeq (force)
+
 requireInstantiations :: LeniencyConsideringConcretization
 requireInstantiations = BeLenientAboutConcretization
 
@@ -23,7 +26,7 @@ main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
   [fileName] <- getArgs
-  mlm <- fromXModeler fileName
+  mlm <- evaluate . force =<< fromXModeler fileName
   layoutCommand <- offerChange ("(options are Graphviz's " ++ intercalate ", " (map show [minBound .. maxBound :: GraphvizCommand]) ++ ")\nlayoutCommand") Neato
   putStrLn $ "\nJust so that you know: I consider the given MLM to be "
     ++ if valid

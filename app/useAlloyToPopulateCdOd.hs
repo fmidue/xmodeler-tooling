@@ -33,11 +33,14 @@ import Data.Either (rights)
 import Data.Aeson.KeyMap (KeyMap)
 import Data.Yaml (decodeFileThrow)
 
+import Control.Exception (evaluate)
+import Control.DeepSeq (force)
+
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
   [fileName] <- getArgs
-  mlm <- fromXModeler fileName
+  mlm <- evaluate . force =<< fromXModeler fileName
   isEligible mlm >>= \case
     False ->
       putStrLn " I am not okay with that. Goodbye."

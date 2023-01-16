@@ -28,6 +28,9 @@ import Data.Maybe (mapMaybe)
 import Data.Aeson.KeyMap (KeyMap)
 import Data.Yaml (decodeFileThrow)
 
+import Control.Exception (evaluate)
+import Control.DeepSeq (force)
+
 debug :: Bool
 debug = False
 
@@ -38,7 +41,7 @@ main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
   [fileName] <- getArgs
-  mlm <- fromXModeler fileName
+  mlm <- evaluate . force =<< fromXModeler fileName
   putStrLn "\nIf you want to use the default in any of the following settings, just hit <return> there."
   putStrLn "\nWhich file do you want to use as string dictionary (default is strings.yaml)?"
   dictName <- getLine

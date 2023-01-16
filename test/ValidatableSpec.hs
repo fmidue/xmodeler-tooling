@@ -22,6 +22,9 @@ import Modelling.MLM.Validate (valid)
 
 import Text.Pretty.Simple (pPrint)
 
+import Control.Exception (evaluate)
+import Control.DeepSeq (force)
+
 spec :: Spec
 spec = do
   -- total number of files is 2292
@@ -30,14 +33,14 @@ spec = do
       describe "valid" $
         it ("correctly judges " ++ file) $
           ioProperty $ do
-            input <- fromXModeler file
+            input <- evaluate . force =<< fromXModeler file
             return $ input `shouldSatisfy` valid beVeryStrict
   forM_ withIsolatedObjects $ \i ->
       let file = "examples" </> "UML" </> "testing_" ++ show i ++ ".xml" in
       describe "valid" $
         it ("correctly judges " ++ file) $
           ioProperty $ do
-            input <- fromXModeler file
+            input <- evaluate . force =<< fromXModeler file
             return $ input `shouldSatisfy`
               valid
               ( BeLenientAboutConcretization
@@ -48,7 +51,7 @@ spec = do
       describe "invalid" $
         it ("correctly judges " ++ file) $
           ioProperty $ do
-            input <- fromXModeler file
+            input <- evaluate . force =<< fromXModeler file
             return $ input `shouldSatisfy` (not . valid beVeryStrict)
   describe "invalid" $
    let dir = "examples" </> "should_fail" in do
@@ -56,7 +59,7 @@ spec = do
       ioProperty $ do
         files <- map (dir </>) . filter ((".xml" ==) . takeExtension) <$> listDirectory dir
         validities <- forM files $ \file -> do
-          mlm <- fromXModeler file
+          mlm <- evaluate . force =<< fromXModeler file
           let validity = (file,) . valid beVeryStrict $ mlm
           when (snd validity) $ putStrLn file >> pPrint mlm
           return validity
@@ -77,7 +80,7 @@ spec = do
       ioProperty $ do
         files <- map (dir </>) <$> listDirectory dir
         validities <- forM files $ \file -> do
-          mlm <- fromXModeler file
+          mlm <- evaluate . force =<< fromXModeler file
           let validity = (file,) . valid beVeryStrict $ mlm
           unless (snd validity) $ putStrLn file >> pPrint mlm
           return validity
@@ -87,7 +90,7 @@ spec = do
     it ("correctly judges content of " ++ dir ++ " directory") $
       ioProperty $ do
         files <- map (dir </>) <$> listDirectory dir
-        validities <- forM files $ \file -> (file,) . valid beVeryStrict <$> fromXModeler file
+        validities <- forM files $ \file -> (file,) . valid beVeryStrict <$> (evaluate . force =<< fromXModeler file)
         return $ filter (not . snd) validities `shouldSatisfy` null
   describe "valid" $
     let dir = "examples" </> "should_pass" in
@@ -103,7 +106,7 @@ spec = do
         subdirs <- filterM (fmap (fileTypeIsDirectory . fileTypeFromMetadata) . getFileMetadata)
                     . map (dir </>) =<< listDirectory dir
         results <- forM subdirs $ \subdir ->
-          listDirectory subdir >>= mapM ((\file -> (file,) . valid beVeryStrict <$> fromXModeler file) . (subdir </>))
+          listDirectory subdir >>= mapM ((\file -> (file,) . valid beVeryStrict <$> (evaluate . force =<< fromXModeler file)) . (subdir </>))
         return $ filter ((1<) . length . nubOrd . map snd) results `shouldSatisfy` null
 
 withIsolatedObjects :: [Int]

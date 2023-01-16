@@ -12,6 +12,9 @@ import System.IO (hSetBuffering, stdout, BufferMode(NoBuffering))
 import System.Environment (getArgs)
 import Text.Pretty.Simple (pPrint)
 
+import Control.Exception (evaluate)
+import Control.DeepSeq (force)
+
 requireInstantiations :: LeniencyConsideringConcretization
 requireInstantiations = BeLenientAboutConcretization
 
@@ -19,7 +22,7 @@ main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
   [fileName] <- getArgs
-  mlm <- fromXModeler fileName
+  mlm <- evaluate . force =<< fromXModeler fileName
   putStrLn "\nThe following is the MLM imported from the XModeler file:\n"
   pPrint mlm
   putStrLn $ "\nIt is considered "

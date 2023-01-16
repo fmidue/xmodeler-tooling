@@ -12,6 +12,9 @@ import Modelling.MLM.FromXModeler (fromXModeler)
 import Modelling.MLM.ToXModeler (toXModeler)
 import Modelling.MLM.Generate (generateMLM)
 
+import Control.Exception (evaluate)
+import Control.DeepSeq (force)
+
 spec :: Spec
 spec = do
          describe "Exporting an MLM and then importing it and comparing to the original." $
@@ -22,29 +25,29 @@ spec = do
                     \ randomMLM -> ioProperty $ do
                         x <- toXModeler (Neato, (**1.135), 1.1, 163) randomMLM
                         writeFile "exportedForTesting.xml" x
-                        importedMLM <- fromXModeler "exportedForTesting.xml"
+                        importedMLM <- evaluate . force =<< fromXModeler "exportedForTesting.xml"
                         return $ (randomMLM, importedMLM) `shouldSatisfy` uncurry (==)
          describe "Roundtripping of exporting and importing an MLM" $
             it "works on a specific MLM" $
             let mlm = anMLM in ioProperty $ do
               writeFile "exportedForTesting.xml" =<< toXModeler (Neato, (**1.135), 1.1, 163) mlm
-              importedMLM <- fromXModeler "exportedForTesting.xml"
+              importedMLM <- evaluate . force =<< fromXModeler "exportedForTesting.xml"
               return $ (mlm, importedMLM) `shouldSatisfy` uncurry (==)
          describe "Roundtripping of exporting and importing an MLM" $
           it "works on a specific (imported) MLM that contains operations" $
             ioProperty $ do
               let file = "examples/should_narrowly_pass/behaviourOfXModelerConcerningOperations.xml"
-              mlm <- fromXModeler file
+              mlm <- evaluate . force =<< fromXModeler file
               writeFile "exportedForTesting.xml" =<< toXModeler (Neato, (**1.2), 1.1, 163) mlm
-              importedMLM <- fromXModeler "exportedForTesting.xml"
+              importedMLM <- evaluate . force =<< fromXModeler "exportedForTesting.xml"
               return $ (mlm, importedMLM) `shouldSatisfy` uncurry (==)
          describe "Roundtripping of exporting and importing an MLM" $
           it "works on a specific (imported) MLM that contains operations" $
             ioProperty $ do
               let file = "examples/should_fail/behaviourOfXModelerConcerningOperations.xml"
-              mlm <- fromXModeler file
+              mlm <- evaluate . force =<< fromXModeler file
               writeFile "exportedForTesting.xml" =<< toXModeler (Neato, (**1.2), 1.1, 163) mlm
-              importedMLM <- fromXModeler "exportedForTesting.xml"
+              importedMLM <- evaluate . force =<< fromXModeler "exportedForTesting.xml"
               return $ (mlm, importedMLM) `shouldSatisfy` uncurry (==)
 
 anMLM :: MLM

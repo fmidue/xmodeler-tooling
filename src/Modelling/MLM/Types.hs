@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 module Modelling.MLM.Types(
   MLM (..),
@@ -53,6 +54,9 @@ import qualified Data.Map.Lazy as M (filter)
 import Data.Set (member)
 import Data.List.Extra (replace)
 
+import GHC.Generics (Generic)
+import Control.DeepSeq (NFData)
+
 data LeniencyConsideringConcretization =
   BeLenientAboutConcretization | BeStrictAboutConcretization
   deriving Eq
@@ -81,7 +85,8 @@ eqBy x y f = f x == f y
 instance HasField x r a => IsLabel x (r -> a) where
   fromLabel = getField @x
 
-newtype Name = Name String deriving (Eq, Ord, Show, Read)
+newtype Name = Name String
+  deriving (Eq, Ord, Show, Read, Generic, NFData)
 
 emptyName :: Name
 emptyName = Name ""
@@ -91,7 +96,7 @@ data MLM = MLM {
   classes :: [Class],
   associations :: [Association],
   links :: [Link]
-} deriving (Show, Read)
+} deriving (Show, Read, Generic, NFData)
 
 instance Eq MLM where
   (==) MLM{classes = c1, associations = a1, links = l1} MLM{classes = c2, associations = a2, links = l2} =
@@ -163,7 +168,7 @@ data Class = Class {
   attributes :: [Attribute],
   operations :: [Operation],
   slots :: [Slot]
-} deriving (Show, Read)
+} deriving (Show, Read, Generic, NFData)
 
 instance Eq Class where
   (==) x y = and [
@@ -185,7 +190,7 @@ data Attribute = Attribute {
   name :: Name,
   dataType :: Type,
   multiplicity :: Multiplicity
-} deriving (Show, Read, Eq)
+} deriving (Show, Read, Eq, Generic, NFData)
 
 emptyAttribute :: Attribute
 emptyAttribute = Attribute 0 emptyName Boolean emptyMultiplicity
@@ -193,7 +198,7 @@ emptyAttribute = Attribute 0 emptyName Boolean emptyMultiplicity
 data Slot = Slot {
   attribute :: Name,
   value :: Value
-} deriving (Show, Read, Eq)
+} deriving (Show, Read, Eq, Generic, NFData)
 
 data Operation = Operation {
   level :: Int,
@@ -201,7 +206,7 @@ data Operation = Operation {
   dataType :: Type,
   isMonitored :: Bool,
   body :: String
-} deriving (Show, Read)
+} deriving (Show, Read, Generic, NFData)
 
 emptyOperationBody :: Name -> String
 emptyOperationBody (Name name') = "@Operation " ++ name' ++ "[monitor=false]():XCore::Integer&#99;  0&#10;end"
@@ -228,7 +233,7 @@ data Association = Association {
   multTarget :: Multiplicity,
   visibleSource :: Bool,
   visibleTarget :: Bool
-} deriving (Show, Read, Eq)
+} deriving (Show, Read, Eq, Generic, NFData)
 
 emptyAssociation :: Association
 emptyAssociation = Association emptyName emptyName emptyName 0 0 emptyMultiplicity emptyMultiplicity False False
@@ -237,19 +242,21 @@ data Link = Link {
   association :: Name,
   source :: Name,
   target :: Name
-} deriving (Show, Read, Eq, Ord)
+} deriving (Show, Read, Eq, Ord, Generic, NFData)
 
 emptyLink :: Link
 emptyLink = Link emptyName emptyName emptyName
 
-newtype Multiplicity = Multiplicity (Int, Maybe Int) deriving (Eq, Show, Read)
+newtype Multiplicity = Multiplicity (Int, Maybe Int)
+  deriving (Eq, Show, Read, Generic, NFData)
 
 emptyMultiplicity :: Multiplicity
 emptyMultiplicity = Multiplicity (0, Nothing)
 
 type Level = Int
 
-data Type = Boolean | Integer | Float | String | Element | MonetaryValue | Date | Currency | Complex | AuxiliaryClass deriving (Eq, Show, Read, Enum, Bounded)
+data Type = Boolean | Integer | Float | String | Element | MonetaryValue | Date | Currency | Complex | AuxiliaryClass
+  deriving (Eq, Show, Read, Enum, Bounded, Generic, NFData)
 
 data Value =
   VBoolean Bool |
@@ -262,7 +269,7 @@ data Value =
   VCurrency XModelerCurrency |
   VComplex String |
   VAuxiliaryClass String
-  deriving (Eq, Show, Read)
+  deriving (Eq, Show, Read, Generic, NFData)
 
 typeSpace :: [Type]
 typeSpace = [minBound .. maxBound]
@@ -280,7 +287,8 @@ equalType Complex (VComplex _) = True
 equalType AuxiliaryClass (VAuxiliaryClass _) = True
 equalType _ _ = False
 
-data XModelerCurrency = USD | EUR | GBP | AUD | NZD deriving (Eq, Show, Read, Enum, Bounded)
+data XModelerCurrency = USD | EUR | GBP | AUD | NZD
+  deriving (Eq, Show, Read, Enum, Bounded, Generic, NFData)
 
 allCurrencies :: [XModelerCurrency]
 allCurrencies = [minBound .. maxBound]

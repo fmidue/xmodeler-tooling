@@ -48,6 +48,7 @@ library:
     - QuickCheck
     - hxt
     - aeson
+    - deepseq
 
 executables:
   generateRandomMLMs:
@@ -63,18 +64,21 @@ executables:
     source-dirs: app
     dependencies:
       - xmodeler-tooling
+      - deepseq
       - pretty-simple
   reLayoutAnMLM:
     main: reLayoutAnMLM.hs
     source-dirs: app
     dependencies:
       - xmodeler-tooling
+      - deepseq
       - graphviz
   populateAnMLM:
     main: populateAnMLM.hs
     source-dirs: app
     dependencies:
       - xmodeler-tooling
+      - deepseq
       - graphviz
       - QuickCheck
       - aeson
@@ -84,6 +88,7 @@ executables:
     source-dirs: app
     dependencies:
       - xmodeler-tooling
+      - deepseq
       - graphviz
       - QuickCheck
       - aeson
@@ -102,6 +107,7 @@ tests:
       - RecordWildCards
     dependencies:
       - xmodeler-tooling
+      - deepseq
       - extra
       - graphviz
       - QuickCheck
