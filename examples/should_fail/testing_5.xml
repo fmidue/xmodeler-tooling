@@ -46,7 +46,6 @@
     <changeSlotValue class="Root::projectName::D" package="Root::projectName" slotName="att1" valueToBeParsed="5"/>
     <addAttribute class="Root::projectName::B" level="0" multiplicity="Seq{1,1,true,false}" name="att2" package="Root::projectName" type="Root::XCore::Integer"/>
     <changeSlotValue class="Root::projectName::BB" package="Root::projectName" slotName="att1" valueToBeParsed="2"/>
-    <changeSlotValue class="Root::projectName::d0" package="Root::projectName" slotName="att2" valueToBeParsed="3"/>
     <changeSlotValue class="Root::projectName::b1" package="Root::projectName" slotName="att2" valueToBeParsed="4"/>
 
     <addAssociation accessSourceFromTargetName="d_b" accessTargetFromSourceName="d_d" classSource="Root::projectName::B" classTarget="Root::projectName::D" fwName="d" instLevelSource="0" instLevelTarget="0" isSymmetric="false" isTransitive="false" multSourceToTarget="Seq{0,-1,False,false}" multTargetToSource="Seq{2,-1,False,false}" package="Root::projectName" reverseName="-1" sourceVisibleFromTarget="false" targetVisibleFromSource="true"/>
