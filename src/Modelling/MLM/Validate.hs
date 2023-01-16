@@ -86,17 +86,17 @@ instance Validatable Leniencies MLM where
         (not (name \/ source && level == levelSource)
          ||
          (class' `occurrencesAsSource` association') `inRangeOfMult`
-          if requireMinimumLinks == BeStrictAboutLowerMultiplicities
-          then multTarget
-          else case multTarget of Multiplicity (_, upper) -> Multiplicity (0, upper)
+          case (requireMinimumLinks, multTarget) of
+            (BeStrictAboutLowerMultiplicities, _) -> multTarget
+            (_, Multiplicity (_, upper)) -> Multiplicity (0, upper)
         )
         &&
         (not (name \/ target && level == levelTarget)
          ||
          (class' `occurrencesAsTarget` association') `inRangeOfMult`
-          if requireMinimumLinks == BeStrictAboutLowerMultiplicities
-          then multSource
-          else case multSource of Multiplicity (_, upper) -> Multiplicity (0, upper)
+          case (requireMinimumLinks, multSource) of
+            (BeStrictAboutLowerMultiplicities, _) -> multSource
+            (_, Multiplicity (_, upper)) -> Multiplicity (0, upper)
         )
 
     associationMultiplicityNotViolated :: Association -> Bool
